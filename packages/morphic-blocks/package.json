@@ -1,0 +1,36 @@
+{
+  "name": "morphic-blocks",
+  "version": "0.1.0",
+  "description": "Mode-driven wrapper framework around Google Blockly",
+  "type": "module",
+  "main": "./dist/morphic-blocks.umd.cjs",
+  "module": "./dist/morphic-blocks.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/morphic-blocks.js",
+      "require": "./dist/morphic-blocks.umd.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && vite build"
+  },
+  "keywords": [
+    "blockly",
+    "framework",
+    "visual-programming",
+    "morphic"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "blockly": "^11.2.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.2",
+    "vite": "^6.2.0"
+  }
+}
