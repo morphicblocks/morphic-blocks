@@ -1,0 +1,34 @@
+.morphic-workspace-root.morphic-mode-syntactic.playground-workspace .blocklySvg {
+  background: repeating-linear-gradient(180deg, #ffffff 0 28px, #f1f5f9 28px 29px);
+}
+
+.morphic-workspace-root.morphic-mode-syntactic.playground-workspace .blocklyMainBackground {
+  stroke: #cbd5e1;
+}
+
+.morphic-mode-syntactic .blocklyPathDark,
+.morphic-mode-syntactic .blocklyPathLight {
+  display: none;
+}
+
+.morphic-mode-syntactic .blocklyText {
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 13px;
+  fill: #0f172a;
+}
+
+.morphic-mode-syntactic .blocklyInputShapePath {
+  fill: #ffffff;
+  stroke: #94a3b8;
+}
+
+.morphic-toolbox-root.morphic-mode-syntactic.playground-toolbox .blocklyFlyoutBackground {
+  fill: #f8fafc;
+  fill-opacity: 0.98;
+}
+
+.morphic-toolbox-root.morphic-mode-syntactic.playground-toolbox
+  .blocklyFlyoutLabel.morphic-flyout-category-label
+  .blocklyFlyoutLabelText {
+  fill: #0f172a;
+}
