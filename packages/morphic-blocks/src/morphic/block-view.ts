@@ -1,5 +1,12 @@
 import * as Blockly from "blockly";
-import { CONTEXT_CLASS_PREFIX, MODE_CLASS_PREFIX, ALIGN_CENTRE, ALIGN_LEFT, ALIGN_RIGHT } from "./constants";
+import {
+  CONTEXT_CLASS_PREFIX,
+  MODE_CLASS_PREFIX,
+  CATEGORY_CLASS_PREFIX,
+  ALIGN_CENTRE,
+  ALIGN_LEFT,
+  ALIGN_RIGHT
+} from "./constants";
 import { normalizeTemplateText, parseTemplate, toModeClassToken } from "./template";
 import type {
   MorphicBlockDefinition,
@@ -71,6 +78,18 @@ export function applyRootModeClasses(
 
 export function getManagedBlockMode(block: Blockly.Block): string | undefined {
   return (block as MorphicManagedBlock).__morphicMode;
+}
+
+export function applyBlockCategoryClass(block: Blockly.BlockSvg, categoryToken?: string): void {
+  const root = block.getSvgRoot();
+  if (!root) {
+    return;
+  }
+
+  removePrefixedClasses(root.classList, CATEGORY_CLASS_PREFIX);
+  if (categoryToken) {
+    root.classList.add(`${CATEGORY_CLASS_PREFIX}${categoryToken}`);
+  }
 }
 
 function decorateBlockRoot(

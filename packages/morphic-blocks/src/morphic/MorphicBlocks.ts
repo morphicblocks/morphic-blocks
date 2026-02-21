@@ -1,9 +1,14 @@
 import * as Blockly from "blockly";
 import { getLifecycleBehavior } from "./behavior-runtime";
-import { applyBlockView, applyRootModeClasses } from "./block-view";
+import {
+  applyBlockCategoryClass,
+  applyBlockView,
+  applyRootModeClasses,
+} from "./block-view";
 import { generateJavaScriptFromWorkspace } from "./codegen";
 import { collectAvailableModes, createDefinitionMap } from "./definitions";
 import { MorphicStyleManager } from "./styles";
+import { toModeClassToken } from "./template";
 import { buildToolboxDefinition } from "./toolbox";
 import { resolveBlockView } from "./view-resolver";
 import type {
@@ -12,7 +17,7 @@ import type {
   MorphicBlockDefinition,
   MorphicModeName,
   MorphicMountConfig,
-  MorphicRenderContext
+  MorphicRenderContext,
 } from "./types";
 
 export class MorphicBlocks {
@@ -25,13 +30,14 @@ export class MorphicBlocks {
   private workspace?: Blockly.WorkspaceSvg;
   private flyoutWorkspace?: Blockly.WorkspaceSvg;
   private toolboxDefinition?: NonNullable<Blockly.BlocklyOptions["toolbox"]>;
+  private blockCategoryIndex = new Map<string, MorphicBlockCategoryMeta>();
   private appliedWorkspaceClasses: string[] = [];
   private appliedToolboxFlyoutClasses: string[] = [];
   private appliedToolboxShellClasses: string[] = [];
 
   public constructor(
     definitions: MorphicBlockDefinition[] | MorphicBlockDefinition,
-    behaviors: MorphicBehaviorMap = {}
+    behaviors: MorphicBehaviorMap = {},
   ) {
     this.definitions = createDefinitionMap(definitions);
     this.behaviors = behaviors;
@@ -41,8 +47,13 @@ export class MorphicBlocks {
     this.dispose();
     this.mountConfig = { ...config };
 
-    this.styles.validateModeCoverage(config.modeStyles ?? [], this.getAvailableModes());
+    this.styles.validateModeCoverage(
+      config.modeStyles ?? [],
+      this.getAvailableModes(),
+    );
     this.styles.ensureStyles(config.baseStyle, config.modeStyles ?? []);
+    this.blockCategoryIndex = this.createCategoryIndex(config.toolbox);
+    this.styles.ensureCategoryStyles(config.toolbox?.categories ?? []);
     this.registerBlocks();
     this.toolboxDefinition = this.resolveToolboxDefinition(config);
 
@@ -50,7 +61,7 @@ export class MorphicBlocks {
 
     this.workspace = Blockly.inject(config.workspaceContainer, {
       ...blocklyOptions,
-      toolbox: this.toolboxDefinition
+      toolbox: this.toolboxDefinition,
     });
     this.workspace.addChangeListener(this.onWorkspaceChange);
 
@@ -77,6 +88,7 @@ export class MorphicBlocks {
 
     this.mountConfig = undefined;
     this.toolboxDefinition = undefined;
+    this.blockCategoryIndex.clear();
     this.appliedWorkspaceClasses = [];
     this.appliedToolboxFlyoutClasses = [];
     this.appliedToolboxShellClasses = [];
@@ -90,9 +102,14 @@ export class MorphicBlocks {
     return collectAvailableModes(this.definitions.values());
   }
 
-  public setModes(modes: { workspaceMode?: MorphicModeName; toolboxMode?: MorphicModeName }): void {
+  public setModes(modes: {
+    workspaceMode?: MorphicModeName;
+    toolboxMode?: MorphicModeName;
+  }): void {
     if (!this.mountConfig || !this.workspace) {
-      throw new Error("MorphicBlocks must be mounted before setModes can be used.");
+      throw new Error(
+        "MorphicBlocks must be mounted before setModes can be used.",
+      );
     }
 
     if (modes.workspaceMode) {
@@ -111,21 +128,28 @@ export class MorphicBlocks {
 
   public generateJavaScript(): string {
     if (!this.workspace || !this.mountConfig) {
-      throw new Error("MorphicBlocks must be mounted before generateJavaScript can be used.");
+      throw new Error(
+        "MorphicBlocks must be mounted before generateJavaScript can be used.",
+      );
     }
     return generateJavaScriptFromWorkspace(
       this.workspace,
       this.definitions,
       this.behaviors,
-      this.mountConfig.javascript
+      this.mountConfig.javascript,
     );
   }
 
-  private readonly onWorkspaceChange = (event: Blockly.Events.Abstract): void => {
+  private readonly onWorkspaceChange = (
+    event: Blockly.Events.Abstract,
+  ): void => {
     if (!this.workspace || !this.mountConfig) {
       return;
     }
-    if (event.workspaceId !== this.workspace.id || event.type !== Blockly.Events.BLOCK_CREATE) {
+    if (
+      event.workspaceId !== this.workspace.id ||
+      event.type !== Blockly.Events.BLOCK_CREATE
+    ) {
       return;
     }
 
@@ -141,7 +165,15 @@ export class MorphicBlocks {
         continue;
       }
 
-      this.applyView(block, definition, this.mountConfig.workspaceMode, "workspace");
+      this.applyView(
+        block,
+        definition,
+        this.mountConfig.workspaceMode,
+        "workspace",
+      );
+      if (!block.getSvgRoot()) {
+        this.deferApplyView(id, this.mountConfig.workspaceMode, "workspace");
+      }
     }
   };
 
@@ -149,13 +181,18 @@ export class MorphicBlocks {
     if (!this.flyoutWorkspace || !this.mountConfig) {
       return;
     }
-    if (event.workspaceId !== this.flyoutWorkspace.id || event.type !== Blockly.Events.BLOCK_CREATE) {
+    if (
+      event.workspaceId !== this.flyoutWorkspace.id ||
+      event.type !== Blockly.Events.BLOCK_CREATE
+    ) {
       return;
     }
 
     const blockCreateEvent = event as Blockly.Events.BlockCreate;
     for (const id of blockCreateEvent.ids ?? []) {
-      const block = this.flyoutWorkspace.getBlockById(id) as Blockly.BlockSvg | null;
+      const block = this.flyoutWorkspace.getBlockById(
+        id,
+      ) as Blockly.BlockSvg | null;
       if (!block) {
         continue;
       }
@@ -165,7 +202,15 @@ export class MorphicBlocks {
         continue;
       }
 
-      this.applyView(block, definition, this.mountConfig.toolboxMode, "toolbox");
+      this.applyView(
+        block,
+        definition,
+        this.mountConfig.toolboxMode,
+        "toolbox",
+      );
+      if (!block.getSvgRoot()) {
+        this.deferApplyView(id, this.mountConfig.toolboxMode, "toolbox");
+      }
     }
   };
 
@@ -178,13 +223,20 @@ export class MorphicBlocks {
       const engine = this;
       Blockly.Blocks[definition.identifier] = {
         init(this: Blockly.BlockSvg) {
-          const context: MorphicRenderContext = this.workspace.isFlyout ? "toolbox" : "workspace";
+          const context: MorphicRenderContext = this.workspace.isFlyout
+            ? "toolbox"
+            : "workspace";
           const mode = engine.resolveMode(context);
           engine.applyView(this, definition, mode, context);
 
-          const lifecycleBehavior = getLifecycleBehavior(engine.behaviors[definition.identifier]);
-          lifecycleBehavior?.init?.(this, engine.createBehaviorContext(this, definition, mode, context));
-        }
+          const lifecycleBehavior = getLifecycleBehavior(
+            engine.behaviors[definition.identifier],
+          );
+          lifecycleBehavior?.init?.(
+            this,
+            engine.createBehaviorContext(this, definition, mode, context),
+          );
+        },
       };
 
       this.registeredBlockTypes.add(definition.identifier);
@@ -195,20 +247,36 @@ export class MorphicBlocks {
     if (!this.mountConfig) {
       return "default";
     }
-    return context === "toolbox" ? this.mountConfig.toolboxMode : this.mountConfig.workspaceMode;
+    return context === "toolbox"
+      ? this.mountConfig.toolboxMode
+      : this.mountConfig.workspaceMode;
   }
 
   private applyView(
     block: Blockly.BlockSvg,
     definition: MorphicBlockDefinition,
     mode: MorphicModeName,
-    context: MorphicRenderContext
+    context: MorphicRenderContext,
   ): void {
+    const category = this.blockCategoryIndex.get(definition.identifier);
+
+    // Apply category colour before applyBlockView so the internal render() uses it.
+    // Only used when the definition has no explicit colour of its own.
+    if (definition.color === undefined && category?.colour !== undefined) {
+      block.setColour(category.colour);
+    }
+
     const view = resolveBlockView(definition, mode);
     applyBlockView({ block, definition, view, mode, context });
+    applyBlockCategoryClass(block, category?.token);
 
-    const lifecycleBehavior = getLifecycleBehavior(this.behaviors[definition.identifier]);
-    lifecycleBehavior?.onViewApplied?.(block, this.createBehaviorContext(block, definition, mode, context));
+    const lifecycleBehavior = getLifecycleBehavior(
+      this.behaviors[definition.identifier],
+    );
+    lifecycleBehavior?.onViewApplied?.(
+      block,
+      this.createBehaviorContext(block, definition, mode, context),
+    );
   }
 
   private applyWorkspaceContainerClass(): void {
@@ -221,10 +289,16 @@ export class MorphicBlocks {
       container,
       this.mountConfig.workspaceMode,
       "workspace",
-      "morphic-workspace-root"
+      "morphic-workspace-root",
     );
-    const workspaceClasses = this.resolveClassNames(this.mountConfig.ui?.workspaceClassName);
-    this.replaceUserClasses(container, this.appliedWorkspaceClasses, workspaceClasses);
+    const workspaceClasses = this.resolveClassNames(
+      this.mountConfig.ui?.workspaceClassName,
+    );
+    this.replaceUserClasses(
+      container,
+      this.appliedWorkspaceClasses,
+      workspaceClasses,
+    );
     this.appliedWorkspaceClasses = workspaceClasses;
   }
 
@@ -233,13 +307,26 @@ export class MorphicBlocks {
       return;
     }
 
-    const toolboxClasses = this.resolveClassNames(this.mountConfig.ui?.toolboxClassName);
+    const toolboxClasses = this.resolveClassNames(
+      this.mountConfig.ui?.toolboxClassName,
+    );
 
-    const toolboxAny = this.workspace.getToolbox() as unknown as { getDiv?: () => Element | null } | null;
+    const toolboxAny = this.workspace.getToolbox() as unknown as {
+      getDiv?: () => Element | null;
+    } | null;
     const toolboxDiv = toolboxAny?.getDiv?.() ?? null;
     if (toolboxDiv) {
-      applyRootModeClasses(toolboxDiv, this.mountConfig.toolboxMode, "toolbox", "morphic-toolbox-shell");
-      this.replaceUserClasses(toolboxDiv, this.appliedToolboxShellClasses, toolboxClasses);
+      applyRootModeClasses(
+        toolboxDiv,
+        this.mountConfig.toolboxMode,
+        "toolbox",
+        "morphic-toolbox-shell",
+      );
+      this.replaceUserClasses(
+        toolboxDiv,
+        this.appliedToolboxShellClasses,
+        toolboxClasses,
+      );
       this.appliedToolboxShellClasses = toolboxClasses;
     }
 
@@ -249,8 +336,17 @@ export class MorphicBlocks {
       return;
     }
 
-    applyRootModeClasses(flyoutSvg, this.mountConfig.toolboxMode, "toolbox", "morphic-toolbox-root");
-    this.replaceUserClasses(flyoutSvg, this.appliedToolboxFlyoutClasses, toolboxClasses);
+    applyRootModeClasses(
+      flyoutSvg,
+      this.mountConfig.toolboxMode,
+      "toolbox",
+      "morphic-toolbox-root",
+    );
+    this.replaceUserClasses(
+      flyoutSvg,
+      this.appliedToolboxFlyoutClasses,
+      toolboxClasses,
+    );
     this.appliedToolboxFlyoutClasses = toolboxClasses;
   }
 
@@ -265,7 +361,12 @@ export class MorphicBlocks {
       if (!definition) {
         continue;
       }
-      this.applyView(svgBlock, definition, this.mountConfig.workspaceMode, "workspace");
+      this.applyView(
+        svgBlock,
+        definition,
+        this.mountConfig.workspaceMode,
+        "workspace",
+      );
     }
   }
 
@@ -280,7 +381,12 @@ export class MorphicBlocks {
       if (!definition) {
         continue;
       }
-      this.applyView(svgBlock, definition, this.mountConfig.toolboxMode, "toolbox");
+      this.applyView(
+        svgBlock,
+        definition,
+        this.mountConfig.toolboxMode,
+        "toolbox",
+      );
     }
 
     this.applyFlyoutClass();
@@ -314,11 +420,13 @@ export class MorphicBlocks {
   }
 
   private resolveToolboxDefinition(
-    config: MorphicMountConfig
+    config: MorphicMountConfig,
   ): NonNullable<Blockly.BlocklyOptions["toolbox"]> {
     if (config.toolbox) {
       const layoutKind = this.resolveToolboxKind(config.toolboxLayout);
-      const toolboxConfig = layoutKind ? { ...config.toolbox, kind: layoutKind } : config.toolbox;
+      const toolboxConfig = layoutKind
+        ? { ...config.toolbox, kind: layoutKind }
+        : config.toolbox;
       return buildToolboxDefinition(toolboxConfig, this.definitions);
     }
 
@@ -327,13 +435,13 @@ export class MorphicBlocks {
       return blocklyOptions.toolbox;
     }
 
-    const fallbackKind = this.resolveToolboxKind(config.toolboxLayout) ?? "flyoutToolbox";
+    const fallbackKind = this.resolveToolboxKind(config.toolboxLayout);
     return buildToolboxDefinition(
       {
-        kind: fallbackKind,
-        blocks: [...this.definitions.keys()]
+        ...(fallbackKind !== undefined ? { kind: fallbackKind } : {}),
+        blocks: [...this.definitions.keys()],
       },
-      this.definitions
+      this.definitions,
     );
   }
 
@@ -341,14 +449,14 @@ export class MorphicBlocks {
     block: Blockly.BlockSvg,
     definition: MorphicBlockDefinition,
     mode: MorphicModeName,
-    context: MorphicRenderContext
+    context: MorphicRenderContext,
   ): MorphicBehaviorContext {
     return {
       Blockly,
       workspace: block.workspace as Blockly.WorkspaceSvg,
       mode,
       context,
-      definition
+      definition,
     };
   }
 
@@ -360,10 +468,16 @@ export class MorphicBlocks {
     return source
       .split(/\s+/)
       .map((name) => name.trim())
-      .filter((name, index, all) => Boolean(name) && all.indexOf(name) === index);
+      .filter(
+        (name, index, all) => Boolean(name) && all.indexOf(name) === index,
+      );
   }
 
-  private replaceUserClasses(root: Element, previous: string[], next: string[]): void {
+  private replaceUserClasses(
+    root: Element,
+    previous: string[],
+    next: string[],
+  ): void {
     for (const className of previous) {
       root.classList.remove(className);
     }
@@ -372,12 +486,63 @@ export class MorphicBlocks {
     }
   }
 
-  private resolveToolboxKind(layout?: MorphicMountConfig["toolboxLayout"]): MorphicBlocklyKind | undefined {
+  private resolveToolboxKind(
+    layout?: MorphicMountConfig["toolboxLayout"],
+  ): MorphicBlocklyKind | undefined {
     if (!layout) {
       return undefined;
     }
     return layout === "category" ? "categoryToolbox" : "flyoutToolbox";
   }
+
+  private createCategoryIndex(
+    toolbox?: MorphicMountConfig["toolbox"],
+  ): Map<string, MorphicBlockCategoryMeta> {
+    const index = new Map<string, MorphicBlockCategoryMeta>();
+
+    for (const category of toolbox?.categories ?? []) {
+      const token = toModeClassToken(category.name);
+      for (const type of category.blocks) {
+        if (index.has(type)) {
+          continue;
+        }
+        index.set(type, { token, colour: category.colour });
+      }
+    }
+
+    return index;
+  }
+
+  private deferApplyView(
+    blockId: string,
+    mode: MorphicModeName,
+    context: MorphicRenderContext,
+  ): void {
+    const workspace =
+      context === "toolbox" ? this.flyoutWorkspace : this.workspace;
+    if (!workspace) {
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      const block = workspace.getBlockById(blockId) as Blockly.BlockSvg | null;
+      if (!block) {
+        return;
+      }
+
+      const definition = this.definitions.get(block.type);
+      if (!definition) {
+        return;
+      }
+
+      this.applyView(block, definition, mode, context);
+    });
+  }
 }
 
 type MorphicBlocklyKind = "flyoutToolbox" | "categoryToolbox";
+
+interface MorphicBlockCategoryMeta {
+  token: string;
+  colour?: string;
+}

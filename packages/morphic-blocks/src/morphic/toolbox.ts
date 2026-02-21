@@ -1,4 +1,5 @@
 import type * as Blockly from "blockly";
+import { toModeClassToken } from "./template";
 import type { MorphicBlockDefinition, MorphicToolboxConfig } from "./types";
 
 export function buildToolboxDefinition(
@@ -20,6 +21,41 @@ export function buildToolboxDefinition(
         }))
       }))
     };
+  }
+
+  if (toolbox.categories?.length) {
+    const categories = toolbox.categories;
+    const contents: Array<Record<string, unknown>> = [];
+
+    categories.forEach((category, index) => {
+      const categoryToken = toModeClassToken(category.name);
+      contents.push({
+        kind: "label",
+        id: `morphic-category-${categoryToken}`,
+        text: category.name,
+        "web-class": `morphic-flyout-category-label morphic-category-${categoryToken}`
+      });
+
+      for (const type of dedupeBlockTypes(category.blocks)) {
+        contents.push({
+          kind: "block",
+          type
+        });
+      }
+
+      if (index < categories.length - 1) {
+        contents.push({
+          kind: "sep",
+          gap: 14
+        });
+      }
+    });
+
+    const flyoutToolbox = {
+      kind: "flyoutToolbox",
+      contents
+    };
+    return flyoutToolbox as unknown as NonNullable<Blockly.BlocklyOptions["toolbox"]>;
   }
 
   const blockTypes =

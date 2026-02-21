@@ -1,28 +1,60 @@
-import type { MorphicModeStyle, MorphicModeName, MorphicStyleBundle } from "./types";
+import { toModeClassToken } from "./template";
+import type {
+  MorphicModeStyle,
+  MorphicModeName,
+  MorphicStyleBundle,
+  MorphicToolboxCategory,
+} from "./types";
 
 export class MorphicStyleManager {
   private readonly loadedStyleKeys = new Set<string>();
 
-  public ensureStyles(baseStyle: MorphicStyleBundle | undefined, modeStyles: MorphicModeStyle[]): void {
+  public ensureStyles(
+    baseStyle: MorphicStyleBundle | undefined,
+    modeStyles: MorphicModeStyle[],
+  ): void {
     this.ensureStyleBundle(baseStyle, "base");
     for (const style of modeStyles) {
       this.ensureStyleBundle(style, `mode:${style.mode}`);
     }
   }
 
-  public validateModeCoverage(modeStyles: MorphicModeStyle[], definitionModes: MorphicModeName[]): void {
+  public ensureCategoryStyles(categories: MorphicToolboxCategory[]): void {
+    for (const category of categories) {
+      if (!category.colour) {
+        continue;
+      }
+      const token = toModeClassToken(category.name);
+      const cssKey = `category:${token}:${category.colour}`;
+      if (this.loadedStyleKeys.has(cssKey)) {
+        continue;
+      }
+      const styleEl = document.createElement("style");
+      styleEl.dataset.morphicSource = `category:${token}`;
+      styleEl.textContent = `.morphic-category-${token} { --morphic-category-color: ${category.colour}; }`;
+      document.head.appendChild(styleEl);
+      this.loadedStyleKeys.add(cssKey);
+    }
+  }
+
+  public validateModeCoverage(
+    modeStyles: MorphicModeStyle[],
+    definitionModes: MorphicModeName[],
+  ): void {
     const styleModes = new Set(modeStyles.map((style) => style.mode));
-    const missingModes = definitionModes.filter((mode) => !styleModes.has(mode));
+    const missingModes = definitionModes.filter(
+      (mode) => !styleModes.has(mode),
+    );
     if (missingModes.length > 0) {
       console.warn(
-        `[MorphicBlocks] Modes without explicit CSS definition: ${missingModes.join(", ")}.`
+        `[MorphicBlocks] Modes without explicit CSS definition: ${missingModes.join(", ")}.`,
       );
     }
   }
 
   private ensureStyleBundle(
     style: MorphicStyleBundle | MorphicModeStyle | undefined,
-    sourceName: string
+    sourceName: string,
   ): void {
     if (!style) {
       return;
@@ -52,4 +84,3 @@ export class MorphicStyleManager {
     }
   }
 }
-
