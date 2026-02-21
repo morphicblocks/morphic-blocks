@@ -1,0 +1,196 @@
+# ============================================
+# MorphicBlocks Project - .gitignore
+# ============================================
+# Built with: Bun, TypeScript, PostCSS
+#
+# CRITICAL: .github/workflows/ and /prompts/ are TRACKED
+# CRITICAL: All credential files are BLOCKED
+# ============================================
+
+# ============================================
+# Security & Credentials - HIGHEST PRIORITY
+# ============================================
+# Environment files with secrets
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+.env.test
+*.env
+!.env.example
+
+# Secret files and credential stores
+*.secret
+*.secrets
+.secret/
+.secrets/
+credentials/
+*.key
+*.pem
+*.p12
+*.pfx
+
+# GitHub-specific credential leaks
+.github/credentials/
+.github/secrets/
+.github/*.env
+.github/**/*.secret
+.github/agent-artifacts/
+.github/temp-tokens.txt
+
+# AI Agent caches and artifacts (potential credential leaks)
+.agent-cache/
+.ai-cache/
+.cursor/
+.continue/
+.copilot-local/
+.anthropic-cache/
+.openai-cache/
+**/*-agent-cache/
+
+# API keys and tokens
+api-keys.json
+tokens.json
+auth-config.json
+
+# ============================================
+# Bun Runtime & Dependencies
+# ============================================
+# Dependencies
+node_modules/
+jspm_packages/
+
+# Bun-specific
+# NOTE: bun.lockb is intentionally TRACKED for reproducible builds
+.bun/
+
+# Optional: Uncomment to ignore lockfile
+# bun.lockb
+
+# ============================================
+# Build Outputs & Distribution
+# ============================================
+dist/
+build/
+out/
+*.tsbuildinfo
+.cache/
+
+# PostCSS outputs (if applicable)
+*.css.map
+
+# ============================================
+# TypeScript
+# ============================================
+*.js.map
+*.d.ts.map
+
+# ============================================
+# Testing & Coverage
+# ============================================
+coverage/
+*.lcov
+.nyc_output/
+.jest-cache/
+.vitest/
+
+# ============================================
+# Operating System Files
+# ============================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# ============================================
+# Editor & IDE
+# ============================================
+# VSCode
+# Ignore local workspace state
+.vscode/*
+# BUT allow the shared settings file
+!.vscode/settings.json
+!.vscode/commit-instructions.md
+# Ignore personal extensions or search history
+.vscode/extensions.json
+
+# Keep workspace configuration templates
+!.vscode/*.example.json
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+\#*\#
+.#*
+
+# Sublime Text
+*.sublime-workspace
+*.sublime-project
+
+# ============================================
+# Logs & Temporary Files
+# ============================================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+pnpm-debug.log*
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# ============================================
+# Miscellaneous
+# ============================================
+# Package manager lock files (except Bun's)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# ============================================
+# EXPLICITLY TRACKED (NOT IGNORED)
+# ============================================
+# These paths are critical and must be committed:
+# - .github/workflows/  (CI/CD pipelines)
+# - prompts/            (AI-assisted development)
+# - .env.example        (Template for environment setup)
+# ============================================

@@ -1,0 +1,16 @@
+{
+  "name": "morphis-workspace",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "bun run --cwd apps/playground dev",
+    "build": "bun run build:package && bun run build:playground",
+    "build:package": "bun run --cwd packages/morphic-blocks build",
+    "build:playground": "bun run --cwd apps/playground build",
+    "preview": "bun run --cwd apps/playground preview"
+  }
+}
