@@ -26,15 +26,35 @@ if (
   throw new Error("Playground UI containers were not found.");
 }
 
-// Vite discovers all CSS files in the modes folder at build time.
-// Each filename (without .css) becomes a mode name automatically.
-const modesFolder = import.meta.glob("./modes/*.css", {
-  eager: true,
-  query: "?url",
-});
-const modeNames = Object.keys(modesFolder).map((path) =>
+// Discover mode CSS files. Use dynamic imports so Vite injects CSS modules
+// (enables HMR) and allows lazy-loading per mode in production.
+let modesLoaders = import.meta.glob("./modes/*.css") as Record<
+  string,
+  () => Promise<unknown>
+>;
+
+// derive mode names from filenames
+let modeNames = Object.keys(modesLoaders).map((path) =>
   (path.split("/").pop() ?? path).replace(/\.css$/i, ""),
 );
+
+// track which modes have had their CSS loaded
+const loadedModes = new Set<string>();
+
+async function loadModeStyle(modeName: string): Promise<void> {
+  if (loadedModes.has(modeName)) return;
+  const entry = Object.keys(modesLoaders).find((p) =>
+    p.endsWith(`${modeName}.css`),
+  );
+  if (!entry) return;
+  try {
+    await modesLoaders[entry]();
+    loadedModes.add(modeName);
+  } catch (err) {
+    // ignore loader errors during dev/hmr transitions
+    // console.warn("Failed to load mode style", modeName, err);
+  }
+}
 
 const { categoryDefinitions, blockDefinitions } =
   definitionsFile as unknown as MorphicBlocksFormat;
@@ -42,6 +62,10 @@ const { categoryDefinitions, blockDefinitions } =
 let workspaceMode = pickDefaultMode(modeNames, "syntactic", "lexical");
 let toolboxMode = pickDefaultMode(modeNames, "iconic", "lexical");
 const engine = new MorphicBlocks(blockDefinitions, behaviors);
+// Provide a list of available modes to the framework (no hrefs — styles
+// are injected via dynamic imports). This lets the framework validate mode
+// coverage and apply mode class names.
+const inferredModeStyles = modeNames.map((m) => ({ mode: m }));
 engine.mount({
   workspaceContainer,
   workspaceMode,
@@ -54,7 +78,7 @@ engine.mount({
   toolbox: {
     categories: categoryDefinitions,
   },
-  modesFolder,
+  modeStyles: inferredModeStyles,
   baseStyle: {
     cssText: `
       .morphic-workspace-root {
@@ -91,7 +115,9 @@ renderModeButtons(
   workspaceModeButtons,
   modeNames,
   workspaceMode,
-  (nextMode) => {
+  async (nextMode) => {
+    if (nextMode === workspaceMode) return;
+    await loadModeStyle(nextMode);
     workspaceMode = nextMode;
     engine.setModes({ workspaceMode });
     syncModeButtons(workspaceModeButtons, workspaceMode);
@@ -99,12 +125,19 @@ renderModeButtons(
   },
 );
 
-renderModeButtons(toolboxModeButtons, modeNames, toolboxMode, (nextMode) => {
-  toolboxMode = nextMode;
-  engine.setModes({ toolboxMode });
-  syncModeButtons(toolboxModeButtons, toolboxMode);
-  updateGeneratedCode();
-});
+renderModeButtons(
+  toolboxModeButtons,
+  modeNames,
+  toolboxMode,
+  async (nextMode) => {
+    if (nextMode === toolboxMode) return;
+    await loadModeStyle(nextMode);
+    toolboxMode = nextMode;
+    engine.setModes({ toolboxMode });
+    syncModeButtons(toolboxModeButtons, toolboxMode);
+    updateGeneratedCode();
+  },
+);
 
 seedWorkspaceIfEmpty(engine);
 updateGeneratedCode();
@@ -112,6 +145,36 @@ updateGeneratedCode();
 engine.getWorkspace()?.addChangeListener(() => {
   updateGeneratedCode();
 });
+
+// load initial styles for active modes (non-blocking)
+loadModeStyle(workspaceMode);
+loadModeStyle(toolboxMode);
+
+// HMR: refresh loader map and mode names without full reload
+if (import.meta.hot) {
+  import.meta.hot.accept(() => {
+    modesLoaders = import.meta.glob("./modes/*.css") as Record<
+      string,
+      () => Promise<unknown>
+    >;
+    modeNames = Object.keys(modesLoaders).map((path) =>
+      (path.split("/").pop() ?? path).replace(/\.css$/i, ""),
+    );
+    // update inferred styles in framework (mode names only)
+    // note: we do not re-mount; framework uses mode names for validation and class names
+    // @ts-ignore - mutate internal list used for UI
+    inferredModeStyles.splice(
+      0,
+      inferredModeStyles.length,
+      ...modeNames.map((m) => ({ mode: m })),
+    );
+    syncModeButtons(workspaceModeButtons, workspaceMode);
+    syncModeButtons(toolboxModeButtons, toolboxMode);
+    loadModeStyle(workspaceMode);
+    loadModeStyle(toolboxMode);
+    engine.setModes({ workspaceMode, toolboxMode });
+  });
+}
 
 runButton.addEventListener("click", handleRun);
 clearOutputButton.addEventListener("click", () => {
