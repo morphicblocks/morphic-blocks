@@ -3,18 +3,23 @@ import {
   CONTEXT_CLASS_PREFIX,
   MODE_CLASS_PREFIX,
   CATEGORY_CLASS_PREFIX,
+  BLOCK_CLASS_PREFIX,
   ALIGN_CENTRE,
   ALIGN_LEFT,
-  ALIGN_RIGHT
+  ALIGN_RIGHT,
 } from "./constants";
-import { normalizeTemplateText, parseTemplate, toModeClassToken } from "./template";
+import {
+  normalizeTemplateText,
+  parseTemplate,
+  toModeClassToken,
+} from "./template";
 import type {
   MorphicBlockDefinition,
   MorphicConnectionSpec,
   MorphicInputSlotDefinition,
   MorphicModeName,
   MorphicRenderContext,
-  MorphicResolvedView
+  MorphicResolvedView,
 } from "./types";
 
 export type MorphicManagedBlock = Blockly.BlockSvg & {
@@ -67,7 +72,7 @@ export function applyRootModeClasses(
   root: Element,
   mode: MorphicModeName,
   context: MorphicRenderContext,
-  rootClassName: string
+  rootClassName: string,
 ): void {
   removePrefixedClasses(root.classList, MODE_CLASS_PREFIX);
   removePrefixedClasses(root.classList, CONTEXT_CLASS_PREFIX);
@@ -80,7 +85,10 @@ export function getManagedBlockMode(block: Blockly.Block): string | undefined {
   return (block as MorphicManagedBlock).__morphicMode;
 }
 
-export function applyBlockCategoryClass(block: Blockly.BlockSvg, categoryToken?: string): void {
+export function applyBlockCategoryClass(
+  block: Blockly.BlockSvg,
+  categoryToken?: string,
+): void {
   const root = block.getSvgRoot();
   if (!root) {
     return;
@@ -92,10 +100,51 @@ export function applyBlockCategoryClass(block: Blockly.BlockSvg, categoryToken?:
   }
 }
 
+/**
+ * Stamps a stable `morphic-block-{identifier}` class on the block SVG root.
+ * This persists across mode switches and lets mode CSS files target individual
+ * blocks with rules like `.morphic-block-log_message { --morphic-block-color: #f97316; }`.
+ */
+export function applyBlockIdentifierClass(
+  block: Blockly.BlockSvg,
+  identifier: string,
+): void {
+  const root = block.getSvgRoot();
+  if (!root) {
+    return;
+  }
+  const cls = `${BLOCK_CLASS_PREFIX}${toModeClassToken(identifier)}`;
+  if (!root.classList.contains(cls)) {
+    root.classList.add(cls);
+  }
+}
+
+/**
+ * Reads the CSS custom property `--morphic-block-color` from the block SVG root
+ * (after mode and identifier classes have been applied) and calls `block.setColour()`
+ * when a value is found. This lets mode CSS files drive block colours declaratively.
+ */
+export function applyBlockColorFromCSS(block: Blockly.BlockSvg): void {
+  const root = block.getSvgRoot();
+  if (!root) {
+    return;
+  }
+  const colorValue = getComputedStyle(root)
+    .getPropertyValue("--morphic-block-color")
+    .trim();
+  if (colorValue) {
+    block.setColour(colorValue);
+    // Re-render so the new colour is reflected
+    if (block.rendered) {
+      block.render();
+    }
+  }
+}
+
 function decorateBlockRoot(
   block: Blockly.BlockSvg,
   mode: MorphicModeName,
-  context: MorphicRenderContext
+  context: MorphicRenderContext,
 ): void {
   const root = block.getSvgRoot();
   if (!root) {
@@ -106,13 +155,12 @@ function decorateBlockRoot(
   removePrefixedClasses(root.classList, CONTEXT_CLASS_PREFIX);
   root.classList.add(`${MODE_CLASS_PREFIX}${toModeClassToken(mode)}`);
   root.classList.add(`${CONTEXT_CLASS_PREFIX}${context}`);
-
 }
 
 function renderTemplate(
   block: Blockly.BlockSvg,
   definition: MorphicBlockDefinition,
-  view: MorphicResolvedView
+  view: MorphicResolvedView,
 ): void {
   const tokens = parseTemplate(view.template);
   const pendingFields: Array<string | Blockly.FieldImage> = [];
@@ -128,12 +176,16 @@ function renderTemplate(
     }
 
     if (token.kind === "image") {
-      pendingFields.push(new Blockly.FieldImage(token.src, token.width, token.height, token.alt));
+      pendingFields.push(
+        new Blockly.FieldImage(token.src, token.width, token.height, token.alt),
+      );
       continue;
     }
 
     if (createdPlaceholders.has(token.index)) {
-      const duplicatePlaceholder = block.appendDummyInput(`DUPLICATE_${token.index}_${block.inputList.length}`);
+      const duplicatePlaceholder = block.appendDummyInput(
+        `DUPLICATE_${token.index}_${block.inputList.length}`,
+      );
       flushPendingFields(duplicatePlaceholder, pendingFields);
       duplicatePlaceholder.appendField(`%${token.index}`);
       continue;
@@ -150,7 +202,9 @@ function renderTemplate(
   }
 
   if (pendingFields.length > 0) {
-    const trailingInput = block.appendDummyInput(`TRAILING_${block.inputList.length}`);
+    const trailingInput = block.appendDummyInput(
+      `TRAILING_${block.inputList.length}`,
+    );
     flushPendingFields(trailingInput, pendingFields);
   }
 
@@ -162,7 +216,7 @@ function renderTemplate(
 function resolveSlotDefinition(
   definition: MorphicBlockDefinition,
   view: MorphicResolvedView,
-  placeholderIndex: number
+  placeholderIndex: number,
 ): MorphicInputSlotDefinition | undefined {
   const key = `${placeholderIndex}`;
   return view.inputSlots?.[key] ?? definition.inputSlots?.[key];
@@ -171,7 +225,7 @@ function resolveSlotDefinition(
 function createInputFromSlot(
   block: Blockly.BlockSvg,
   slot: MorphicInputSlotDefinition | undefined,
-  placeholderIndex: number
+  placeholderIndex: number,
 ): Blockly.Input {
   const inputName = slot?.name ?? `ARG${placeholderIndex}`;
   const kind = slot?.kind ?? "value";
@@ -208,14 +262,19 @@ function resolveAlign(align: MorphicInputSlotDefinition["align"]): number {
   return ALIGN_LEFT;
 }
 
-function flushPendingFields(input: Blockly.Input, fields: Array<string | Blockly.FieldImage>): void {
+function flushPendingFields(
+  input: Blockly.Input,
+  fields: Array<string | Blockly.FieldImage>,
+): void {
   for (const field of fields) {
     input.appendField(field);
   }
   fields.length = 0;
 }
 
-function captureConnectedChildren(block: Blockly.BlockSvg): Map<string, Blockly.Block> {
+function captureConnectedChildren(
+  block: Blockly.BlockSvg,
+): Map<string, Blockly.Block> {
   const connectedChildren = new Map<string, Blockly.Block>();
   for (const input of block.inputList) {
     const target = input.connection?.targetBlock();
@@ -226,14 +285,20 @@ function captureConnectedChildren(block: Blockly.BlockSvg): Map<string, Blockly.
   return connectedChildren;
 }
 
-function restoreConnectedChildren(block: Blockly.BlockSvg, previousChildren: Map<string, Blockly.Block>): void {
+function restoreConnectedChildren(
+  block: Blockly.BlockSvg,
+  previousChildren: Map<string, Blockly.Block>,
+): void {
   for (const [inputName, childBlock] of previousChildren) {
     const input = block.getInput(inputName);
     if (!input?.connection || input.connection.isConnected()) {
       continue;
     }
 
-    const candidateConnections = [childBlock.outputConnection, childBlock.previousConnection];
+    const candidateConnections = [
+      childBlock.outputConnection,
+      childBlock.previousConnection,
+    ];
     for (const connection of candidateConnections) {
       if (!connection) {
         continue;
@@ -258,7 +323,10 @@ function removeInputs(block: Blockly.BlockSvg): void {
   }
 }
 
-function applyConnections(block: Blockly.BlockSvg, definition: MorphicBlockDefinition): void {
+function applyConnections(
+  block: Blockly.BlockSvg,
+  definition: MorphicBlockDefinition,
+): void {
   if (definition.output !== undefined) {
     applyOutputConnection(block, definition.output);
   }
@@ -270,7 +338,10 @@ function applyConnections(block: Blockly.BlockSvg, definition: MorphicBlockDefin
   }
 }
 
-function applyOutputConnection(block: Blockly.BlockSvg, spec: MorphicConnectionSpec): void {
+function applyOutputConnection(
+  block: Blockly.BlockSvg,
+  spec: MorphicConnectionSpec,
+): void {
   if (spec === false) {
     block.setOutput(false);
     return;
@@ -282,7 +353,10 @@ function applyOutputConnection(block: Blockly.BlockSvg, spec: MorphicConnectionS
   block.setOutput(true, spec);
 }
 
-function applyPreviousConnection(block: Blockly.BlockSvg, spec: MorphicConnectionSpec): void {
+function applyPreviousConnection(
+  block: Blockly.BlockSvg,
+  spec: MorphicConnectionSpec,
+): void {
   if (spec === false) {
     block.setPreviousStatement(false);
     return;
@@ -294,7 +368,10 @@ function applyPreviousConnection(block: Blockly.BlockSvg, spec: MorphicConnectio
   block.setPreviousStatement(true, spec);
 }
 
-function applyNextConnection(block: Blockly.BlockSvg, spec: MorphicConnectionSpec): void {
+function applyNextConnection(
+  block: Blockly.BlockSvg,
+  spec: MorphicConnectionSpec,
+): void {
   if (spec === false) {
     block.setNextStatement(false);
     return;
@@ -307,7 +384,9 @@ function applyNextConnection(block: Blockly.BlockSvg, spec: MorphicConnectionSpe
 }
 
 function removePrefixedClasses(classList: DOMTokenList, prefix: string): void {
-  const matches = Array.from(classList).filter((name) => name.startsWith(prefix));
+  const matches = Array.from(classList).filter((name) =>
+    name.startsWith(prefix),
+  );
   for (const match of matches) {
     classList.remove(match);
   }

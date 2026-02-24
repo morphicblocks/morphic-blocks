@@ -1,0 +1,156 @@
+{
+  "categoryDefinitions": [
+    { "name": "Flow", "colour": "#14b8a6" },
+    { "name": "Data", "colour": "#3b82f6" },
+    { "name": "Output", "colour": "#f97316" }
+  ],
+  "blockDefinitions": [
+    {
+      "identifier": "log_message",
+      "category": "Output",
+      "previousStatement": true,
+      "nextStatement": true,
+      "inputsInline": true,
+      "tooltip": "Print a message with a local timestamp",
+      "views": {
+        "iconic": "<img src='assets/log.svg' width='70' height='70'> log %1",
+        "lexical": "log %1",
+        "syntactic": "console.log('[' + new Date().toLocaleTimeString() + '] ' + %1);"
+      },
+      "inputSlots": {
+        "1": { "kind": "value", "name": "MESSAGE" }
+      }
+    },
+    {
+      "identifier": "random_color",
+      "category": "Output",
+      "output": "String",
+      "tooltip": "Generate a random hex color string",
+      "views": {
+        "iconic": "<img src='assets/palette.svg' width='70' height='70'> color",
+        "lexical": "random color",
+        "syntactic": "randomColor()"
+      }
+    },
+    {
+      "identifier": "create_range",
+      "category": "Data",
+      "output": "Array",
+      "inputsInline": true,
+      "tooltip": "Create an array from START to END with STEP",
+      "views": {
+        "iconic": "<img src='assets/arrow.svg' width='70' height='70'> %1 -> %2 by %3",
+        "lexical": "range %1 to %2 by %3",
+        "syntactic": "range(%1, %2, %3)"
+      },
+      "inputSlots": {
+        "1": { "kind": "value", "name": "START", "check": "Number" },
+        "2": { "kind": "value", "name": "END", "check": "Number" },
+        "3": { "kind": "value", "name": "STEP", "check": "Number" }
+      }
+    },
+    {
+      "identifier": "for_each_range",
+      "category": "Flow",
+      "previousStatement": true,
+      "nextStatement": true,
+      "inputsInline": false,
+      "tooltip": "Loop through each item in range",
+      "views": {
+        "iconic": "<img src='assets/arrow.svg' width='70' height='70'> each %1 do %2",
+        "lexical": "for each item in %1 do %2",
+        "syntactic": "for (const item of %1) { %2 }"
+      },
+      "inputSlots": {
+        "1": { "kind": "value", "name": "RANGE", "check": "Array" },
+        "2": { "kind": "statement", "name": "DO" }
+      }
+    },
+    {
+      "identifier": "current_item",
+      "category": "Data",
+      "output": true,
+      "tooltip": "Current loop variable",
+      "views": {
+        "iconic": "item",
+        "lexical": "item",
+        "syntactic": "item"
+      }
+    },
+    {
+      "identifier": "sum_range",
+      "category": "Data",
+      "output": "Number",
+      "inputsInline": true,
+      "tooltip": "Calculate sum of range",
+      "views": {
+        "iconic": "sum %1",
+        "lexical": "sum %1",
+        "syntactic": "sum(%1)"
+      },
+      "inputSlots": {
+        "1": { "kind": "value", "name": "RANGE", "check": "Array" }
+      }
+    },
+    {
+      "identifier": "concat_text",
+      "category": "Output",
+      "output": "String",
+      "inputsInline": true,
+      "tooltip": "Join two values as text",
+      "views": {
+        "iconic": "join %1 + %2",
+        "lexical": "text %1 + %2",
+        "syntactic": "String(%1) + String(%2)"
+      },
+      "inputSlots": {
+        "1": { "kind": "value", "name": "A" },
+        "2": { "kind": "value", "name": "B" }
+      }
+    },
+    {
+      "identifier": "text_sum_prefix",
+      "category": "Output",
+      "output": "String",
+      "tooltip": "Label for sum output",
+      "views": {
+        "iconic": "sum",
+        "lexical": "sum text",
+        "syntactic": "'sum is: '"
+      }
+    },
+    {
+      "identifier": "num_1",
+      "category": "Data",
+      "output": "Number",
+      "tooltip": "Number value 1",
+      "views": {
+        "iconic": "1",
+        "lexical": "1",
+        "syntactic": "1"
+      }
+    },
+    {
+      "identifier": "num_5",
+      "category": "Data",
+      "output": "Number",
+      "tooltip": "Number value 5",
+      "views": {
+        "iconic": "5",
+        "lexical": "5",
+        "syntactic": "5"
+      }
+    },
+    {
+      "identifier": "num_10",
+      "category": "Data",
+      "output": "Number",
+      "tooltip": "Number value 10",
+      "views": {
+        "iconic": "10",
+        "lexical": "10",
+        "syntactic": "10"
+      }
+    }
+  ]
+}

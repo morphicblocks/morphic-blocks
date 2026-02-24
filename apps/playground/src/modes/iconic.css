@@ -20,6 +20,13 @@
   background: linear-gradient(180deg, #fff7ed 0%, #ffedd5 100%);
 }
 
-.morphic-toolbox-root.morphic-mode-iconic.playground-toolbox .blocklyFlyoutBackground {
+.morphic-toolbox-root.morphic-mode-iconic.playground-toolbox
+  .blocklyFlyoutBackground {
   fill: #fff2df;
 }
+
+/*
+  Block colours are driven by the category colour defined in blocks.json.
+  Add .morphic-mode-iconic.morphic-block-{id} rules here only to override
+  a specific block's colour in this mode.
+*/

@@ -9,6 +9,7 @@ export type {
   MorphicBehaviorProxy,
   MorphicBlockBehavior,
   MorphicBlockDefinition,
+  MorphicBlocksFormat,
   MorphicCodeBehavior,
   MorphicConnectionSpec,
   MorphicInputAlign,
@@ -24,5 +25,5 @@ export type {
   MorphicToolboxConfig,
   MorphicToolboxLayout,
   MorphicViewDefinition,
-  MorphicViewObject
+  MorphicViewObject,
 } from "./morphic/types";

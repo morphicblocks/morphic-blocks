@@ -1,11 +1,7 @@
 import { MorphicBlocks } from "morphic-blocks";
-import type {
-  MorphicBlockDefinition,
-  MorphicModeName,
-  MorphicToolboxCategory,
-} from "morphic-blocks";
+import type { MorphicBlocksFormat, MorphicModeName } from "morphic-blocks";
 import { behaviors } from "./behavior.js";
-import definitionsFile from "./blocks.json";
+import definitionsFile from "./definitions.json";
 import "./style.css";
 
 const workspaceContainer = document.getElementById("workspace");
@@ -30,15 +26,22 @@ if (
   throw new Error("Playground UI containers were not found.");
 }
 
-const definitions = definitionsFile as MorphicBlockDefinition[];
-const allowedModes = ["iconic", "lexical", "syntactic"] as const;
-const modeNames = collectModes(definitions).filter((modeName) =>
-  allowedModes.includes(modeName as (typeof allowedModes)[number]),
+// Vite discovers all CSS files in the modes folder at build time.
+// Each filename (without .css) becomes a mode name automatically.
+const modesFolder = import.meta.glob("./modes/*.css", {
+  eager: true,
+  query: "?url",
+});
+const modeNames = Object.keys(modesFolder).map((path) =>
+  (path.split("/").pop() ?? path).replace(/\.css$/i, ""),
 );
+
+const { categoryDefinitions, blockDefinitions } =
+  definitionsFile as unknown as MorphicBlocksFormat;
 
 let workspaceMode = pickDefaultMode(modeNames, "syntactic", "lexical");
 let toolboxMode = pickDefaultMode(modeNames, "iconic", "lexical");
-const engine = new MorphicBlocks(definitions, behaviors);
+const engine = new MorphicBlocks(blockDefinitions, behaviors);
 engine.mount({
   workspaceContainer,
   workspaceMode,
@@ -49,22 +52,9 @@ engine.mount({
   },
   toolboxLayout: "flyout",
   toolbox: {
-    categories: createToolboxCategories(),
+    categories: categoryDefinitions,
   },
-  modeStyles: [
-    {
-      mode: "iconic",
-      href: new URL("./modes/iconic.css", import.meta.url).href,
-    },
-    {
-      mode: "lexical",
-      href: new URL("./modes/lexical.css", import.meta.url).href,
-    },
-    {
-      mode: "syntactic",
-      href: new URL("./modes/syntactic.css", import.meta.url).href,
-    },
-  ],
+  modesFolder,
   baseStyle: {
     cssText: `
       .morphic-workspace-root {
@@ -201,18 +191,6 @@ function syncModeButtons(
   }
 }
 
-function collectModes(
-  definitions: MorphicBlockDefinition[],
-): MorphicModeName[] {
-  const modeSet = new Set<MorphicModeName>();
-  for (const definition of definitions) {
-    for (const modeName of Object.keys(definition.views)) {
-      modeSet.add(modeName);
-    }
-  }
-  return [...modeSet];
-}
-
 function pickDefaultMode(
   availableModes: MorphicModeName[],
   primary: MorphicModeName,
@@ -225,33 +203,6 @@ function pickDefaultMode(
     return secondary;
   }
   return availableModes[0] ?? "iconic";
-}
-
-function createToolboxCategories(): MorphicToolboxCategory[] {
-  return [
-    {
-      name: "Flow",
-      colour: "#14b8a6",
-      blocks: ["for_each_range"],
-    },
-    {
-      name: "Data",
-      colour: "#3b82f6",
-      blocks: [
-        "create_range",
-        "sum_range",
-        "current_item",
-        "num_1",
-        "num_5",
-        "num_10",
-      ],
-    },
-    {
-      name: "Output",
-      colour: "#f97316",
-      blocks: ["log_message", "concat_text", "text_sum_prefix", "random_color"],
-    },
-  ];
 }
 
 function seedWorkspaceIfEmpty(engine: MorphicBlocks): void {

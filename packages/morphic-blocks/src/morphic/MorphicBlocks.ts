@@ -3,6 +3,8 @@ import { getLifecycleBehavior } from "./behavior-runtime";
 import {
   applyBlockCategoryClass,
   applyBlockView,
+  applyBlockIdentifierClass,
+  applyBlockColorFromCSS,
   applyRootModeClasses,
 } from "./block-view";
 import { generateJavaScriptFromWorkspace } from "./codegen";
@@ -16,9 +18,43 @@ import type {
   MorphicBehaviorMap,
   MorphicBlockDefinition,
   MorphicModeName,
+  MorphicModeStyle,
   MorphicMountConfig,
   MorphicRenderContext,
 } from "./types";
+
+/**
+ * Parses a Vite `import.meta.glob` result for a CSS folder into MorphicModeStyle entries.
+ * Handles both `{ eager: true, as: 'url' }` (string values) and
+ * `{ eager: true, query: '?url' }` ({ default: string } values).
+ */
+function parseModeStylesFromFolder(
+  folder: Record<string, unknown>,
+): MorphicModeStyle[] {
+  return Object.entries(folder)
+    .map(([path, value]) => {
+      const filename = path.split("/").pop() ?? path;
+      const mode = filename.replace(/\.css$/i, "");
+      const href =
+        typeof value === "string"
+          ? value
+          : typeof value === "object" && value !== null && "default" in value
+            ? String((value as Record<string, unknown>)["default"])
+            : undefined;
+      return { mode, href };
+    })
+    .filter((s): s is { mode: string; href: string } => Boolean(s.href))
+    .map((s): MorphicModeStyle => s);
+}
+
+/** Internal resolved config: workspaceMode and toolboxMode are guaranteed non-optional. */
+type MorphicResolvedMountConfig = Omit<
+  MorphicMountConfig,
+  "workspaceMode" | "toolboxMode"
+> & {
+  workspaceMode: MorphicModeName;
+  toolboxMode: MorphicModeName;
+};
 
 export class MorphicBlocks {
   private readonly definitions: Map<string, MorphicBlockDefinition>;
@@ -26,7 +62,7 @@ export class MorphicBlocks {
   private readonly styles = new MorphicStyleManager();
   private readonly registeredBlockTypes = new Set<string>();
 
-  private mountConfig?: MorphicMountConfig;
+  private mountConfig?: MorphicResolvedMountConfig;
   private workspace?: Blockly.WorkspaceSvg;
   private flyoutWorkspace?: Blockly.WorkspaceSvg;
   private toolboxDefinition?: NonNullable<Blockly.BlocklyOptions["toolbox"]>;
@@ -45,21 +81,48 @@ export class MorphicBlocks {
 
   public mount(config: MorphicMountConfig): Blockly.WorkspaceSvg {
     this.dispose();
-    this.mountConfig = { ...config };
+
+    // Derive modeStyles from modesFolder (Vite glob) when provided
+    const folderStyles = config.modesFolder
+      ? parseModeStylesFromFolder(config.modesFolder as Record<string, unknown>)
+      : [];
+    const mergedModeStyles = [
+      ...folderStyles,
+      ...(config.modeStyles ?? []).filter(
+        (s) => !folderStyles.some((f) => f.mode === s.mode),
+      ),
+    ];
+
+    // Resolve default modes: fallback to first discovered mode or "default"
+    const availableModeNames = mergedModeStyles.map((s) => s.mode);
+    const defaultMode =
+      availableModeNames[0] ?? this.getAvailableModes()[0] ?? "default";
+    const resolvedConfig: MorphicResolvedMountConfig = {
+      ...config,
+      modeStyles: mergedModeStyles,
+      workspaceMode: config.workspaceMode ?? defaultMode,
+      toolboxMode: config.toolboxMode ?? defaultMode,
+    };
+
+    this.mountConfig = resolvedConfig;
 
     this.styles.validateModeCoverage(
-      config.modeStyles ?? [],
+      mergedModeStyles,
       this.getAvailableModes(),
     );
-    this.styles.ensureStyles(config.baseStyle, config.modeStyles ?? []);
-    this.blockCategoryIndex = this.createCategoryIndex(config.toolbox);
-    this.styles.ensureCategoryStyles(config.toolbox?.categories ?? []);
+    this.styles.ensureStyles(resolvedConfig.baseStyle, mergedModeStyles);
+    this.blockCategoryIndex = this.createCategoryIndex(
+      resolvedConfig.toolbox,
+      resolvedConfig,
+    );
+    this.styles.ensureCategoryStyles(resolvedConfig.toolbox?.categories ?? []);
     this.registerBlocks();
-    this.toolboxDefinition = this.resolveToolboxDefinition(config);
+    this.toolboxDefinition = this.resolveToolboxDefinition(resolvedConfig);
 
-    const blocklyOptions = config.blockly ?? config.blocklyOptions ?? {};
+    const blocklyOptions =
+      resolvedConfig.blockly ?? resolvedConfig.blocklyOptions ?? {};
 
-    this.workspace = Blockly.inject(config.workspaceContainer, {
+    this.workspace = Blockly.inject(resolvedConfig.workspaceContainer, {
       ...blocklyOptions,
       toolbox: this.toolboxDefinition,
     });
@@ -269,6 +332,13 @@ export class MorphicBlocks {
     const view = resolveBlockView(definition, mode);
     applyBlockView({ block, definition, view, mode, context });
     applyBlockCategoryClass(block, category?.token);
+
+    // Stamp the stable per-block identifier class so mode CSS can target it
+    applyBlockIdentifierClass(block, definition.identifier);
+
+    // Let CSS custom property --morphic-block-color override any programmatic colour.
+    // This runs after all classes are applied so computed style reflects the cascade.
+    applyBlockColorFromCSS(block);
 
     const lifecycleBehavior = getLifecycleBehavior(
       this.behaviors[definition.identifier],
@@ -497,16 +567,42 @@ export class MorphicBlocks {
 
   private createCategoryIndex(
     toolbox?: MorphicMountConfig["toolbox"],
+    config?: MorphicMountConfig,
   ): Map<string, MorphicBlockCategoryMeta> {
     const index = new Map<string, MorphicBlockCategoryMeta>();
 
-    for (const category of toolbox?.categories ?? []) {
+    const categories = toolbox?.categories ?? [];
+
+    // Build a lookup map from category name → meta for quick access
+    const categoryMetaByName = new Map<string, MorphicBlockCategoryMeta>();
+    for (const category of categories) {
       const token = toModeClassToken(category.name);
-      for (const type of category.blocks) {
-        if (index.has(type)) {
-          continue;
+      categoryMetaByName.set(category.name.toLowerCase(), {
+        token,
+        colour: category.colour,
+      });
+
+      // Index blocks from explicit `category.blocks` list if provided
+      if (category.blocks) {
+        for (const type of category.blocks) {
+          if (!index.has(type)) {
+            index.set(type, { token, colour: category.colour });
+          }
         }
-        index.set(type, { token, colour: category.colour });
+      }
+    }
+
+    // Also index any block definition that uses the `category` string field
+    const definitions = config
+      ? this.definitions
+      : new Map<string, MorphicBlockDefinition>();
+    for (const def of definitions.values()) {
+      if (!def.category || index.has(def.identifier)) {
+        continue;
+      }
+      const meta = categoryMetaByName.get(def.category.toLowerCase());
+      if (meta) {
+        index.set(def.identifier, meta);
       }
     }
 

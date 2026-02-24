@@ -1,8 +1,14 @@
-.morphic-workspace-root.morphic-mode-syntactic.playground-workspace .blocklySvg {
-  background: repeating-linear-gradient(180deg, #ffffff 0 28px, #f1f5f9 28px 29px);
+.morphic-workspace-root.morphic-mode-syntactic.playground-workspace
+  .blocklySvg {
+  background: repeating-linear-gradient(
+    180deg,
+    #ffffff 0 28px,
+    #f1f5f9 28px 29px
+  );
 }
 
-.morphic-workspace-root.morphic-mode-syntactic.playground-workspace .blocklyMainBackground {
+.morphic-workspace-root.morphic-mode-syntactic.playground-workspace
+  .blocklyMainBackground {
   stroke: #cbd5e1;
 }
 
@@ -22,7 +28,8 @@
   stroke: #94a3b8;
 }
 
-.morphic-toolbox-root.morphic-mode-syntactic.playground-toolbox .blocklyFlyoutBackground {
+.morphic-toolbox-root.morphic-mode-syntactic.playground-toolbox
+  .blocklyFlyoutBackground {
   fill: #f8fafc;
   fill-opacity: 0.98;
 }
@@ -32,3 +39,9 @@
   .blocklyFlyoutLabelText {
   fill: #0f172a;
 }
+
+/*
+  Block colours are driven by the category colour defined in blocks.json.
+  Add .morphic-mode-syntactic.morphic-block-{id} rules here only to override
+  a specific block's colour in this mode.
+*/
