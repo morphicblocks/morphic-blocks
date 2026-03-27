@@ -3,6 +3,7 @@ import "blockly/blocks";
 export { MorphicBlocks } from "./morphic/MorphicBlocks";
 export { MorphicToolboxCanvas } from "./morphic/toolbox-canvas";
 export type {
+  MorphicElementType,
   MorphicJavaScriptConfig,
   MorphicBehaviorContext,
   MorphicBehaviorDefinition,

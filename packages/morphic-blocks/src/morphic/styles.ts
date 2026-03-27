@@ -1,5 +1,6 @@
 import { toModeClassToken } from "./template";
 import type {
+  MorphicModeDefinition,
   MorphicModeStyle,
   MorphicModeName,
   MorphicStyleBundle,
@@ -8,6 +9,31 @@ import type {
 
 export class MorphicStyleManager {
   private readonly loadedStyleKeys = new Set<string>();
+
+  /**
+   * Injects visibility CSS derived from mode definitions.
+   * Hides all morphic elements by default, then shows only those listed
+   * in each mode's `elements` array. Developer CSS only needs to handle styling.
+   */
+  public ensureModeVisibilityStyles(modes: MorphicModeDefinition[]): void {
+    const cssKey = `mode-visibility:${modes.map((m) => `${m.name}:${m.elements.join(",")}`).join(";")}`;
+    if (this.loadedStyleKeys.has(cssKey)) return;
+
+    const lines: string[] = ['[class^="morphic-element-"] { display: none; }'];
+    for (const mode of modes) {
+      const modeToken = toModeClassToken(mode.name);
+      for (const element of mode.elements) {
+        const elementToken = toModeClassToken(element);
+        lines.push(`.morphic-mode-${modeToken} > .morphic-element-${elementToken} { display: block; }`);
+      }
+    }
+
+    const styleEl = document.createElement("style");
+    styleEl.dataset.morphicSource = "mode-visibility";
+    styleEl.textContent = lines.join("\n");
+    document.head.appendChild(styleEl);
+    this.loadedStyleKeys.add(cssKey);
+  }
 
   public ensureStyles(
     baseStyle: MorphicStyleBundle | undefined,

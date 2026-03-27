@@ -1,7 +1,13 @@
 import * as Blockly from "blockly";
+import { getLifecycleBehavior } from "./behavior-runtime";
+import { applyBlockView } from "./block-view";
 import { parseTemplate, renderTemplateAsHtml, toModeClassToken } from "./template";
+import { resolveBlockView } from "./view-resolver";
 import type {
+  MorphicBehaviorMap,
   MorphicBlockDefinition,
+  MorphicElementType,
+  MorphicModeDefinition,
   MorphicModeName,
   MorphicToolboxCanvasOptions,
   MorphicToolboxCategory,
@@ -15,8 +21,14 @@ export class MorphicToolboxCanvas {
   private readonly workspace: Blockly.WorkspaceSvg;
   private readonly definitions: Map<string, MorphicBlockDefinition>;
   private readonly blockColors: Map<string, string>;
+  private readonly behaviors: MorphicBehaviorMap;
+  private readonly elementTypes: Record<string, MorphicElementType>;
   private readonly options: MorphicToolboxCanvasOptions;
+  private readonly modes: MorphicModeDefinition[];
   private currentMode: MorphicModeName;
+
+  private previewWorkspace?: Blockly.WorkspaceSvg;
+  private previewContainer?: HTMLDivElement;
 
   private readonly onDragOver: (e: DragEvent) => void;
   private readonly onDrop: (e: DragEvent) => void;
@@ -27,7 +39,10 @@ export class MorphicToolboxCanvas {
     workspace: Blockly.WorkspaceSvg;
     definitions: Map<string, MorphicBlockDefinition>;
     blockColors: Map<string, string>;
+    behaviors: MorphicBehaviorMap;
+    elementTypes?: Record<string, MorphicElementType>;
     mode: MorphicModeName;
+    modes?: MorphicModeDefinition[];
     options?: MorphicToolboxCanvasOptions;
   }) {
     this.container = params.container;
@@ -35,7 +50,10 @@ export class MorphicToolboxCanvas {
     this.workspace = params.workspace;
     this.definitions = params.definitions;
     this.blockColors = params.blockColors;
+    this.behaviors = params.behaviors;
+    this.elementTypes = params.elementTypes ?? {};
     this.currentMode = params.mode;
+    this.modes = params.modes ?? [];
     this.options = params.options ?? {};
 
     this.onDragOver = (e: DragEvent) => {
@@ -66,6 +84,14 @@ export class MorphicToolboxCanvas {
     this.workspaceContainer.removeEventListener("dragover", this.onDragOver);
     this.workspaceContainer.removeEventListener("drop", this.onDrop);
     this.container.innerHTML = "";
+    if (this.previewWorkspace) {
+      this.previewWorkspace.dispose();
+      this.previewWorkspace = undefined;
+    }
+    if (this.previewContainer?.parentNode) {
+      this.previewContainer.parentNode.removeChild(this.previewContainer);
+      this.previewContainer = undefined;
+    }
   }
 
   private render(): void {
@@ -127,10 +153,28 @@ export class MorphicToolboxCanvas {
       tile.style.setProperty("--morphic-block-color", color);
     }
 
-    for (const [elementName, content] of Object.entries(definition.elements)) {
+    const modeOrder = this.modes.find((m) => m.name === this.currentMode)?.elements ?? [];
+    const allEntries = Object.entries(definition.elements);
+    const sortedEntries = [
+      ...modeOrder.map((name) => allEntries.find(([key]) => key === name)).filter((e): e is [string, string] => e !== undefined),
+      ...allEntries.filter(([key]) => !modeOrder.includes(key)),
+    ];
+
+    for (const [elementName, content] of sortedEntries) {
       const el = document.createElement("div");
       el.className = `morphic-element-${toModeClassToken(elementName)}`;
-      el.innerHTML = renderTemplateAsHtml(parseTemplate(content));
+
+      if (this.elementTypes[elementName] === "block") {
+        const svg = this.createBlockPreviewSvg(definition, this.currentMode);
+        if (svg) {
+          el.appendChild(svg);
+        } else {
+          el.innerHTML = renderTemplateAsHtml(parseTemplate(content));
+        }
+      } else {
+        el.innerHTML = renderTemplateAsHtml(parseTemplate(content));
+      }
+
       tile.appendChild(el);
     }
 
@@ -139,6 +183,82 @@ export class MorphicToolboxCanvas {
     });
 
     return tile;
+  }
+
+  private ensurePreviewWorkspace(): Blockly.WorkspaceSvg {
+    if (this.previewWorkspace) return this.previewWorkspace;
+    this.previewContainer = document.createElement("div");
+    this.previewContainer.style.cssText =
+      "position:absolute;left:-9999px;top:-9999px;width:800px;height:600px;overflow:hidden;";
+    document.body.appendChild(this.previewContainer);
+    this.previewWorkspace = Blockly.inject(this.previewContainer, {
+      scrollbars: false,
+    });
+    return this.previewWorkspace;
+  }
+
+  private createBlockPreviewSvg(
+    definition: MorphicBlockDefinition,
+    mode: MorphicModeName,
+  ): SVGSVGElement | null {
+    try {
+      const ws = this.ensurePreviewWorkspace();
+      const block = ws.newBlock(definition.identifier) as Blockly.BlockSvg;
+
+      const color = this.blockColors.get(definition.identifier);
+      if (color) block.setColour(color);
+
+      const view = resolveBlockView(definition, mode, this.elementTypes, this.modes);
+      applyBlockView({
+        block,
+        definition,
+        view,
+        mode: "block",
+        context: "toolbox",
+      });
+
+      // Invoke onViewApplied to add fields (dropdowns, number inputs, etc.)
+      const lifecycle = getLifecycleBehavior(
+        this.behaviors[definition.identifier],
+      );
+      lifecycle?.onViewApplied?.(block, {
+        Blockly,
+        workspace: ws,
+        mode,
+        context: "toolbox",
+        definition,
+      });
+
+      block.initSvg();
+      block.render();
+
+      const svgRoot = block.getSvgRoot();
+      if (!svgRoot) {
+        block.dispose(false);
+        return null;
+      }
+
+      const bbox = svgRoot.getBBox();
+      const clone = svgRoot.cloneNode(true) as SVGGElement;
+
+      const pad = 4;
+      const svg = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "svg",
+      );
+      svg.setAttribute("width", String(Math.ceil(bbox.width + pad * 2)));
+      svg.setAttribute("height", String(Math.ceil(bbox.height + pad * 2)));
+      svg.setAttribute(
+        "viewBox",
+        `${bbox.x - pad} ${bbox.y - pad} ${bbox.width + pad * 2} ${bbox.height + pad * 2}`,
+      );
+      svg.appendChild(clone);
+
+      block.dispose(false);
+      return svg;
+    } catch {
+      return null;
+    }
   }
 
   private createBlockAtPosition(

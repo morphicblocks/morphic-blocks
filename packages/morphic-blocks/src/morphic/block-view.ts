@@ -193,6 +193,15 @@ function renderTemplate(
 
     createdPlaceholders.add(token.index);
     const slot = resolveSlotDefinition(definition, view, token.index);
+
+    // Statement inputs always start a new row in Blockly.
+    // Flush pending fields to a separate dummy input so they render inline
+    // with the preceding value input instead of wrapping onto the statement row.
+    if (slot?.kind === "statement" && pendingFields.length > 0) {
+      const dummyInput = block.appendDummyInput(`PRE_STMT_${block.inputList.length}`);
+      flushPendingFields(dummyInput, pendingFields);
+    }
+
     const input = createInputFromSlot(block, slot, token.index);
     flushPendingFields(input, pendingFields);
 
@@ -308,6 +317,34 @@ function restoreConnectedChildren(
         break;
       } catch {
         continue;
+      }
+    }
+  }
+}
+
+export function captureFieldValues(block: Blockly.BlockSvg): Map<string, unknown> {
+  const values = new Map<string, unknown>();
+  for (const input of block.inputList) {
+    for (const field of input.fieldRow) {
+      if (field.name) {
+        values.set(field.name, field.getValue());
+      }
+    }
+  }
+  return values;
+}
+
+export function restoreFieldValues(
+  block: Blockly.BlockSvg,
+  values: Map<string, unknown>,
+): void {
+  for (const [name, value] of values) {
+    const field = block.getField(name);
+    if (field && value !== undefined && value !== null) {
+      try {
+        field.setValue(value);
+      } catch {
+        // Field doesn't accept this value (e.g., dropdown options changed)
       }
     }
   }

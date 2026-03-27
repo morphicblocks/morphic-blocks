@@ -26,7 +26,7 @@ export function parseTemplate(template: string): MorphicTemplateToken[] {
 
   while (index < template.length) {
     const char = template[index];
-    if (char === "<") {
+    if (char === "<" && /^<img\b/i.test(template.slice(index))) {
       const tagCloseIndex = template.indexOf(">", index);
       if (tagCloseIndex === -1) {
         pushText(tokens, template.slice(index));
@@ -59,7 +59,8 @@ export function parseTemplate(template: string): MorphicTemplateToken[] {
     while (textEnd < template.length) {
       const nextChar = template[textEnd];
       const isPlaceholderStart = nextChar === "%" && /\d/.test(template[textEnd + 1] ?? "");
-      if (nextChar === "<" || isPlaceholderStart) {
+      const isImgTagStart = nextChar === "<" && /^<img\b/i.test(template.slice(textEnd));
+      if (isImgTagStart || isPlaceholderStart) {
         break;
       }
       textEnd += 1;

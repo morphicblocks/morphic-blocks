@@ -1,6 +1,14 @@
 import type * as Blockly from "blockly";
 
 export type MorphicModeName = string;
+
+/**
+ * The rendering type of a named element.
+ * - "text"  — rendered as an HTML label; never shown in the workspace
+ * - "block" — rendered as a Blockly block template; <img> in content becomes FieldImage
+ * - "image" — rendered as an <img> in the toolbox tile; never shown in the workspace
+ */
+export type MorphicElementType = "text" | "block" | "image";
 export type MorphicConnectionSpec = boolean | string | string[];
 export type MorphicInputKind = "value" | "statement" | "dummy";
 export type MorphicInputAlign = "left" | "centre" | "right";
@@ -57,6 +65,12 @@ export interface MorphicBlockDefinition {
 
 /** Top-level format for a definitions JSON file. */
 export interface MorphicBlocksFormat {
+  /**
+   * Global element type registry.
+   * Maps each element name to its type ("text", "block", or "image").
+   * Declared once here; per-block elements remain plain name→content strings.
+   */
+  elementTypes?: Record<string, MorphicElementType>;
   /** Explicit mode definitions — which elements are visible per mode. */
   modes?: MorphicModeDefinition[];
   /** Optional category metadata. Blocks reference categories by name. */
@@ -147,8 +161,15 @@ export interface MorphicJavaScriptConfig {
 
 export interface MorphicMountConfig {
   workspaceContainer: HTMLElement;
+  /** Mode definitions — drives automatic element visibility CSS. */
+  modes?: MorphicModeDefinition[];
   toolbox?: MorphicToolboxConfig;
   toolboxLayout?: MorphicToolboxLayout;
+  /**
+   * When true, Blockly is injected without a built-in toolbox.
+   * Use this when calling `mountToolbox()` to avoid Blockly toolbox type conflicts.
+   */
+  canvasToolbox?: boolean;
   workspaceMode?: MorphicModeName;
   toolboxMode?: MorphicModeName;
   ui?: {

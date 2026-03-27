@@ -6,6 +6,8 @@ import {
   applyBlockIdentifierClass,
   applyBlockColorFromCSS,
   applyRootModeClasses,
+  captureFieldValues,
+  restoreFieldValues,
 } from "./block-view";
 import { generateJavaScriptFromWorkspace } from "./codegen";
 import { collectAvailableModes, createDefinitionMap } from "./definitions";
@@ -18,6 +20,7 @@ import type {
   MorphicBehaviorContext,
   MorphicBehaviorMap,
   MorphicBlockDefinition,
+  MorphicElementType,
   MorphicModeName,
   MorphicModeStyle,
   MorphicMountConfig,
@@ -61,6 +64,7 @@ type MorphicResolvedMountConfig = Omit<
 export class MorphicBlocks {
   private readonly definitions: Map<string, MorphicBlockDefinition>;
   private readonly behaviors: MorphicBehaviorMap;
+  private readonly elementTypes: Record<string, MorphicElementType>;
   private readonly styles = new MorphicStyleManager();
   private readonly registeredBlockTypes = new Set<string>();
 
@@ -77,9 +81,11 @@ export class MorphicBlocks {
   public constructor(
     definitions: MorphicBlockDefinition[] | MorphicBlockDefinition,
     behaviors: MorphicBehaviorMap = {},
+    elementTypes: Record<string, MorphicElementType> = {},
   ) {
     this.definitions = createDefinitionMap(definitions);
     this.behaviors = behaviors;
+    this.elementTypes = elementTypes;
   }
 
   public mount(config: MorphicMountConfig): Blockly.WorkspaceSvg {
@@ -113,6 +119,9 @@ export class MorphicBlocks {
       mergedModeStyles,
       this.getAvailableModes(),
     );
+    if (resolvedConfig.modes?.length) {
+      this.styles.ensureModeVisibilityStyles(resolvedConfig.modes);
+    }
     this.styles.ensureStyles(resolvedConfig.baseStyle, mergedModeStyles);
     this.blockCategoryIndex = this.createCategoryIndex(
       resolvedConfig.toolbox,
@@ -127,7 +136,7 @@ export class MorphicBlocks {
 
     this.workspace = Blockly.inject(resolvedConfig.workspaceContainer, {
       ...blocklyOptions,
-      toolbox: this.toolboxDefinition,
+      ...(resolvedConfig.canvasToolbox ? {} : { toolbox: this.toolboxDefinition }),
     });
     this.workspace.addChangeListener(this.onWorkspaceChange);
 
@@ -175,8 +184,11 @@ export class MorphicBlocks {
 
     this.toolboxCanvas?.dispose();
 
-    // Empty Blockly's built-in flyout so it doesn't compete with the custom canvas
-    this.workspace.updateToolbox({ kind: "flyoutToolbox", contents: [] });
+    // Empty Blockly's built-in flyout so it doesn't compete with the custom canvas.
+    // Skip when canvasToolbox is true — Blockly was injected without any toolbox.
+    if (!this.mountConfig.canvasToolbox) {
+      this.workspace.updateToolbox({ kind: "flyoutToolbox", contents: [] });
+    }
 
     this.toolboxCanvas = new MorphicToolboxCanvas({
       container,
@@ -184,7 +196,10 @@ export class MorphicBlocks {
       workspace: this.workspace,
       definitions: this.definitions,
       blockColors: this.buildBlockColorMap(),
+      behaviors: this.behaviors,
+      elementTypes: this.elementTypes,
       mode: this.mountConfig.toolboxMode,
+      modes: this.mountConfig.modes,
       options,
     });
   }
@@ -362,7 +377,10 @@ export class MorphicBlocks {
       block.setColour(category.colour);
     }
 
-    const view = resolveBlockView(definition, mode);
+    // Preserve user-added field values (dropdowns, text inputs, etc.) across re-renders
+    const savedFieldValues = captureFieldValues(block);
+
+    const view = resolveBlockView(definition, mode, this.elementTypes, this.mountConfig?.modes ?? []);
     applyBlockView({ block, definition, view, mode, context });
     applyBlockCategoryClass(block, category?.token);
 
@@ -380,6 +398,9 @@ export class MorphicBlocks {
       block,
       this.createBehaviorContext(block, definition, mode, context),
     );
+
+    // Restore field values after onViewApplied has recreated the fields
+    restoreFieldValues(block, savedFieldValues);
   }
 
   private applyWorkspaceContainerClass(): void {
@@ -496,7 +517,7 @@ export class MorphicBlocks {
   }
 
   private refreshToolbox(): void {
-    if (!this.workspace || !this.toolboxDefinition) {
+    if (!this.workspace || !this.toolboxDefinition || this.mountConfig?.canvasToolbox) {
       return;
     }
     this.workspace.updateToolbox(this.toolboxDefinition);
