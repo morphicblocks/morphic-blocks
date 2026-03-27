@@ -17,8 +17,8 @@ export function createDefinitionMap(
 export function collectAvailableModes(definitions: Iterable<MorphicBlockDefinition>): MorphicModeName[] {
   const modes = new Set<string>();
   for (const definition of definitions) {
-    for (const modeName of Object.keys(definition.views)) {
-      modes.add(modeName);
+    for (const elementName of Object.keys(definition.elements)) {
+      modes.add(elementName);
     }
   }
   return [...modes];
@@ -31,11 +31,10 @@ function assertDefinition(
   if (!definition.identifier.trim()) {
     throw new Error("Each block definition must include a non-empty identifier.");
   }
-  if (Object.keys(definition.views).length === 0) {
-    throw new Error(`Block "${definition.identifier}" must define at least one view.`);
+  if (Object.keys(definition.elements).length === 0) {
+    throw new Error(`Block "${definition.identifier}" must define at least one element.`);
   }
   if (currentMap.has(definition.identifier)) {
     throw new Error(`Duplicate block identifier "${definition.identifier}".`);
   }
 }
-

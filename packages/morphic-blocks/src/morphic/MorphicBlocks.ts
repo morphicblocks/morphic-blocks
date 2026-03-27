@@ -11,6 +11,7 @@ import { generateJavaScriptFromWorkspace } from "./codegen";
 import { collectAvailableModes, createDefinitionMap } from "./definitions";
 import { MorphicStyleManager } from "./styles";
 import { toModeClassToken } from "./template";
+import { MorphicToolboxCanvas } from "./toolbox-canvas";
 import { buildToolboxDefinition } from "./toolbox";
 import { resolveBlockView } from "./view-resolver";
 import type {
@@ -21,6 +22,7 @@ import type {
   MorphicModeStyle,
   MorphicMountConfig,
   MorphicRenderContext,
+  MorphicToolboxCanvasOptions,
 } from "./types";
 
 /**
@@ -65,6 +67,7 @@ export class MorphicBlocks {
   private mountConfig?: MorphicResolvedMountConfig;
   private workspace?: Blockly.WorkspaceSvg;
   private flyoutWorkspace?: Blockly.WorkspaceSvg;
+  private toolboxCanvas?: MorphicToolboxCanvas;
   private toolboxDefinition?: NonNullable<Blockly.BlocklyOptions["toolbox"]>;
   private blockCategoryIndex = new Map<string, MorphicBlockCategoryMeta>();
   private appliedWorkspaceClasses: string[] = [];
@@ -138,6 +141,9 @@ export class MorphicBlocks {
   }
 
   public dispose(): void {
+    this.toolboxCanvas?.dispose();
+    this.toolboxCanvas = undefined;
+
     if (this.flyoutWorkspace) {
       this.flyoutWorkspace.removeChangeListener(this.onFlyoutChange);
       this.flyoutWorkspace = undefined;
@@ -155,6 +161,32 @@ export class MorphicBlocks {
     this.appliedWorkspaceClasses = [];
     this.appliedToolboxFlyoutClasses = [];
     this.appliedToolboxShellClasses = [];
+  }
+
+  public mountToolbox(
+    container: HTMLElement,
+    options?: MorphicToolboxCanvasOptions,
+  ): void {
+    if (!this.workspace || !this.mountConfig) {
+      throw new Error(
+        "MorphicBlocks must be mounted before mountToolbox can be used.",
+      );
+    }
+
+    this.toolboxCanvas?.dispose();
+
+    // Empty Blockly's built-in flyout so it doesn't compete with the custom canvas
+    this.workspace.updateToolbox({ kind: "flyoutToolbox", contents: [] });
+
+    this.toolboxCanvas = new MorphicToolboxCanvas({
+      container,
+      workspaceContainer: this.mountConfig.workspaceContainer,
+      workspace: this.workspace,
+      definitions: this.definitions,
+      blockColors: this.buildBlockColorMap(),
+      mode: this.mountConfig.toolboxMode,
+      options,
+    });
   }
 
   public getWorkspace(): Blockly.WorkspaceSvg | undefined {
@@ -180,6 +212,7 @@ export class MorphicBlocks {
     }
     if (modes.toolboxMode) {
       this.mountConfig.toolboxMode = modes.toolboxMode;
+      this.toolboxCanvas?.rerender(this.mountConfig.toolboxMode);
     }
 
     this.applyWorkspaceContainerClass();
@@ -554,6 +587,17 @@ export class MorphicBlocks {
     for (const className of next) {
       root.classList.add(className);
     }
+  }
+
+  private buildBlockColorMap(): Map<string, string> {
+    const colorMap = new Map<string, string>();
+    for (const [id, def] of this.definitions) {
+      const color = def.color ?? this.blockCategoryIndex.get(id)?.colour;
+      if (color !== undefined) {
+        colorMap.set(id, String(color));
+      }
+    }
+    return colorMap;
   }
 
   private resolveToolboxKind(

@@ -13,16 +13,36 @@ export interface MorphicInputSlotDefinition {
   label?: string;
 }
 
-export interface MorphicViewObject {
-  template: string;
-  inputSlots?: Record<string, MorphicInputSlotDefinition>;
-}
+/**
+ * Named visual parts of a Morphic Block.
+ * Keys are element names (e.g. "icon", "block", "code", "text") — free-form, not enforced.
+ * Values are template strings (same syntax as before: %1 placeholders, <img> tags, plain text).
+ * The "block" element is used as the Blockly workspace template.
+ */
+export type MorphicBlockElements = Record<string, string>;
 
-export type MorphicViewDefinition = string | MorphicViewObject;
+/**
+ * Declares which elements are visible for a given mode.
+ * CSS (one file per mode) controls how those elements look.
+ */
+export interface MorphicModeDefinition {
+  name: string;
+  /** Element names that are visible in this mode (e.g. ["icon", "text"]). */
+  elements: string[];
+}
 
 export interface MorphicBlockDefinition {
   identifier: string;
-  views: Record<MorphicModeName, MorphicViewDefinition>;
+  /**
+   * Named visual elements of this Morphic Block.
+   * The "block" element (if present) is used as the Blockly workspace template.
+   * Falls back to the first element if "block" is absent.
+   */
+  elements: MorphicBlockElements;
+  /**
+   * Input slot definitions keyed by placeholder index ("1", "2", …).
+   * Applies to the workspace ("block") element template.
+   */
   inputSlots?: Record<string, MorphicInputSlotDefinition>;
   color?: number | string;
   output?: MorphicConnectionSpec;
@@ -31,15 +51,18 @@ export interface MorphicBlockDefinition {
   inputsInline?: boolean;
   tooltip?: string;
   helpUrl?: string;
-  /** Category name this block belongs to (used when categories are defined without explicit block lists). */
+  /** Category name this block belongs to. */
   category?: string;
 }
 
-/** Top-level format for a blocks JSON file, with categories declared separately. */
+/** Top-level format for a definitions JSON file. */
 export interface MorphicBlocksFormat {
-  categoryDefinitions: MorphicToolboxCategory[];
-  /** Array of block definitions. Renamed from `blocks` to `blockDefinitions` for clarity. */
-  blockDefinitions: MorphicBlockDefinition[];
+  /** Explicit mode definitions — which elements are visible per mode. */
+  modes?: MorphicModeDefinition[];
+  /** Optional category metadata. Blocks reference categories by name. */
+  categories?: MorphicToolboxCategory[];
+  /** Flat array of block definitions. */
+  blocks: MorphicBlockDefinition[];
 }
 
 export type MorphicRenderContext = "workspace" | "toolbox";
@@ -103,6 +126,18 @@ export interface MorphicToolboxConfig {
   categories?: MorphicToolboxCategory[];
 }
 
+/** Options for the custom HTML toolbox canvas (mountToolbox). */
+export interface MorphicToolboxCanvasOptions {
+  /** Show only a subset of blocks. Defaults to all blocks in definitions. */
+  blocks?: string[];
+  /**
+   * Category grouping for the toolbox canvas.
+   * If omitted, falls back to categories from mount config.
+   * If neither is provided, blocks render as a flat list.
+   */
+  categories?: MorphicToolboxCategory[];
+}
+
 export interface MorphicJavaScriptConfig {
   statementPrefix?: string | null;
   statementSuffix?: string | null;
@@ -134,6 +169,11 @@ export interface MorphicMountConfig {
   javascript?: MorphicJavaScriptConfig;
 }
 
+/**
+ * Resolved workspace template for a block in a given mode.
+ * The template comes from the block's "block" element (or first element as fallback).
+ * Used internally by block-view and view-resolver.
+ */
 export interface MorphicResolvedView {
   mode: MorphicModeName;
   template: string;

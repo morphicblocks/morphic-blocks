@@ -79,6 +79,37 @@ export function toModeClassToken(mode: string): string {
   return mode.trim().toLowerCase().replace(/[^a-z0-9_-]+/g, "-");
 }
 
+/**
+ * Converts parsed template tokens into an HTML string for toolbox canvas rendering.
+ * - Text tokens become escaped text nodes.
+ * - Image tokens become <img> elements.
+ * - Placeholder tokens become <span class="morphic-toolbox-slot" data-slot-index="N">.
+ */
+export function renderTemplateAsHtml(tokens: MorphicTemplateToken[]): string {
+  return tokens.map((token) => {
+    if (token.kind === "text") {
+      return escapeHtml(token.value);
+    }
+    if (token.kind === "image") {
+      return `<img src="${escapeAttr(token.src)}" alt="${escapeAttr(token.alt)}" width="${token.width}" height="${token.height}">`;
+    }
+    // placeholder
+    return `<span class="morphic-toolbox-slot" data-slot-index="${token.index}"></span>`;
+  }).join("");
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function escapeAttr(value: string): string {
+  return value.replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
 function parseImageTag(tag: string): MorphicImageToken | null {
   if (!/^<img\b/i.test(tag)) {
     return null;

@@ -1,29 +1,26 @@
-import type { MorphicBlockDefinition, MorphicModeName, MorphicResolvedView, MorphicViewDefinition } from "./types";
+import type { MorphicBlockDefinition, MorphicModeName, MorphicResolvedView } from "./types";
 
+/**
+ * Resolves the workspace template for a block.
+ * Always uses the "block" element (Blockly-compatible template with %1 placeholders).
+ * Falls back to the first element if "block" is absent.
+ * The mode is recorded for CSS class purposes only — it does not select the template.
+ */
 export function resolveBlockView(
   definition: MorphicBlockDefinition,
-  preferredMode: MorphicModeName
+  mode: MorphicModeName,
 ): MorphicResolvedView {
-  const preferredView = definition.views[preferredMode];
-  if (preferredView) {
-    return normalizeView(preferredMode, preferredView);
+  const template =
+    definition.elements["block"] ??
+    Object.values(definition.elements)[0];
+
+  if (template === undefined) {
+    throw new Error(`Block "${definition.identifier}" does not have any elements.`);
   }
 
-  const first = Object.entries(definition.views)[0];
-  if (!first) {
-    throw new Error(`Block "${definition.identifier}" does not have any views.`);
-  }
-
-  return normalizeView(first[0], first[1]);
-}
-
-function normalizeView(mode: MorphicModeName, view: MorphicViewDefinition): MorphicResolvedView {
-  if (typeof view === "string") {
-    return { mode, template: view };
-  }
   return {
     mode,
-    template: view.template,
-    inputSlots: view.inputSlots
+    template,
+    inputSlots: definition.inputSlots,
   };
 }

@@ -1,6 +1,7 @@
 import "blockly/blocks";
 
 export { MorphicBlocks } from "./morphic/MorphicBlocks";
+export { MorphicToolboxCanvas } from "./morphic/toolbox-canvas";
 export type {
   MorphicJavaScriptConfig,
   MorphicBehaviorContext,
@@ -21,9 +22,10 @@ export type {
   MorphicRenderContext,
   MorphicResolvedView,
   MorphicStyleBundle,
+  MorphicToolboxCanvasOptions,
   MorphicToolboxCategory,
   MorphicToolboxConfig,
   MorphicToolboxLayout,
-  MorphicViewDefinition,
-  MorphicViewObject,
+  MorphicBlockElements,
+  MorphicModeDefinition,
 } from "./morphic/types";
