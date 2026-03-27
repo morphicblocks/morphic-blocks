@@ -1,21 +1,28 @@
 # Morphic Blocks
 
-Morphic Blocks is a TypeScript wrapper around Google Blockly where block rendering is mode-driven.
+A TypeScript framework built on Google Blockly for rendering blocks in multiple **modes** — enabling smooth transitions between block-based and text-based programming representations.
 
-Developers configure:
+## Core Idea
 
-1. `blocks.json`: logical block definitions + per-mode views.
-2. `behavior.ts` or `behavior.js`: block behavior/generation logic (same behavior for all views).
-3. Mode CSS files: one stylesheet per mode (`iconic.css`, `lexical.css`, etc.).
+Each block has named **elements** (visual parts). A global `elementTypes` registry declares what each element name represents. **Modes** declare which elements are visible. CSS defines how they look.
 
-## Core idea
+```text
+iconic mode    → shows icon + text (image + label)
+lexical mode   → shows block template (Blockly-style)
+syntactic mode → shows block + code snippet
+```
 
-- Workspace and toolbox can run in different modes at the same time.
-- Dragging a block from toolbox to workspace re-renders the block using the workspace mode.
-- The framework itself has no built-in mode list. Modes come from your `views` keys.
-- Consumer apps do not need to import Blockly directly.
-- Views can stay as simple `"modeName": "template"` entries (no per-view class names required).
-- Toolbox layout can be set by framework parameter: `toolboxLayout: "flyout" | "category"`.
+Workspace and toolbox can run in **different modes simultaneously**. Dragging from toolbox to workspace re-renders the block using the workspace mode.
+
+## Element Types
+
+| Type    | What it means                               |
+|---------|---------------------------------------------|
+| `block` | Blockly template (`log %1`, `if %1 then %2`)|
+| `text`  | Plain label or description                  |
+| `image` | SVG or image (used inside block templates)  |
+
+Element **names** are free-form — `icon`, `block`, `syntax`, `title` etc. are conventions. The `elementTypes` registry maps names to types.
 
 ## Install
 
@@ -23,100 +30,128 @@ Developers configure:
 bun install
 ```
 
-## Run playground
+## Run Playground
 
 ```bash
 bun run dev
 ```
 
-## Build everything
+## Build
 
 ```bash
 bun run build
 ```
 
-Library output is created in `packages/morphic-blocks/dist/`.
+Library output is emitted to `packages/morphic-blocks/dist/`.
 
-## Project structure
+## Project Structure
 
-- `packages/morphic-blocks/src/morphic/MorphicBlocks.ts`: orchestration (mount, events, mode switching).
-- `packages/morphic-blocks/src/morphic/block-view.ts`: block rendering and mode class decoration.
-- `packages/morphic-blocks/src/morphic/codegen.ts`: Blockly JavaScript generator bridge + behavior proxies.
-- `packages/morphic-blocks/src/morphic/behavior-runtime.ts`: behavior adapter helpers.
-- `packages/morphic-blocks/src/morphic/definitions.ts`: block definition validation/lookup.
-- `packages/morphic-blocks/src/morphic/view-resolver.ts`: fallback view selection per mode.
-- `packages/morphic-blocks/src/morphic/toolbox.ts`: toolbox definition builder.
-- `packages/morphic-blocks/src/morphic/styles.ts`: CSS loading and mode coverage warnings.
-- `apps/playground`: isolated example app that consumes the package.
-
-## Template support
-
-- `%1`, `%2`, ... placeholders create dynamic inputs.
-- `<img ...>` tags create Blockly image fields.
-- Other HTML tags are ignored by the parser and treated as plain text wrappers.
-
-## Behavior file format
-
-You can provide `behavior.ts` or `behavior.js`.
-
-```js
-/** @type {import("morphic-blocks").MorphicBehaviorMap} */
-const behaviors = {
-  log_message(proxy) {
-    const msg = proxy.inputs.MESSAGE || "'Hello, Morphic!'";
-    return `console.log('[' + new Date().toLocaleTimeString() + '] ' + ${msg});\n`;
-  },
-  random_color() {
-    return `('#' + Math.floor(Math.random() * 0xFFFFFF).toString(16).padStart(6, '0'))`;
-  }
-};
+```text
+morphic-blocks/
+├── apps/
+│   └── playground/           # Demo app
+│       └── src/
+│           ├── definitions.json
+│           ├── behaviors.ts
+│           ├── main.ts
+│           └── modes/        # One CSS file per mode
+├── packages/
+│   └── morphic-blocks/       # Core library
+│       └── src/morphic/
+│           ├── MorphicBlocks.ts      # Orchestration (mount, setModes, generateJavaScript)
+│           ├── block-view.ts         # Block rendering + mode class decoration
+│           ├── view-resolver.ts      # Mode fallback logic
+│           ├── template.ts           # Template parsing (%1 placeholders, <img> tags)
+│           ├── toolbox-canvas.ts     # Custom HTML toolbox (drag-to-workspace)
+│           ├── codegen.ts            # JavaScript code generation
+│           ├── styles.ts             # CSS loading + mode coverage validation
+│           └── types.ts              # All TypeScript types
+└── CLAUDE.md
 ```
 
-## Definition format
-
-`apps/playground/src/blocks.json` shows the expected shape:
+## definitions.json Format
 
 ```json
 {
-  "identifier": "move_actor",
-  "views": {
-    "iconic": "<img src='assets/arrow.svg' width='58' height='58'>",
-    "lexical": "move %1 steps",
-    "syntactic": "moveActor(%1);",
-    "code": "moveActor(%1);",
-    "blueprint": "<div class='blueprint-box'>LOGIC: %1</div>"
-  }
+  "elementTypes": {
+    "icon":   "image",
+    "block":  "block",
+    "syntax": "block",
+    "title":  "text",
+    "text":   "text"
+  },
+  "modes": [
+    { "name": "iconic",    "elements": ["icon", "title", "text"] },
+    { "name": "lexical",   "elements": ["title", "block"] },
+    { "name": "syntactic", "elements": ["title", "syntax", "text"] }
+  ],
+  "categories": [
+    { "name": "Output", "colour": "#5C81A6" }
+  ],
+  "blocks": [
+    {
+      "identifier": "log_message",
+      "category": "Output",
+      "elements": {
+        "icon":   "<img src='assets/log.svg'>",
+        "title":  "Log",
+        "block":  "log %1",
+        "syntax": "console.log(%1);",
+        "text":   "Print a message to the console"
+      },
+      "inputSlots": {
+        "1": { "kind": "value", "name": "MESSAGE" }
+      }
+    }
+  ]
 }
 ```
 
-## Example usage
+- `elementTypes` — global registry mapping element names to their type
+- `modes` — list of mode definitions; each declares which elements are visible
+- `categories` — optional groupings for the toolbox
+- `blocks` — flat array of block definitions; `category` is optional per block
+
+## Template Syntax
+
+Templates use `%N` placeholders for input slots and `<img>` tags for images:
+
+| Syntax       | Result                        |
+|--------------|-------------------------------|
+| `%1`         | Creates a Blockly input slot  |
+| `<img …>`    | Creates a Blockly FieldImage  |
+| Plain text   | Becomes a Blockly label field |
+
+## Example Usage
 
 ```ts
-import definitions from "./blocks.json";
-import { behaviors } from "./behavior.js";
-import { MorphicBlocks } from "morphic-blocks";
+import definitions from "./definitions.json";
+import { behaviors } from "./behaviors";
+import { MorphicBlocks, type MorphicBlockDefinition, type MorphicElementType, type MorphicModeDefinition } from "morphic-blocks";
 
-const engine = new MorphicBlocks(definitions, behaviors);
-engine.mount({
+const engine = new MorphicBlocks(
+  definitions.blocks as MorphicBlockDefinition[],
+  behaviors,
+  definitions.elementTypes as Record<string, MorphicElementType>,
+);
+
+const workspace = engine.mount({
   workspaceContainer: document.getElementById("workspace")!,
   workspaceMode: "lexical",
-  toolboxMode: "iconic",
-  toolboxLayout: "flyout",
-  ui: {
-    workspaceClassName: "my-workspace",
-    toolboxClassName: "my-toolbox"
-  },
-  toolbox: {
-    blocks: ["log_message", "random_color", "text"]
-  },
+  toolboxMode: "lexical",
+  modesFolder: import.meta.glob("./modes/*.css", { eager: true, query: "?url" }),
+  canvasToolbox: true,
+  modes: definitions.modes as MorphicModeDefinition[],
+  toolbox: { categories: definitions.categories },
   blockly: {
+    scrollbars: true,
     trashcan: true,
-    move: { drag: true, wheel: true, scrollbars: true }
   },
-  modeStyles: [
-    { mode: "iconic", href: "/modes/iconic.css" },
-    { mode: "lexical", href: "/modes/lexical.css" }
-  ]
+});
+
+// Mount custom HTML toolbox (replaces Blockly's built-in flyout)
+engine.mountToolbox(document.getElementById("toolbox")!, {
+  categories: definitions.categories,
 });
 ```
 
@@ -126,27 +161,50 @@ Switch modes at runtime:
 engine.setModes({ workspaceMode: "syntactic", toolboxMode: "iconic" });
 ```
 
-Generate JavaScript from workspace:
+Generate JavaScript from the workspace:
 
 ```ts
 const js = engine.generateJavaScript();
 ```
 
-`generateJavaScript()` uses Blockly's official JavaScript generator (`javascriptGenerator`) and also wires your custom behavior functions into Blockly generator hooks for custom block types.
+## Behaviors
 
-`ui.workspaceClassName` and `ui.toolboxClassName` let you style workspace/toolbox roots in CSS.  
-Mode CSS overrides apply naturally by combining these with mode/context classes, for example:
+One behavior function per block. The same function is used regardless of mode.
 
-```css
-.morphic-workspace-root.morphic-mode-iconic.my-workspace { ... }
-.morphic-toolbox-root.morphic-mode-iconic.my-toolbox .blocklyFlyoutBackground { ... }
-.morphic-toolbox-shell.morphic-mode-iconic.my-toolbox { ... }
+```ts
+import type { MorphicBehaviorMap } from "morphic-blocks";
+
+export const behaviors: MorphicBehaviorMap = {
+  log_message(proxy) {
+    const msg = proxy.inputs.MESSAGE ?? "'Hello'";
+    return `console.log(${msg});\n`;
+  },
+};
 ```
 
-Example "code editor" mode can be achieved only by CSS + templates:
+## Mode CSS
+
+One CSS file per mode. Use `.morphic-mode-{name}` to target blocks in a specific mode. Use `.morphic-workspace-root.morphic-mode-{name}` to target the Blockly workspace.
 
 ```css
-.morphic-workspace-root.morphic-mode-code.my-workspace .blocklySvg { ... }
-.morphic-mode-code .blocklyText { font-family: Consolas, monospace; }
-.morphic-mode-code .blocklyInputShapePath { fill: #000; }
+/* lexical.css */
+.morphic-workspace-root.morphic-mode-lexical .blocklyText {
+  font-family: sans-serif;
+}
 ```
+
+Block colours can be driven from CSS via a custom property:
+
+```css
+.morphic-block-log_message {
+  --morphic-block-color: #f97316;
+}
+```
+
+## Roadmap
+
+- Bidirectional sync — AST parsing converts JS text back to blocks
+- CodeMirror text editor integration
+- Block ↔ code selection sync
+- Drag blocks into text editor
+- Headless UI components (unstyled terminal, sidebar, resizable panes)

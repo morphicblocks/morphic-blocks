@@ -49,27 +49,35 @@ Demo app. Uses `import.meta.glob()` to auto-discover mode CSS files by filename.
 
 ## Core Concept: Morphic Block
 
-A **Morphic Block** is the fundamental unit. It has named **elements** — the visual parts it can show:
+A **Morphic Block** is the fundamental unit. It has named **elements** — the visual parts it can show. Each element name is **free-form**; its **type** drives rendering behavior.
 
-| Element  | What it is                            |
-|----------|---------------------------------------|
-| `icon`   | SVG or image                          |
-| `block`  | Blockly-style template (`log %1`)     |
-| `code`   | Code snippet (`console.log(%1)`)      |
-| `text`   | Label or description                  |
+### Element types
 
-Element names are **free-form** — `icon`, `block`, `code`, `text` are conventions, not enforced.
+| Type    | Toolbox tile            | Workspace block                                            |
+|---------|-------------------------|------------------------------------------------------------|
+| `text`  | Rendered as HTML label  | Never shown                                                |
+| `block` | Rendered as Blockly SVG | Used as Blockly template (`<img>` in content → FieldImage) |
+| `image` | Rendered as `<img>`     | Never shown                                                |
 
-A **mode** declares which elements are visible. CSS defines how they look.
+Element names (`title`, `icon`, `block`, `syntax`, …) are fully free-form. The type is declared once globally in `elementTypes` — not repeated per block.
+
+A **mode** declares which elements are visible and, by scanning for the first `type: "block"` element listed, determines which template is used in the workspace.
 
 ## definitions.json Structure
 
 ```json
 {
+  "elementTypes": {
+    "title":  "text",
+    "text":   "text",
+    "icon":   "image",
+    "block":  "block",
+    "syntax": "block"
+  },
   "modes": [
-    { "name": "iconic",    "elements": ["icon", "text"] },
-    { "name": "lexical",   "elements": ["block"] },
-    { "name": "syntactic", "elements": ["block", "code"] }
+    { "name": "iconic",    "elements": ["icon", "title", "text"] },
+    { "name": "lexical",   "elements": ["title", "block"] },
+    { "name": "syntactic", "elements": ["title", "syntax", "text"] }
   ],
   "categories": [
     { "name": "Output", "colour": "#5C81A6" }
@@ -79,10 +87,11 @@ A **mode** declares which elements are visible. CSS defines how they look.
       "identifier": "log_message",
       "category": "Output",
       "elements": {
-        "icon": "<img src='assets/log.svg'>",
-        "block": "log %1",
-        "code": "console.log(%1);",
-        "text": "Print a message"
+        "title":  "Print",
+        "icon":   "<img src='assets/log.svg'>",
+        "block":  "log %1",
+        "syntax": "console.log( %1 );",
+        "text":   "Print a message"
       },
       "inputSlots": { "1": { "kind": "value", "name": "MESSAGE" } }
     }
@@ -90,10 +99,17 @@ A **mode** declares which elements are visible. CSS defines how they look.
 }
 ```
 
-- `modes` — explicit mode definitions (which elements are shown per mode)
+- `elementTypes` — global registry mapping element names to their type (`text`, `block`, `image`)
+- `modes` — explicit mode definitions; mode names are arbitrary (no coupling to element names)
 - `categories` — optional metadata (name, colour); blocks reference them by name
-- `blocks` — flat array; `category` field is optional on each block
-- `elements` replaces the old `views` map
+- `blocks` — flat array; per-block `elements` are plain `name: content` strings
+
+### Workspace template resolution
+
+1. First `type: "block"` element listed in the mode's `elements` array
+2. Fallback: first `type: "block"` element in the block definition
+3. Fallback: element literally named `"block"` (backward compat)
+4. Fallback: first element in the definition
 
 ## Rendered HTML (Morphic Block tile)
 
