@@ -3,6 +3,9 @@
 # ============================================
 # Built with: Bun, TypeScript, PostCSS
 #
+
+# Claude Code
+.claude/
 # CRITICAL: .github/workflows/ and /prompts/ are TRACKED
 # CRITICAL: All credential files are BLOCKED
 # ============================================
@@ -194,3 +197,6 @@ pnpm-lock.yaml
 # - prompts/            (AI-assisted development)
 # - .env.example        (Template for environment setup)
 # ============================================
+
+# add prototype folder
+prototype/*
