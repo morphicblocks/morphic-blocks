@@ -1,0 +1,249 @@
+/* =============================================
+   Morphic Blocks Playground — App Styles
+   ============================================= */
+
+:root {
+  --bg-dark: #131722;
+  --bg-panel: #171d2a;
+  --border: #2a3345;
+  --text: #e5ecff;
+  --accent: #8fd3ff;
+  --text-muted: #8b8fa3;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: var(--bg-dark);
+  color: var(--text);
+  height: 100vh;
+  overflow: hidden;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* ── Header ─────────────────────────────────── */
+
+#header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+}
+
+#header .brand {
+  font-weight: bold;
+  font-size: 14px;
+  color: var(--accent);
+}
+
+#mode-buttons {
+  display: flex;
+  background: #0f1117;
+  border-radius: 6px;
+  padding: 3px;
+}
+
+#mode-buttons button {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  padding: 6px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+#mode-buttons button.active {
+  background: var(--border);
+  color: #fff;
+}
+
+#mode-buttons button:hover:not(.active) {
+  color: var(--text);
+}
+
+#run-btn {
+  padding: 8px 20px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #4aa3df, #8fd3ff);
+  color: #0f1117;
+  border: none;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 13px;
+  transition: opacity 0.2s;
+}
+
+#run-btn:hover { opacity: 0.9; }
+
+/* ── Main Layout ────────────────────────────── */
+
+#main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── Toolbox Panel (sidebar) ────────────────── */
+
+#toolbox-panel {
+  width: 240px;
+  min-width: 240px;
+  background: var(--bg-panel);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 12px;
+}
+
+/* ── Workspace Area ─────────────────────────── */
+
+#workspace-area {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+#workspace-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── Output Panel ───────────────────────────── */
+
+#output-panel {
+  height: 160px;
+  min-height: 80px;
+  background: #0f1117;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+}
+
+#output-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 15px;
+  font-size: 11px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+}
+
+#clear-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 2px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 10px;
+  transition: all 0.2s;
+}
+
+#clear-btn:hover {
+  color: var(--text);
+  border-color: var(--text-muted);
+}
+
+#output {
+  flex: 1;
+  padding: 10px 15px;
+  font-family: "Consolas", "Fira Code", monospace;
+  font-size: 13px;
+  color: var(--accent);
+  overflow-y: auto;
+  white-space: pre-wrap;
+}
+
+/* ── Blockly Overrides (dark workspace) ─────── */
+
+/* Hide Blockly's built-in toolbox — we use the custom HTML canvas instead */
+.blocklyToolboxDiv { display: none !important; }
+
+.blocklySvg { background: var(--bg-dark) !important; }
+.blocklyMainBackground { fill: var(--bg-dark) !important; }
+.blocklyScrollbarBackground { fill: transparent; }
+.blocklyScrollbarHandle { fill: var(--border); }
+
+/* =============================================
+   Morphic Toolbox Canvas — Shared Styles
+   ============================================= */
+
+/* Category groups */
+[data-category] {
+  margin-bottom: 16px;
+}
+
+[data-category]::before {
+  content: attr(data-category);
+  display: block;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--text-muted);
+  font-weight: 800;
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Block tiles */
+.morphic-block {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid transparent;
+  border-left: 3px solid var(--morphic-block-color, #666);
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  border-radius: 4px;
+  color: #fff;
+  cursor: grab;
+  transition: all 0.2s ease;
+  font-size: 13px;
+}
+
+.morphic-block:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.1);
+  border-left-color: var(--morphic-block-color, #666);
+}
+
+.morphic-block:active {
+  cursor: grabbing;
+}
+
+/* Slot placeholders in toolbox tiles */
+.morphic-toolbox-slot {
+  display: inline-block;
+  width: 24px;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  vertical-align: middle;
+  margin: 0 2px;
+}
+
+/* SVG block previews */
+.morphic-element-block svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  pointer-events: none;
+}

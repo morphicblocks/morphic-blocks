@@ -1,0 +1,22 @@
+/* =============================================
+   Mode: Iconic — styling only, visibility handled by framework
+   ============================================= */
+
+.morphic-block.morphic-mode-iconic {
+  padding: 16px 16px;
+}
+
+.morphic-mode-iconic > .morphic-element-icon {
+  margin-bottom: 8px;
+}
+
+.morphic-mode-iconic > .morphic-element-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.morphic-mode-iconic > .morphic-element-text {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+  margin-top: 6px;
+}

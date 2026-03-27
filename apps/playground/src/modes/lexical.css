@@ -1,0 +1,18 @@
+/* =============================================
+   Mode: Lexical — styling only, visibility handled by framework
+   ============================================= */
+
+.morphic-block.morphic-mode-lexical {
+  padding: 14px 16px;
+}
+
+.morphic-mode-lexical > .morphic-element-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.morphic-mode-lexical > .morphic-element-block svg {
+  transform: scale(1.15);
+  transform-origin: left center;
+}

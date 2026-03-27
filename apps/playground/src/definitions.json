@@ -1,0 +1,191 @@
+{
+  "elementTypes": {
+    "title":  "text",
+    "text":   "text",
+    "icon":   "image",
+    "concept": "block",
+    "block":  "block",
+    "syntax": "block"
+  },
+  "modes": [
+    { "name": "iconic",    "elements": ["icon", "title", "text"] },
+    { "name": "lexical",   "elements": ["title", "block"] },
+    { "name": "syntactic", "elements": ["title", "syntax", "text"] }
+  ],
+  "categories": [
+    { "name": "Output",     "colour": "#b469d6" },
+    { "name": "Control",    "colour": "#4aa3df" },
+    { "name": "Operations", "colour": "#5ba55b" },
+    { "name": "Values",     "colour": "#d8b13f" },
+    { "name": "Variables",  "colour": "#e65a6f" }
+  ],
+  "blocks": [
+    {
+      "identifier": "text_print",
+      "category": "Output",
+      "elements": {
+        "title":   "Print",
+        "concept": "Output %1",
+        "block":   "print %1",
+        "syntax":  "console.log( %1 )",
+        "text":    "Prints a value to the console"
+      },
+      "inputSlots": {
+        "1": { "kind": "value", "name": "TEXT" }
+      },
+      "previousStatement": true,
+      "nextStatement": true,
+      "inputsInline": true
+    },
+    {
+      "identifier": "logic_if",
+      "category": "Control",
+      "elements": {
+        "title":   "If / Then",
+        "concept": "Condition %1 Then %2",
+        "block":   "if %1 do %2",
+        "syntax":  "if ( %1 ) { %2 }",
+        "text":    "Runs code when a condition is true"
+      },
+      "inputSlots": {
+        "1": { "kind": "value",     "name": "CONDITION", "check": "Boolean" },
+        "2": { "kind": "statement", "name": "DO" }
+      },
+      "previousStatement": true,
+      "nextStatement": true,
+      "inputsInline": true
+    },
+    {
+      "identifier": "loop_for",
+      "category": "Control",
+      "elements": {
+        "title":   "Repeat",
+        "concept": "Repeat %1 times %2",
+        "block":   "repeat %1 times %2",
+        "syntax":  "for (let i = 0; i < %1 ; i++) { %2 }",
+        "text":    "Runs code a set number of times"
+      },
+      "inputSlots": {
+        "1": { "kind": "value",     "name": "TIMES", "check": "Number" },
+        "2": { "kind": "statement", "name": "DO" }
+      },
+      "previousStatement": true,
+      "nextStatement": true,
+      "inputsInline": true
+    },
+    {
+      "identifier": "math_arithmetic",
+      "category": "Operations",
+      "elements": {
+        "title":   "Math",
+        "concept": "%1 operate %3",
+        "block":   "%1 %2 %3",
+        "syntax":  "%1 %2 %3",
+        "text":    "Performs a math operation on two values"
+      },
+      "inputSlots": {
+        "1": { "kind": "value", "name": "A" },
+        "2": { "kind": "dummy", "name": "OPERATOR" },
+        "3": { "kind": "value", "name": "B" }
+      },
+      "output": true,
+      "inputsInline": true
+    },
+    {
+      "identifier": "logic_compare",
+      "category": "Operations",
+      "elements": {
+        "title":   "Compare",
+        "concept": "%1 compare %3",
+        "block":   "%1 %2 %3",
+        "syntax":  "%1 %2 %3",
+        "text":    "Compares two values and returns a boolean"
+      },
+      "inputSlots": {
+        "1": { "kind": "value", "name": "A" },
+        "2": { "kind": "dummy", "name": "COMPARATOR" },
+        "3": { "kind": "value", "name": "B" }
+      },
+      "output": "Boolean",
+      "inputsInline": true
+    },
+    {
+      "identifier": "math_number",
+      "category": "Values",
+      "elements": {
+        "title":   "Number",
+        "concept": "Number %1",
+        "block":   "%1",
+        "syntax":  "%1",
+        "text":    "A numeric value"
+      },
+      "inputSlots": {
+        "1": { "kind": "dummy", "name": "CONTENT" }
+      },
+      "output": "Number"
+    },
+    {
+      "identifier": "text_value",
+      "category": "Values",
+      "elements": {
+        "title":   "Text",
+        "concept": "Text %1",
+        "block":   "\" %1 \"",
+        "syntax":  "\" %1 \"",
+        "text":    "A text string value"
+      },
+      "inputSlots": {
+        "1": { "kind": "dummy", "name": "CONTENT" }
+      },
+      "output": "String"
+    },
+    {
+      "identifier": "logic_boolean",
+      "category": "Values",
+      "elements": {
+        "title":   "Boolean",
+        "concept": "Boolean %1",
+        "block":   "%1",
+        "syntax":  "%1",
+        "text":    "A true or false value"
+      },
+      "inputSlots": {
+        "1": { "kind": "dummy", "name": "CONTENT" }
+      },
+      "output": "Boolean"
+    },
+    {
+      "identifier": "var_declare",
+      "category": "Variables",
+      "elements": {
+        "title":   "Create Variable",
+        "concept": "Create variable %1 = %2",
+        "block":   "var %1 = %2",
+        "syntax":  "let %1 = %2 ;",
+        "text":    "Declares a new variable with a value"
+      },
+      "inputSlots": {
+        "1": { "kind": "dummy", "name": "NAME" },
+        "2": { "kind": "value", "name": "VAL" }
+      },
+      "previousStatement": true,
+      "nextStatement": true,
+      "inputsInline": true
+    },
+    {
+      "identifier": "var_get",
+      "category": "Variables",
+      "elements": {
+        "title":   "Get Variable",
+        "concept": "Variable %1",
+        "block":   "var %1",
+        "syntax":  "%1",
+        "text":    "Returns the value of a variable"
+      },
+      "inputSlots": {
+        "1": { "kind": "dummy", "name": "CONTENT" }
+      },
+      "output": true
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+/* =============================================
+   Mode: Syntactic — styling only, visibility handled by framework
+   ============================================= */
+
+.morphic-block.morphic-mode-syntactic {
+  padding: 14px 16px;
+}
+
+.morphic-mode-syntactic > .morphic-element-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.morphic-mode-syntactic > .morphic-element-syntax {
+  margin-bottom: 8px;
+}
+
+.morphic-mode-syntactic > .morphic-element-text {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+  margin-top: 6px;
+}
+
+/* Workspace: monospace text on blocks */
+.morphic-workspace-root.morphic-mode-syntactic .blocklyText {
+  font-family: "Consolas", "Fira Code", monospace;
+}
