@@ -150,6 +150,8 @@ engine.mountToolbox(container, {
 - **Drag blocks into text editor**
 - **Error recovery / draft blocks** — handles incomplete/invalid code gracefully
 - **Headless UI components** (terminal, sidebar, info panel, resizable panes) — unstyled
+- **Multi-language code generation** — `generateCode(language)` supporting Python, Lua, Dart, PHP via Blockly's built-in generators
+- **Monaco editor (optional)** — separate entry point (`morphic-blocks/monaco`) for users who want full IDE features; zero cost for users who don't import it
 
 ## Conventions
 
@@ -158,3 +160,11 @@ engine.mountToolbox(container, {
 - **Don't restrict users** — UI components should be unstyled/headless so developers can style them freely
 - **Library scope** — the framework is an embeddable library, not a standalone app
 - **No unnecessary abstraction** — minimum complexity for the current task
+
+## Commit Workflow
+
+1. Before committing, always suggest **three** commit message options
+2. Follow the emoji-style Conventional Commits format defined in `.vscode/commit-instructions.md`
+3. Mark the recommended option with **(recommended)** so the user can see which one you prefer
+4. The user picks one; then commit with the chosen message
+5. Add `Co-Authored-By: Claude <noreply@anthropic.com>` unless the user says to be the main author
