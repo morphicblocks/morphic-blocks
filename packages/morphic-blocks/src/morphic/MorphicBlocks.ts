@@ -9,6 +9,7 @@ import {
   captureFieldValues,
   restoreFieldValues,
 } from "./block-view";
+import { MorphicCodeEditor } from "./code-editor";
 import { generateJavaScriptFromWorkspace, generateJavaScriptWithMetadataFromWorkspace } from "./codegen";
 import { collectAvailableModes, createDefinitionMap } from "./definitions";
 import { MorphicStyleManager } from "./styles";
@@ -20,6 +21,8 @@ import type {
   MorphicBehaviorContext,
   MorphicBehaviorMap,
   MorphicBlockDefinition,
+  MorphicCodeEditorOptions,
+  MorphicCodeEditorTheme,
   MorphicCodeGenerationResult,
   MorphicElementType,
   MorphicModeName,
@@ -73,6 +76,7 @@ export class MorphicBlocks {
   private workspace?: Blockly.WorkspaceSvg;
   private flyoutWorkspace?: Blockly.WorkspaceSvg;
   private toolboxCanvas?: MorphicToolboxCanvas;
+  private codeEditor?: MorphicCodeEditor;
   private toolboxDefinition?: NonNullable<Blockly.BlocklyOptions["toolbox"]>;
   private blockCategoryIndex = new Map<string, MorphicBlockCategoryMeta>();
   private appliedWorkspaceClasses: string[] = [];
@@ -151,6 +155,9 @@ export class MorphicBlocks {
   }
 
   public dispose(): void {
+    this.codeEditor?.dispose();
+    this.codeEditor = undefined;
+
     this.toolboxCanvas?.dispose();
     this.toolboxCanvas = undefined;
 
@@ -264,6 +271,44 @@ export class MorphicBlocks {
       this.behaviors,
       this.mountConfig.javascript,
     );
+  }
+
+  public async mountCodeEditor(
+    container: HTMLElement,
+    options?: MorphicCodeEditorOptions,
+  ): Promise<void> {
+    if (!this.workspace || !this.mountConfig) {
+      throw new Error(
+        "MorphicBlocks must be mounted before mountCodeEditor can be used.",
+      );
+    }
+
+    this.codeEditor?.dispose();
+
+    this.codeEditor = new MorphicCodeEditor(
+      container,
+      this.workspace,
+      () => this.generateJavaScriptWithMetadata(),
+      options,
+    );
+
+    await this.codeEditor.mount();
+  }
+
+  public showCodeEditor(): void {
+    this.codeEditor?.show();
+  }
+
+  public hideCodeEditor(): void {
+    this.codeEditor?.hide();
+  }
+
+  public isCodeEditorVisible(): boolean {
+    return this.codeEditor?.isVisible() ?? false;
+  }
+
+  public setCodeEditorTheme(theme: MorphicCodeEditorTheme): void {
+    this.codeEditor?.setTheme(theme);
   }
 
   private readonly onWorkspaceChange = (

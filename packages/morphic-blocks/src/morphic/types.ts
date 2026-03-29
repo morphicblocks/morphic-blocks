@@ -215,3 +215,31 @@ export interface MorphicCodeGenerationResult {
   code: string;
   metadata: MorphicCodeMetadata;
 }
+
+/** Theme configuration for the code editor. */
+export interface MorphicCodeEditorTheme {
+  /** Editor text size (e.g. "14px"). */
+  fontSize?: string;
+  /** Editor font family (e.g. "monospace"). */
+  fontFamily?: string;
+  /** Line spacing multiplier (e.g. 1.5). */
+  lineHeight?: number;
+  /** Editor background colour. */
+  background?: string;
+  /** Default text colour. */
+  foreground?: string;
+  /** Line number column background colour. */
+  gutterBackground?: string;
+  /** Line number text colour. */
+  gutterForeground?: string;
+  /** Text selection highlight colour. */
+  selectionBackground?: string;
+}
+
+/** Options for `mountCodeEditor()`. */
+export interface MorphicCodeEditorOptions {
+  /** Visual theme — the framework provides sensible defaults. */
+  theme?: MorphicCodeEditorTheme;
+  /** Raw CodeMirror extensions for power users. Appended after the built-in ones. */
+  extensions?: unknown[];
+}

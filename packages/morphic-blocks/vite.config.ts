@@ -10,7 +10,7 @@ export default defineConfig({
       formats: ["es", "umd"]
     },
     rollupOptions: {
-      external: [/^blockly(\/.*)?$/],
+      external: [/^blockly(\/.*)?$/, /^@codemirror\//],
       output: {
         globals: {
           blockly: "Blockly",

@@ -14,6 +14,8 @@ export type {
   MorphicBlocksFormat,
   MorphicCodeBehavior,
   MorphicCodeBlockPosition,
+  MorphicCodeEditorOptions,
+  MorphicCodeEditorTheme,
   MorphicCodeGenerationResult,
   MorphicCodeMetadata,
   MorphicConnectionSpec,
