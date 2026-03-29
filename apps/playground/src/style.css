@@ -71,6 +71,35 @@ body {
   color: var(--text);
 }
 
+#header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#code-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+#code-btn:hover {
+  color: var(--text);
+  border-color: var(--text-muted);
+}
+
+#code-btn.active {
+  background: var(--border);
+  color: #fff;
+  border-color: var(--border);
+}
+
 #run-btn {
   padding: 8px 20px;
   border-radius: 6px;
@@ -113,10 +142,34 @@ body {
   overflow: hidden;
 }
 
+/* ── Editor Split (workspace + code editor) ─── */
+
+#editor-split {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
 #workspace-container {
   flex: 1;
   position: relative;
   overflow: hidden;
+}
+
+#code-editor {
+  width: 40%;
+  min-width: 200px;
+  border-left: 1px solid var(--border);
+  overflow: hidden;
+  display: none;
+}
+
+#code-editor.visible {
+  display: block;
+}
+
+#code-editor .cm-editor {
+  height: 100%;
 }
 
 /* ── Output Panel ───────────────────────────── */

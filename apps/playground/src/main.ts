@@ -25,9 +25,11 @@ let currentMode = "lexical";
 
 const workspaceContainer = document.getElementById("workspace-container")!;
 const toolboxPanel = document.getElementById("toolbox-panel")!;
+const codeEditorContainer = document.getElementById("code-editor")!;
 const outputEl = document.getElementById("output")!;
 const modeButtons = document.querySelectorAll<HTMLButtonElement>("[data-mode]");
 const runBtn = document.getElementById("run-btn")!;
+const codeBtn = document.getElementById("code-btn")!;
 const clearBtn = document.getElementById("clear-btn")!;
 
 // ── Engine Setup ───────────────────────────────────────
@@ -81,6 +83,19 @@ engine.mountToolbox(toolboxPanel, {
   categories: format.categories as MorphicToolboxCategory[],
 });
 
+// Mount the code editor (hidden by default, async due to dynamic CodeMirror import)
+engine.mountCodeEditor(codeEditorContainer, {
+  theme: {
+    background: "#0f1117",
+    foreground: "#d4d4d4",
+    gutterBackground: "#0f1117",
+    gutterForeground: "#5d677a",
+    selectionBackground: "#264f78",
+  },
+}).then(() => {
+  engine.hideCodeEditor();
+});
+
 // Set the initial active button
 modeButtons.forEach((btn) =>
   btn.classList.toggle("active", btn.dataset.mode === currentMode),
@@ -103,6 +118,21 @@ modeButtons.forEach((btn) => {
     engine.setModes({ workspaceMode: mode, toolboxMode: mode });
     modeButtons.forEach((b) => b.classList.toggle("active", b === btn));
   });
+});
+
+// ── Code Editor Toggle ────────────────────────────────
+
+codeBtn.addEventListener("click", () => {
+  if (engine.isCodeEditorVisible()) {
+    engine.hideCodeEditor();
+    codeEditorContainer.classList.remove("visible");
+    codeBtn.classList.remove("active");
+  } else {
+    engine.showCodeEditor();
+    codeEditorContainer.classList.add("visible");
+    codeBtn.classList.add("active");
+  }
+  Blockly.svgResize(workspace);
 });
 
 // ── Code Execution ─────────────────────────────────────
