@@ -9,7 +9,7 @@ import {
   captureFieldValues,
   restoreFieldValues,
 } from "./block-view";
-import { generateJavaScriptFromWorkspace } from "./codegen";
+import { generateJavaScriptFromWorkspace, generateJavaScriptWithMetadataFromWorkspace } from "./codegen";
 import { collectAvailableModes, createDefinitionMap } from "./definitions";
 import { MorphicStyleManager } from "./styles";
 import { toModeClassToken } from "./template";
@@ -20,6 +20,7 @@ import type {
   MorphicBehaviorContext,
   MorphicBehaviorMap,
   MorphicBlockDefinition,
+  MorphicCodeGenerationResult,
   MorphicElementType,
   MorphicModeName,
   MorphicModeStyle,
@@ -244,6 +245,20 @@ export class MorphicBlocks {
       );
     }
     return generateJavaScriptFromWorkspace(
+      this.workspace,
+      this.definitions,
+      this.behaviors,
+      this.mountConfig.javascript,
+    );
+  }
+
+  public generateJavaScriptWithMetadata(): MorphicCodeGenerationResult {
+    if (!this.workspace || !this.mountConfig) {
+      throw new Error(
+        "MorphicBlocks must be mounted before generateJavaScriptWithMetadata can be used.",
+      );
+    }
+    return generateJavaScriptWithMetadataFromWorkspace(
       this.workspace,
       this.definitions,
       this.behaviors,

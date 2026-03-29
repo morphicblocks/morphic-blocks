@@ -6,6 +6,8 @@ import type {
   MorphicBehaviorMap,
   MorphicBehaviorProxy,
   MorphicBlockDefinition,
+  MorphicCodeGenerationResult,
+  MorphicCodeMetadata,
   MorphicJavaScriptConfig,
   MorphicRenderContext
 } from "./types";
@@ -22,14 +24,31 @@ export function generateJavaScriptFromWorkspace(
   config?: MorphicJavaScriptConfig
 ): string {
   const state: MorphicGeneratorState = { behaviors, definitions };
-  configureJavascriptGenerator(javascriptGenerator, state, config);
+  configureJavascriptGenerator(javascriptGenerator, state, config, false);
   return javascriptGenerator.workspaceToCode(workspace);
 }
+
+export function generateJavaScriptWithMetadataFromWorkspace(
+  workspace: Blockly.WorkspaceSvg,
+  definitions: ReadonlyMap<string, MorphicBlockDefinition>,
+  behaviors: MorphicBehaviorMap,
+  config?: MorphicJavaScriptConfig
+): MorphicCodeGenerationResult {
+  const state: MorphicGeneratorState = { behaviors, definitions };
+  configureJavascriptGenerator(javascriptGenerator, state, config, true);
+  const rawCode = javascriptGenerator.workspaceToCode(workspace);
+  return extractMetadata(rawCode);
+}
+
+const MARKER_PREFIX = "// __MORPHIC_BLOCK_START:";
+const MARKER_SUFFIX = "// __MORPHIC_BLOCK_END:";
+const MARKER_DELIM = "__";
 
 function configureJavascriptGenerator(
   generator: JavascriptGenerator,
   state: MorphicGeneratorState,
-  config?: MorphicJavaScriptConfig
+  config?: MorphicJavaScriptConfig,
+  injectMarkers = false,
 ): void {
   generator.STATEMENT_PREFIX = config?.statementPrefix ?? null;
   generator.STATEMENT_SUFFIX = config?.statementSuffix ?? null;
@@ -47,7 +66,11 @@ function configureJavascriptGenerator(
       if (isValueBlock(block, definition)) {
         return [normalizeValueCode(rawCode), Order.NONE];
       }
-      return normalizeStatementCode(rawCode);
+      const code = normalizeStatementCode(rawCode);
+      if (injectMarkers) {
+        return `${MARKER_PREFIX}${block.id}${MARKER_DELIM}\n${code}${MARKER_SUFFIX}${block.id}${MARKER_DELIM}\n`;
+      }
+      return code;
     };
   }
 }
@@ -138,4 +161,40 @@ function stringifyFieldValue(value: unknown): string {
     return JSON.stringify(value);
   }
   return JSON.stringify(String(value ?? ""));
+}
+
+const MARKER_START_RE = /^\s*\/\/ __MORPHIC_BLOCK_START:(.+)__$/;
+const MARKER_END_RE = /^\s*\/\/ __MORPHIC_BLOCK_END:(.+)__$/;
+
+function extractMetadata(rawCode: string): MorphicCodeGenerationResult {
+  const lines = rawCode.split("\n");
+  const cleanLines: string[] = [];
+  const metadata: MorphicCodeMetadata = new Map();
+  const openBlocks = new Map<string, number>();
+
+  let cleanLineNum = 0;
+
+  for (const line of lines) {
+    const startMatch = line.match(MARKER_START_RE);
+    if (startMatch) {
+      openBlocks.set(startMatch[1]!, cleanLineNum + 1);
+      continue;
+    }
+
+    const endMatch = line.match(MARKER_END_RE);
+    if (endMatch) {
+      const blockId = endMatch[1]!;
+      const startLine = openBlocks.get(blockId);
+      if (startLine !== undefined) {
+        metadata.set(blockId, { startLine, endLine: cleanLineNum });
+        openBlocks.delete(blockId);
+      }
+      continue;
+    }
+
+    cleanLines.push(line);
+    cleanLineNum++;
+  }
+
+  return { code: cleanLines.join("\n"), metadata };
 }

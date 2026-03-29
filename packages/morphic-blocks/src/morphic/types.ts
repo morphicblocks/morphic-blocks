@@ -200,3 +200,18 @@ export interface MorphicResolvedView {
   template: string;
   inputSlots?: Record<string, MorphicInputSlotDefinition>;
 }
+
+/** Line range a single block occupies in the generated code (1-based, inclusive). */
+export interface MorphicCodeBlockPosition {
+  startLine: number;
+  endLine: number;
+}
+
+/** Maps Blockly block IDs to their positions in the generated code. */
+export type MorphicCodeMetadata = Map<string, MorphicCodeBlockPosition>;
+
+/** Result of `generateJavaScriptWithMetadata()`. */
+export interface MorphicCodeGenerationResult {
+  code: string;
+  metadata: MorphicCodeMetadata;
+}
