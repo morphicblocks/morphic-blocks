@@ -8,6 +8,13 @@ import type {
 // Re-export the type so MorphicBlocks.ts doesn't need to import CodeMirror types.
 type EditorView = import("@codemirror/view").EditorView;
 type Extension = import("@codemirror/state").Extension;
+type StateEffect<T = unknown> = import("@codemirror/state").StateEffect<T>;
+
+/** A single span of 1-based lines. */
+export interface LineSpan { fromLine: number; toLine: number }
+
+/** One or more line spans to highlight, or `null` to clear. */
+export type HighlightRange = LineSpan | LineSpan[] | null;
 
 const DEFAULT_THEME: Required<MorphicCodeEditorTheme> = {
   fontSize: "14px",
@@ -93,9 +100,14 @@ export class MorphicCodeEditor {
   /** Latest metadata from the most recent code generation. */
   public metadata: MorphicCodeGenerationResult["metadata"] = new Map();
 
+  /** Called when the user's cursor line changes in the editor. */
+  public onCursorLine?: (line: number) => void;
+
   // Cached CodeMirror modules (loaded once on first mount).
   private cm?: Awaited<ReturnType<typeof loadCodeMirror>>;
   private themeCompartment?: import("@codemirror/state").Compartment;
+  private highlightEffect?: StateEffect<HighlightRange>;
+  private highlightColor = "rgba(255, 255, 255, 0.07)";
 
   constructor(
     container: HTMLElement,
@@ -117,11 +129,65 @@ export class MorphicCodeEditor {
 
     const themeExt = buildThemeExtension(cmView, this.options.theme ?? {});
 
+    // ── Highlight state field (line decorations driven by StateEffect) ──
+    const setHighlight = cmState.StateEffect.define<HighlightRange>();
+    this.highlightEffect = setHighlight as unknown as StateEffect<HighlightRange>;
+
+    const editor = this;
+    const highlightField = cmState.StateField.define<import("@codemirror/view").DecorationSet>({
+      create() {
+        return cmView.Decoration.none;
+      },
+      update(decorations, tr) {
+        for (const effect of tr.effects) {
+          if (effect.is(setHighlight)) {
+            const value = effect.value;
+            if (!value) return cmView.Decoration.none;
+
+            const spans = Array.isArray(value) ? value : [value];
+            if (spans.length === 0) return cmView.Decoration.none;
+
+            const doc = tr.state.doc;
+            const mark = cmView.Decoration.mark({
+              class: "morphic-highlight",
+              attributes: { style: `background: ${editor.highlightColor}` },
+            });
+            const ranges = spans
+              .map((s) => {
+                const from = doc.line(Math.min(s.fromLine, doc.lines)).from;
+                const to = doc.line(Math.min(s.toLine, doc.lines)).to;
+                return mark.range(from, to);
+              })
+              .sort((a, b) => a.from - b.from);
+            return cmView.Decoration.set(ranges);
+          }
+        }
+        return decorations;
+      },
+      provide(field) {
+        return cmView.EditorView.decorations.from(field);
+      },
+    });
+
+    // ── Cursor activity listener ──
+    // Compare head positions rather than checking `selectionSet`, which can
+    // miss clicks in a read-only editor.
+    const cursorListener = cmView.EditorView.updateListener.of((update) => {
+      if (!editor.onCursorLine) return;
+      const pos = update.state.selection.main.head;
+      const prevPos = update.startState.selection.main.head;
+      if (pos === prevPos) return;
+      const line = update.state.doc.lineAt(pos).number;
+      editor.onCursorLine(line);
+    });
+
     const extensions: Extension[] = [
       cmView.lineNumbers(),
       cmView.highlightSpecialChars(),
       cmState.EditorState.readOnly.of(true),
       langJs.javascript(),
+      highlightField,
+      cursorListener,
       this.themeCompartment.of(themeExt),
       ...(this.options.extensions ?? []) as Extension[],
     ];
@@ -158,6 +224,27 @@ export class MorphicCodeEditor {
 
   isVisible(): boolean {
     return this.visible;
+  }
+
+  /** Highlight one or more ranges of 1-based lines in the editor. */
+  highlightLines(spans: LineSpan | LineSpan[]): void {
+    if (!this.editorView || !this.highlightEffect) return;
+    this.editorView.dispatch({
+      effects: (this.highlightEffect as any).of(spans satisfies HighlightRange),
+    });
+  }
+
+  /** Remove all line highlights. */
+  clearHighlight(): void {
+    if (!this.editorView || !this.highlightEffect) return;
+    this.editorView.dispatch({
+      effects: (this.highlightEffect as any).of(null),
+    });
+  }
+
+  /** Update the highlight background colour. */
+  setHighlightColor(color: string): void {
+    this.highlightColor = color;
   }
 
   setTheme(theme: MorphicCodeEditorTheme): void {

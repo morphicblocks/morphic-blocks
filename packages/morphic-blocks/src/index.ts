@@ -34,4 +34,5 @@ export type {
   MorphicToolboxLayout,
   MorphicBlockElements,
   MorphicModeDefinition,
+  MorphicSelectionSyncOptions,
 } from "./morphic/types";

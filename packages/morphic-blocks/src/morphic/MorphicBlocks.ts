@@ -11,6 +11,7 @@ import {
 } from "./block-view";
 import { MorphicCodeEditor } from "./code-editor";
 import { generateJavaScriptFromWorkspace, generateJavaScriptWithMetadataFromWorkspace } from "./codegen";
+import { MorphicSelectionSync } from "./selection-sync";
 import { collectAvailableModes, createDefinitionMap } from "./definitions";
 import { MorphicStyleManager } from "./styles";
 import { toModeClassToken } from "./template";
@@ -29,6 +30,7 @@ import type {
   MorphicModeStyle,
   MorphicMountConfig,
   MorphicRenderContext,
+  MorphicSelectionSyncOptions,
   MorphicToolboxCanvasOptions,
 } from "./types";
 
@@ -77,6 +79,7 @@ export class MorphicBlocks {
   private flyoutWorkspace?: Blockly.WorkspaceSvg;
   private toolboxCanvas?: MorphicToolboxCanvas;
   private codeEditor?: MorphicCodeEditor;
+  private selectionSync?: MorphicSelectionSync;
   private toolboxDefinition?: NonNullable<Blockly.BlocklyOptions["toolbox"]>;
   private blockCategoryIndex = new Map<string, MorphicBlockCategoryMeta>();
   private appliedWorkspaceClasses: string[] = [];
@@ -155,6 +158,9 @@ export class MorphicBlocks {
   }
 
   public dispose(): void {
+    this.selectionSync?.disable();
+    this.selectionSync = undefined;
+
     this.codeEditor?.dispose();
     this.codeEditor = undefined;
 
@@ -309,6 +315,32 @@ export class MorphicBlocks {
 
   public setCodeEditorTheme(theme: MorphicCodeEditorTheme): void {
     this.codeEditor?.setTheme(theme);
+  }
+
+  /**
+   * Enable bidirectional selection sync between the Blockly workspace and the
+   * code editor. Requires `mountCodeEditor()` to have been called first.
+   */
+  public enableSelectionSync(options?: MorphicSelectionSyncOptions): void {
+    if (!this.workspace || !this.codeEditor) {
+      throw new Error(
+        "MorphicBlocks must be mounted and a code editor must be active before enableSelectionSync can be used.",
+      );
+    }
+
+    this.selectionSync?.disable();
+    this.selectionSync = new MorphicSelectionSync(
+      this.workspace,
+      this.codeEditor,
+      options,
+    );
+    this.selectionSync.enable();
+  }
+
+  /** Disable selection sync and clear any active highlights. */
+  public disableSelectionSync(): void {
+    this.selectionSync?.disable();
+    this.selectionSync = undefined;
   }
 
   private readonly onWorkspaceChange = (

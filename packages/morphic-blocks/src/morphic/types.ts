@@ -243,3 +243,13 @@ export interface MorphicCodeEditorOptions {
   /** Raw CodeMirror extensions for power users. Appended after the built-in ones. */
   extensions?: unknown[];
 }
+
+/** Options for `enableSelectionSync()`. */
+export interface MorphicSelectionSyncOptions {
+  /** CSS background colour for highlighted code lines. Defaults to a semi-transparent blue. */
+  highlightColor?: string;
+  /** Enable block → code direction. Defaults to true. */
+  blockToCode?: boolean;
+  /** Enable code → block direction. Defaults to true. */
+  codeToBlock?: boolean;
+}
