@@ -38,7 +38,9 @@ const blocks = (format.blocks as MorphicBlockDefinition[]).map((block) => ({
   ...block,
   elements: {
     ...block.elements,
-    ...(blockIcons[block.identifier] ? { icon: blockIcons[block.identifier] } : {}),
+    ...(blockIcons[block.identifier]
+      ? { icon: blockIcons[block.identifier] }
+      : {}),
   },
 }));
 
@@ -84,17 +86,20 @@ engine.mountToolbox(toolboxPanel, {
 });
 
 // Mount the code editor (hidden by default, async due to dynamic CodeMirror import)
-engine.mountCodeEditor(codeEditorContainer, {
-  theme: {
-    background: "#0f1117",
-    foreground: "#d4d4d4",
-    gutterBackground: "#0f1117",
-    gutterForeground: "#5d677a",
-    selectionBackground: "#264f78",
-  },
-}).then(() => {
-  engine.hideCodeEditor();
-});
+engine
+  .mountCodeEditor(codeEditorContainer, {
+    theme: {
+      background: "#0f1117",
+      foreground: "#d4d4d4",
+      gutterBackground: "#0f1117",
+      gutterForeground: "#5d677a",
+      selectionBackground: "#264f78",
+    },
+  })
+  .then(() => {
+    engine.hideCodeEditor();
+    engine.enableSelectionSync({ highlightColor: "rgba(139, 172, 221, 0.48)" });
+  });
 
 // Set the initial active button
 modeButtons.forEach((btn) =>
@@ -143,8 +148,10 @@ runBtn.addEventListener("click", () => {
 
   const customConsole = {
     log: (...args: unknown[]) => logs.push(args.map(String).join(" ")),
-    warn: (...args: unknown[]) => logs.push("[warn] " + args.map(String).join(" ")),
-    error: (...args: unknown[]) => logs.push("[error] " + args.map(String).join(" ")),
+    warn: (...args: unknown[]) =>
+      logs.push("[warn] " + args.map(String).join(" ")),
+    error: (...args: unknown[]) =>
+      logs.push("[error] " + args.map(String).join(" ")),
   };
 
   try {
