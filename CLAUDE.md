@@ -143,15 +143,23 @@ engine.mountToolbox(container, {
 
 ## Planned Features (Roadmap)
 
-- **Bidirectional sync** — AST parsing converts JS text back to blocks
-- **CodeMirror** text editor integration
-- **Block ↔ code selection sync** — selecting a block highlights the corresponding code lines
-- **Block metadata mapping** — maps block IDs to code positions
+### Completed
+
+- ~~**CodeMirror text editor integration**~~ — optional code editor with lazy loading
+- ~~**Block metadata mapping**~~ — maps block IDs to generated code positions
+- ~~**Block ↔ code selection sync**~~ — selecting a block highlights corresponding code lines and vice versa
+
+### Upcoming
+
+- **Bidirectional sync** — AST parsing converts text back to blocks (includes character-level highlighting for value blocks)
 - **Drag blocks into text editor**
 - **Error recovery / draft blocks** — handles incomplete/invalid code gracefully
 - **Headless UI components** (terminal, sidebar, info panel, resizable panes) — unstyled
-- **Multi-language code generation** — `generateCode(language)` supporting Python, Lua, Dart, PHP via Blockly's built-in generators
 - **Monaco editor (optional)** — separate entry point (`morphic-blocks/monaco`) for users who want full IDE features; zero cost for users who don't import it
+
+### Removed
+
+- ~~**Multi-language code generation**~~ — **Not needed.** Blockly's built-in language generators (Python, Lua, Dart, PHP) only cover Blockly's stock blocks, not custom Morphic blocks. Since behaviors already produce whatever code strings the developer writes, the "language" is fully controlled by the developer. Multi-language *display* is already handled by the element system (e.g., a `"syntax"` element can show Python, Java, or any syntax). Multi-language *execution* is impractical in a web framework where JavaScript is the runtime. Adding per-language behavior maps would create maintenance overhead with no real benefit.
 
 ## Conventions
 
