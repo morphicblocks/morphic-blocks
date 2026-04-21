@@ -104,12 +104,25 @@ A **mode** declares which elements are visible and, by scanning for the first `t
 - `categories` — optional metadata (name, colour); blocks reference them by name
 - `blocks` — flat array; per-block `elements` are plain `name: content` strings
 
+### Mode fields
+
+| Field           | Required       | Applies to | Purpose                                                            |
+|-----------------|----------------|------------|--------------------------------------------------------------------|
+| `name`          | yes            | any        | Mode identifier                                                    |
+| `elements`      | yes            | any        | Element names rendered on the toolbox tile                         |
+| `presentation`  | no             | any        | `"workspace"` (default) or `"codespace"`                           |
+| `primarySource` | when codespace | any        | Element name used as the primary view source (must be type `code`) |
+| `preview`       | no             | any        | Element name used by the preview editor (must be type `code`)      |
+
+Validation at mount: `presentation: "codespace"` requires `primarySource`; `primarySource` and `preview` must reference elements declared as `code` in `elementTypes`.
+
 ### Workspace template resolution
 
-1. First `type: "code"` element listed in the mode's `elements` array
-2. Fallback: first `type: "code"` element in the block definition
-3. Fallback: element literally named `"block"` (backward compat)
-4. Fallback: first element in the definition
+1. Mode's explicit `primarySource` (when set)
+2. First `type: "code"` element listed in the mode's `elements` array
+3. Fallback: first `type: "code"` element in the block definition
+4. Fallback: element literally named `"block"` (backward compat)
+5. Fallback: first element in the definition
 
 ## Rendered HTML (Morphic Block tile)
 

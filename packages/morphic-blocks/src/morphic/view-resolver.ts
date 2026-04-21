@@ -10,6 +10,7 @@ import type {
  * Resolves the workspace template for a block in a given mode.
  *
  * Resolution order:
+ * 0. Mode's explicit `primarySource` element (when set)
  * 1. First element in the mode's `elements` array whose type is "code"
  * 2. First element in the block definition whose type is "code"
  * 3. Element literally named "block" (backward-compat fallback)
@@ -22,9 +23,17 @@ export function resolveBlockView(
   modeDefs: MorphicModeDefinition[] = [],
 ): MorphicResolvedView {
   const elements = definition.elements;
+  const modeDef = modeDefs.find((m) => m.name === mode);
+
+  // Strategy 0: explicit primarySource declared on the mode
+  if (modeDef?.primarySource) {
+    const explicit = elements[modeDef.primarySource];
+    if (explicit !== undefined) {
+      return { mode, template: explicit, inputSlots: definition.inputSlots };
+    }
+  }
 
   // Strategy 1: first type:code element listed in this mode's elements array
-  const modeDef = modeDefs.find((m) => m.name === mode);
   if (modeDef) {
     for (const name of modeDef.elements) {
       if (elementTypes[name] === "code" && elements[name] !== undefined) {

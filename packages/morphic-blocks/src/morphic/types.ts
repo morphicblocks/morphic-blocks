@@ -29,6 +29,9 @@ export interface MorphicInputSlotDefinition {
  */
 export type MorphicBlockElements = Record<string, string>;
 
+/** How a mode is presented on screen. Defaults to "workspace" when omitted. */
+export type MorphicPresentation = "workspace" | "codespace";
+
 /**
  * Declares which elements are visible for a given mode.
  * CSS (one file per mode) controls how those elements look.
@@ -37,6 +40,23 @@ export interface MorphicModeDefinition {
   name: string;
   /** Element names that are visible in this mode (e.g. ["icon", "text"]). */
   elements: string[];
+  /**
+   * How this mode is presented:
+   * - "workspace" (default): Blockly block workspace
+   * - "codespace": text editor that replaces the workspace
+   */
+  presentation?: MorphicPresentation;
+  /**
+   * Name of the element (must be type "code") used as the primary source.
+   * - In workspace modes: used as the Blockly template; wins over auto-detection when set.
+   * - In codespace modes: used as the text rendered in the codespace. Required.
+   */
+  primarySource?: string;
+  /**
+   * Name of the element (must be type "code") used as the preview editor source
+   * (read-only). Optional; applies to both workspace and codespace modes.
+   */
+  preview?: string;
 }
 
 export interface MorphicBlockDefinition {

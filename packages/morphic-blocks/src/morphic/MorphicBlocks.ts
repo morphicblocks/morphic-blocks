@@ -26,6 +26,7 @@ import type {
   MorphicCodeEditorTheme,
   MorphicCodeGenerationResult,
   MorphicElementType,
+  MorphicModeDefinition,
   MorphicModeName,
   MorphicModeStyle,
   MorphicMountConfig,
@@ -122,6 +123,10 @@ export class MorphicBlocks {
     };
 
     this.mountConfig = resolvedConfig;
+
+    if (resolvedConfig.modes?.length) {
+      this.validateModeDefinitions(resolvedConfig.modes);
+    }
 
     this.styles.validateModeCoverage(
       mergedModeStyles,
@@ -443,6 +448,34 @@ export class MorphicBlocks {
       };
 
       this.registeredBlockTypes.add(definition.identifier);
+    }
+  }
+
+  private validateModeDefinitions(modes: MorphicModeDefinition[]): void {
+    for (const mode of modes) {
+      if (mode.presentation === "codespace" && !mode.primarySource) {
+        throw new Error(
+          `Mode "${mode.name}": presentation "codespace" requires a primarySource.`,
+        );
+      }
+
+      const refs: Array<[field: string, name: string]> = [];
+      if (mode.primarySource) refs.push(["primarySource", mode.primarySource]);
+      if (mode.preview) refs.push(["preview", mode.preview]);
+
+      for (const [field, name] of refs) {
+        const type = this.elementTypes[name];
+        if (type === undefined) {
+          throw new Error(
+            `Mode "${mode.name}": ${field} "${name}" is not declared in elementTypes.`,
+          );
+        }
+        if (type !== "code") {
+          throw new Error(
+            `Mode "${mode.name}": ${field} "${name}" must be of type "code" (got "${type}").`,
+          );
+        }
+      }
     }
   }
 
