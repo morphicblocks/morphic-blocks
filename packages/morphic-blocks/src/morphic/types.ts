@@ -180,7 +180,18 @@ export interface MorphicJavaScriptConfig {
 }
 
 export interface MorphicMountConfig {
-  workspaceContainer: HTMLElement;
+  /**
+   * Container for the Blockly workspace. Optional — may be omitted when only a
+   * codespace is used. At least one of `workspaceContainer` or `codespaceContainer`
+   * must be provided. When omitted, Blockly runs headless (offscreen) so the block
+   * model stays available.
+   */
+  workspaceContainer?: HTMLElement;
+  /**
+   * Container for the primary text editor (codespace). Optional — required when
+   * the initial `workspaceMode` uses `presentation: "codespace"`.
+   */
+  codespaceContainer?: HTMLElement;
   /** Mode definitions — drives automatic element visibility CSS. */
   modes?: MorphicModeDefinition[];
   toolbox?: MorphicToolboxConfig;

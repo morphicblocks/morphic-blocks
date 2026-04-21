@@ -37,6 +37,8 @@ morphic-blocks/
 4. `MorphicBlocks.mount()` initializes Blockly + morphic features
 5. `engine.setModes()` switches rendering mode at runtime — blocks re-render
 
+`mount()` accepts either `workspaceContainer`, `codespaceContainer`, or both. At least one is required. When only `codespaceContainer` is provided, Blockly runs headless (offscreen) so the block model stays authoritative. Modes with `presentation: "codespace"` require `codespaceContainer`.
+
 ### Template syntax
 
 - `%1`, `%2` — input slots (auto-create Blockly inputs)

@@ -59,13 +59,15 @@ function parseModeStylesFromFolder(
     .map((s): MorphicModeStyle => s);
 }
 
-/** Internal resolved config: workspaceMode and toolboxMode are guaranteed non-optional. */
+/** Internal resolved config: workspaceMode, toolboxMode and workspaceHost are guaranteed non-optional. */
 type MorphicResolvedMountConfig = Omit<
   MorphicMountConfig,
   "workspaceMode" | "toolboxMode"
 > & {
   workspaceMode: MorphicModeName;
   toolboxMode: MorphicModeName;
+  /** The element Blockly was injected into — either the user's workspaceContainer or an internal headless host. */
+  workspaceHost: HTMLElement;
 };
 
 export class MorphicBlocks {
@@ -86,6 +88,8 @@ export class MorphicBlocks {
   private appliedWorkspaceClasses: string[] = [];
   private appliedToolboxFlyoutClasses: string[] = [];
   private appliedToolboxShellClasses: string[] = [];
+  /** Offscreen div created when no user-supplied workspaceContainer is present. */
+  private headlessWorkspaceHost?: HTMLElement;
 
   public constructor(
     definitions: MorphicBlockDefinition[] | MorphicBlockDefinition,
@@ -115,11 +119,19 @@ export class MorphicBlocks {
     const availableModeNames = mergedModeStyles.map((s) => s.mode);
     const defaultMode =
       availableModeNames[0] ?? this.getAvailableModes()[0] ?? "default";
+    const workspaceMode = config.workspaceMode ?? defaultMode;
+    const toolboxMode = config.toolboxMode ?? defaultMode;
+
+    this.validateContainers(config, workspaceMode);
+
+    const workspaceHost = config.workspaceContainer ?? this.createHeadlessHost();
+
     const resolvedConfig: MorphicResolvedMountConfig = {
       ...config,
       modeStyles: mergedModeStyles,
-      workspaceMode: config.workspaceMode ?? defaultMode,
-      toolboxMode: config.toolboxMode ?? defaultMode,
+      workspaceMode,
+      toolboxMode,
+      workspaceHost,
     };
 
     this.mountConfig = resolvedConfig;
@@ -147,7 +159,7 @@ export class MorphicBlocks {
     const blocklyOptions =
       resolvedConfig.blockly ?? resolvedConfig.blocklyOptions ?? {};
 
-    this.workspace = Blockly.inject(resolvedConfig.workspaceContainer, {
+    this.workspace = Blockly.inject(resolvedConfig.workspaceHost, {
       ...blocklyOptions,
       ...(resolvedConfig.canvasToolbox ? {} : { toolbox: this.toolboxDefinition }),
     });
@@ -183,6 +195,11 @@ export class MorphicBlocks {
       this.workspace = undefined;
     }
 
+    if (this.headlessWorkspaceHost) {
+      this.headlessWorkspaceHost.remove();
+      this.headlessWorkspaceHost = undefined;
+    }
+
     this.mountConfig = undefined;
     this.toolboxDefinition = undefined;
     this.blockCategoryIndex.clear();
@@ -211,7 +228,7 @@ export class MorphicBlocks {
 
     this.toolboxCanvas = new MorphicToolboxCanvas({
       container,
-      workspaceContainer: this.mountConfig.workspaceContainer,
+      workspaceContainer: this.mountConfig.workspaceHost,
       workspace: this.workspace,
       definitions: this.definitions,
       blockColors: this.buildBlockColorMap(),
@@ -451,6 +468,33 @@ export class MorphicBlocks {
     }
   }
 
+  private validateContainers(
+    config: MorphicMountConfig,
+    workspaceMode: MorphicModeName,
+  ): void {
+    if (!config.workspaceContainer && !config.codespaceContainer) {
+      throw new Error(
+        "MorphicBlocks.mount requires at least one of workspaceContainer or codespaceContainer.",
+      );
+    }
+
+    const activeMode = (config.modes ?? []).find((m) => m.name === workspaceMode);
+    if (activeMode?.presentation === "codespace" && !config.codespaceContainer) {
+      throw new Error(
+        `Mode "${activeMode.name}" has presentation "codespace" but no codespaceContainer was provided.`,
+      );
+    }
+  }
+
+  private createHeadlessHost(): HTMLElement {
+    const host = document.createElement("div");
+    host.style.cssText =
+      "position:absolute;left:-9999px;top:-9999px;width:800px;height:600px;overflow:hidden;";
+    document.body.appendChild(host);
+    this.headlessWorkspaceHost = host;
+    return host;
+  }
+
   private validateModeDefinitions(modes: MorphicModeDefinition[]): void {
     for (const mode of modes) {
       if (mode.presentation === "codespace" && !mode.primarySource) {
@@ -533,7 +577,7 @@ export class MorphicBlocks {
       return;
     }
 
-    const container = this.mountConfig.workspaceContainer;
+    const container = this.mountConfig.workspaceHost;
     applyRootModeClasses(
       container,
       this.mountConfig.workspaceMode,
