@@ -56,12 +56,12 @@ A **Morphic Block** is the fundamental unit. It has named **elements** — the v
 | Type    | Toolbox tile            | Workspace block                                            |
 |---------|-------------------------|------------------------------------------------------------|
 | `text`  | Rendered as HTML label  | Never shown                                                |
-| `block` | Rendered as Blockly SVG | Used as Blockly template (`<img>` in content → FieldImage) |
+| `code`  | Rendered as Blockly SVG | Used as Blockly template (`<img>` in content → FieldImage) |
 | `image` | Rendered as `<img>`     | Never shown                                                |
 
 Element names (`title`, `icon`, `block`, `syntax`, …) are fully free-form. The type is declared once globally in `elementTypes` — not repeated per block.
 
-A **mode** declares which elements are visible and, by scanning for the first `type: "block"` element listed, determines which template is used in the workspace.
+A **mode** declares which elements are visible and, by scanning for the first `type: "code"` element listed, determines which template is used in the workspace.
 
 ## definitions.json Structure
 
@@ -71,8 +71,8 @@ A **mode** declares which elements are visible and, by scanning for the first `t
     "title":  "text",
     "text":   "text",
     "icon":   "image",
-    "block":  "block",
-    "syntax": "block"
+    "block":  "code",
+    "syntax": "code"
   },
   "modes": [
     { "name": "iconic",    "elements": ["icon", "title", "text"] },
@@ -99,15 +99,15 @@ A **mode** declares which elements are visible and, by scanning for the first `t
 }
 ```
 
-- `elementTypes` — global registry mapping element names to their type (`text`, `block`, `image`)
+- `elementTypes` — global registry mapping element names to their type (`text`, `code`, `image`)
 - `modes` — explicit mode definitions; mode names are arbitrary (no coupling to element names)
 - `categories` — optional metadata (name, colour); blocks reference them by name
 - `blocks` — flat array; per-block `elements` are plain `name: content` strings
 
 ### Workspace template resolution
 
-1. First `type: "block"` element listed in the mode's `elements` array
-2. Fallback: first `type: "block"` element in the block definition
+1. First `type: "code"` element listed in the mode's `elements` array
+2. Fallback: first `type: "code"` element in the block definition
 3. Fallback: element literally named `"block"` (backward compat)
 4. Fallback: first element in the definition
 

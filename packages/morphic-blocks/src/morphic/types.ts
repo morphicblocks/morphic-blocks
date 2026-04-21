@@ -5,10 +5,10 @@ export type MorphicModeName = string;
 /**
  * The rendering type of a named element.
  * - "text"  — rendered as an HTML label; never shown in the workspace
- * - "block" — rendered as a Blockly block template; <img> in content becomes FieldImage
+ * - "code"  — template with %N placeholders; rendered as a Blockly block in the workspace or as text in the codespace
  * - "image" — rendered as an <img> in the toolbox tile; never shown in the workspace
  */
-export type MorphicElementType = "text" | "block" | "image";
+export type MorphicElementType = "text" | "code" | "image";
 export type MorphicConnectionSpec = boolean | string | string[];
 export type MorphicInputKind = "value" | "statement" | "dummy";
 export type MorphicInputAlign = "left" | "centre" | "right";
@@ -67,7 +67,7 @@ export interface MorphicBlockDefinition {
 export interface MorphicBlocksFormat {
   /**
    * Global element type registry.
-   * Maps each element name to its type ("text", "block", or "image").
+   * Maps each element name to its type ("text", "code", or "image").
    * Declared once here; per-block elements remain plain name→content strings.
    */
   elementTypes?: Record<string, MorphicElementType>;

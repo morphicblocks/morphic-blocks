@@ -10,8 +10,8 @@ import type {
  * Resolves the workspace template for a block in a given mode.
  *
  * Resolution order:
- * 1. First element in the mode's `elements` array whose type is "block"
- * 2. First element in the block definition whose type is "block"
+ * 1. First element in the mode's `elements` array whose type is "code"
+ * 2. First element in the block definition whose type is "code"
  * 3. Element literally named "block" (backward-compat fallback)
  * 4. First element in the block definition
  */
@@ -23,19 +23,19 @@ export function resolveBlockView(
 ): MorphicResolvedView {
   const elements = definition.elements;
 
-  // Strategy 1: first type:block element listed in this mode's elements array
+  // Strategy 1: first type:code element listed in this mode's elements array
   const modeDef = modeDefs.find((m) => m.name === mode);
   if (modeDef) {
     for (const name of modeDef.elements) {
-      if (elementTypes[name] === "block" && elements[name] !== undefined) {
+      if (elementTypes[name] === "code" && elements[name] !== undefined) {
         return { mode, template: elements[name], inputSlots: definition.inputSlots };
       }
     }
   }
 
-  // Strategy 2: first type:block element anywhere in the definition
+  // Strategy 2: first type:code element anywhere in the definition
   for (const [name, content] of Object.entries(elements)) {
-    if (elementTypes[name] === "block") {
+    if (elementTypes[name] === "code") {
       return { mode, template: content, inputSlots: definition.inputSlots };
     }
   }

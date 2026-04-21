@@ -164,7 +164,7 @@ export class MorphicToolboxCanvas {
       const el = document.createElement("div");
       el.className = `morphic-element-${toModeClassToken(elementName)}`;
 
-      if (this.elementTypes[elementName] === "block") {
+      if (this.elementTypes[elementName] === "code") {
         const svg = this.createBlockPreviewSvg(definition, this.currentMode);
         if (svg) {
           el.appendChild(svg);

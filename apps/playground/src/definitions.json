@@ -3,9 +3,9 @@
     "title":  "text",
     "text":   "text",
     "icon":   "image",
-    "concept": "block",
-    "block":  "block",
-    "syntax": "block"
+    "concept": "code",
+    "block":  "code",
+    "syntax": "code"
   },
   "modes": [
     { "name": "iconic",    "elements": ["icon", "title", "text"] },
