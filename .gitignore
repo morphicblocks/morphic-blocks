@@ -200,3 +200,6 @@ pnpm-lock.yaml
 
 # add prototype folder
 prototype/*
+
+# research notes (local-only)
+research_notes/
