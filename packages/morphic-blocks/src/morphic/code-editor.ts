@@ -267,6 +267,11 @@ export class MorphicCodeEditor {
     this.lastCode = "";
   }
 
+  /** Force a regeneration now (e.g. after the underlying template source changes). */
+  public refresh(): void {
+    this.syncNow();
+  }
+
   private syncNow(): void {
     if (!this.editorView || !this.cm) return;
     const result = this.generateWithMetadata();

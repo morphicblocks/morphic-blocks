@@ -11,6 +11,7 @@ import {
 } from "./block-view";
 import { MorphicCodeEditor } from "./code-editor";
 import { generateJavaScriptFromWorkspace, generateJavaScriptWithMetadataFromWorkspace } from "./codegen";
+import { generateTextFromWorkspace } from "./template-codegen";
 import { MorphicSelectionSync } from "./selection-sync";
 import { collectAvailableModes, createDefinitionMap } from "./definitions";
 import { MorphicStyleManager } from "./styles";
@@ -82,6 +83,7 @@ export class MorphicBlocks {
   private flyoutWorkspace?: Blockly.WorkspaceSvg;
   private toolboxCanvas?: MorphicToolboxCanvas;
   private codeEditor?: MorphicCodeEditor;
+  private codespace?: MorphicCodeEditor;
   private selectionSync?: MorphicSelectionSync;
   private toolboxDefinition?: NonNullable<Blockly.BlocklyOptions["toolbox"]>;
   private blockCategoryIndex = new Map<string, MorphicBlockCategoryMeta>();
@@ -181,6 +183,9 @@ export class MorphicBlocks {
     this.codeEditor?.dispose();
     this.codeEditor = undefined;
 
+    this.codespace?.dispose();
+    this.codespace = undefined;
+
     this.toolboxCanvas?.dispose();
     this.toolboxCanvas = undefined;
 
@@ -271,6 +276,7 @@ export class MorphicBlocks {
     this.bindFlyoutWorkspace();
     this.renderWorkspaceBlocks();
     this.renderFlyoutBlocks();
+    this.codespace?.refresh();
   }
 
   public generateJavaScript(): string {
@@ -321,6 +327,51 @@ export class MorphicBlocks {
     );
 
     await this.codeEditor.mount();
+  }
+
+  /**
+   * Mounts the primary text editor (codespace) into the `codespaceContainer`
+   * declared at `mount()`. Renders the workspace as text using the active
+   * mode's `primarySource` element. Read-only for now; Task 4 adds drops.
+   */
+  public async mountCodespace(
+    options?: MorphicCodeEditorOptions,
+  ): Promise<void> {
+    if (!this.workspace || !this.mountConfig) {
+      throw new Error(
+        "MorphicBlocks must be mounted before mountCodespace can be used.",
+      );
+    }
+    if (!this.mountConfig.codespaceContainer) {
+      throw new Error(
+        "mountCodespace requires a codespaceContainer to be passed to mount().",
+      );
+    }
+
+    this.codespace?.dispose();
+
+    this.codespace = new MorphicCodeEditor(
+      this.mountConfig.codespaceContainer,
+      this.workspace,
+      () => this.generateCodespaceText(),
+      options,
+    );
+
+    await this.codespace.mount();
+  }
+
+  private generateCodespaceText(): MorphicCodeGenerationResult {
+    if (!this.workspace || !this.mountConfig) {
+      return { code: "", metadata: new Map() };
+    }
+    const mode = (this.mountConfig.modes ?? []).find(
+      (m) => m.name === this.mountConfig?.workspaceMode,
+    );
+    const elementName = mode?.primarySource;
+    if (!elementName) {
+      return { code: "", metadata: new Map() };
+    }
+    return generateTextFromWorkspace(this.workspace, elementName, this.definitions);
   }
 
   public showCodeEditor(): void {

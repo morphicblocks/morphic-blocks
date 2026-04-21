@@ -182,6 +182,11 @@ function renderTemplate(
       continue;
     }
 
+    if (token.kind === "field") {
+      // Fields are created by behaviors' onViewApplied, not by the template.
+      continue;
+    }
+
     if (createdPlaceholders.has(token.index)) {
       const duplicatePlaceholder = block.appendDummyInput(
         `DUPLICATE_${token.index}_${block.inputList.length}`,

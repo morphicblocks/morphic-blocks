@@ -41,9 +41,15 @@ morphic-blocks/
 
 ### Template syntax
 
-- `%1`, `%2` — input slots (auto-create Blockly inputs)
+- `%1`, `%2` — input slots (auto-create Blockly inputs; also substituted in text rendering)
+- `%FIELDNAME` — field value (uppercase alpha token; substituted in text rendering; ignored by Blockly block rendering because behaviors attach fields via `onViewApplied`)
 - `<img src="...">` — image/SVG fields
 - Plain text — label fields
+
+**Whitespace and indentation:** Text-mode rendering preserves whatever the template contains. Authors control line breaks and indent:
+
+- `"if ( %1 ) { %2 }"` → single line
+- `"if ( %1 ) {\n  %2\n}"` → multi-line with indent
 
 ## Playground (`apps/playground`)
 

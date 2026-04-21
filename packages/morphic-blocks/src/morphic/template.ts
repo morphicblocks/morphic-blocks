@@ -16,7 +16,16 @@ export interface MorphicPlaceholderToken {
   index: number;
 }
 
-export type MorphicTemplateToken = MorphicImageToken | MorphicTextToken | MorphicPlaceholderToken;
+export interface MorphicFieldToken {
+  kind: "field";
+  name: string;
+}
+
+export type MorphicTemplateToken =
+  | MorphicImageToken
+  | MorphicTextToken
+  | MorphicPlaceholderToken
+  | MorphicFieldToken;
 
 const DEFAULT_IMAGE_SIZE = 18;
 
@@ -55,12 +64,24 @@ export function parseTemplate(template: string): MorphicTemplateToken[] {
       continue;
     }
 
+    if (char === "%" && /[A-Z_]/.test(template[index + 1] ?? "")) {
+      let end = index + 1;
+      while (end < template.length && /[A-Z0-9_]/.test(template[end] ?? "")) {
+        end += 1;
+      }
+      const name = template.slice(index + 1, end);
+      tokens.push({ kind: "field", name });
+      index = end;
+      continue;
+    }
+
     let textEnd = index + 1;
     while (textEnd < template.length) {
       const nextChar = template[textEnd];
       const isPlaceholderStart = nextChar === "%" && /\d/.test(template[textEnd + 1] ?? "");
+      const isFieldStart = nextChar === "%" && /[A-Z_]/.test(template[textEnd + 1] ?? "");
       const isImgTagStart = nextChar === "<" && /^<img\b/i.test(template.slice(textEnd));
-      if (isImgTagStart || isPlaceholderStart) {
+      if (isImgTagStart || isPlaceholderStart || isFieldStart) {
         break;
       }
       textEnd += 1;
@@ -93,6 +114,9 @@ export function renderTemplateAsHtml(tokens: MorphicTemplateToken[]): string {
     }
     if (token.kind === "image") {
       return `<img src="${escapeAttr(token.src)}" alt="${escapeAttr(token.alt)}" width="${token.width}" height="${token.height}">`;
+    }
+    if (token.kind === "field") {
+      return `<span class="morphic-field-placeholder" data-field-name="${escapeAttr(token.name)}"></span>`;
     }
     // placeholder
     return `<span class="morphic-toolbox-slot" data-slot-index="${token.index}"></span>`;
