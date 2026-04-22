@@ -364,14 +364,13 @@ export class MorphicBlocks {
     if (!this.workspace || !this.mountConfig) {
       return { code: "", metadata: new Map() };
     }
-    const mode = (this.mountConfig.modes ?? []).find(
-      (m) => m.name === this.mountConfig?.workspaceMode,
+    return generateTextFromWorkspace(
+      this.workspace,
+      this.mountConfig.workspaceMode,
+      this.definitions,
+      this.elementTypes,
+      this.mountConfig.modes ?? [],
     );
-    const elementName = mode?.primarySource;
-    if (!elementName) {
-      return { code: "", metadata: new Map() };
-    }
-    return generateTextFromWorkspace(this.workspace, elementName, this.definitions);
   }
 
   public showCodeEditor(): void {
