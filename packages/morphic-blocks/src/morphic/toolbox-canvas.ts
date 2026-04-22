@@ -13,7 +13,7 @@ import type {
   MorphicToolboxCategory,
 } from "./types";
 
-const DRAG_DATA_KEY = "morphic/block-type";
+export const DRAG_DATA_KEY = "morphic/block-type";
 
 export class MorphicToolboxCanvas {
   private readonly container: HTMLElement;

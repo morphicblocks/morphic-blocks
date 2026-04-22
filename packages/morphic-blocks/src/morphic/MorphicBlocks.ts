@@ -16,7 +16,7 @@ import { MorphicSelectionSync } from "./selection-sync";
 import { collectAvailableModes, createDefinitionMap } from "./definitions";
 import { MorphicStyleManager } from "./styles";
 import { toModeClassToken } from "./template";
-import { MorphicToolboxCanvas } from "./toolbox-canvas";
+import { DRAG_DATA_KEY, MorphicToolboxCanvas } from "./toolbox-canvas";
 import { buildToolboxDefinition } from "./toolbox";
 import { resolveBlockView } from "./view-resolver";
 import type {
@@ -92,6 +92,8 @@ export class MorphicBlocks {
   private appliedToolboxShellClasses: string[] = [];
   /** Offscreen div created when no user-supplied workspaceContainer is present. */
   private headlessWorkspaceHost?: HTMLElement;
+  /** Teardown fn for codespace drag/drop listeners; set when codespace is mounted. */
+  private codespaceDropTeardown?: () => void;
 
   public constructor(
     definitions: MorphicBlockDefinition[] | MorphicBlockDefinition,
@@ -182,6 +184,9 @@ export class MorphicBlocks {
 
     this.codeEditor?.dispose();
     this.codeEditor = undefined;
+
+    this.codespaceDropTeardown?.();
+    this.codespaceDropTeardown = undefined;
 
     this.codespace?.dispose();
     this.codespace = undefined;
@@ -349,6 +354,7 @@ export class MorphicBlocks {
     }
 
     this.codespace?.dispose();
+    this.codespaceDropTeardown?.();
 
     this.codespace = new MorphicCodeEditor(
       this.mountConfig.codespaceContainer,
@@ -358,6 +364,40 @@ export class MorphicBlocks {
     );
 
     await this.codespace.mount();
+    this.codespaceDropTeardown = this.attachCodespaceDropTarget(
+      this.mountConfig.codespaceContainer,
+      this.workspace,
+    );
+  }
+
+  private attachCodespaceDropTarget(
+    container: HTMLElement,
+    workspace: Blockly.WorkspaceSvg,
+  ): () => void {
+    const onDragOver = (e: DragEvent) => {
+      if (e.dataTransfer?.types.includes(DRAG_DATA_KEY)) {
+        e.preventDefault();
+      }
+    };
+
+    const onDrop = (e: DragEvent) => {
+      const blockType = e.dataTransfer?.getData(DRAG_DATA_KEY);
+      if (!blockType) return;
+      e.preventDefault();
+      const block = workspace.newBlock(blockType) as Blockly.BlockSvg;
+      block.initSvg();
+      block.render();
+      const offset = workspace.getTopBlocks(false).length * 40;
+      block.moveTo(new Blockly.utils.Coordinate(20, 20 + offset));
+    };
+
+    container.addEventListener("dragover", onDragOver);
+    container.addEventListener("drop", onDrop);
+
+    return () => {
+      container.removeEventListener("dragover", onDragOver);
+      container.removeEventListener("drop", onDrop);
+    };
   }
 
   private generateCodespaceText(): MorphicCodeGenerationResult {
