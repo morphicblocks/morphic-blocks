@@ -82,7 +82,10 @@ function renderBlock(block: Blockly.Block, ctx: RenderContext): string {
     }
     if (token.kind === "field") {
       const field = block.getField(token.name);
-      out += field ? String(field.getValue()) : "";
+      if (field) {
+        const getText = (field as { getText?: () => string }).getText;
+        out += typeof getText === "function" ? getText.call(field) : String(field.getValue());
+      }
       continue;
     }
     if (token.kind === "image") {
@@ -97,6 +100,14 @@ function renderBlock(block: Blockly.Block, ctx: RenderContext): string {
     const input = block.getInput(inputName);
     const target = input?.connection?.targetBlock() ?? null;
     if (!target) {
+      // No child block — render any named fields attached to this input.
+      if (input) {
+        for (const field of input.fieldRow) {
+          if (!field.name) continue;
+          const getText = (field as { getText?: () => string }).getText;
+          out += typeof getText === "function" ? getText.call(field) : String(field.getValue());
+        }
+      }
       continue;
     }
 
