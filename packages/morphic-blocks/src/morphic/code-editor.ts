@@ -164,6 +164,11 @@ export class MorphicCodeEditor {
             return cmView.Decoration.set(ranges);
           }
         }
+        // Drop stale highlights whenever the doc changes; selection sync will
+        // re-apply fresh ones on the next block-selection event.
+        if (!tr.changes.empty) {
+          return cmView.Decoration.none;
+        }
         return decorations;
       },
       provide(field) {
