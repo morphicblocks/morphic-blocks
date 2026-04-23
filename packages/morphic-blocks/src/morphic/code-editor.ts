@@ -9,6 +9,7 @@ import type {
 type EditorView = import("@codemirror/view").EditorView;
 type Extension = import("@codemirror/state").Extension;
 type StateEffect<T = unknown> = import("@codemirror/state").StateEffect<T>;
+type StateEffectType<T> = { of: (value: T) => StateEffect<T> };
 
 /** A single span of 1-based lines. */
 export interface LineSpan { fromLine: number; toLine: number }
@@ -108,6 +109,7 @@ export class MorphicCodeEditor {
   private themeCompartment?: import("@codemirror/state").Compartment;
   private highlightEffect?: StateEffect<HighlightRange>;
   private highlightColor = "rgba(255, 255, 255, 0.07)";
+  private metadataEffect?: StateEffectType<MorphicCodeGenerationResult["metadata"]>;
 
   constructor(
     container: HTMLElement,
@@ -189,6 +191,7 @@ export class MorphicCodeEditor {
       highlightField,
       cursorListener,
       this.themeCompartment.of(themeExt),
+      ...this.buildDeleteExtensions(cmView, cmState),
       ...(this.options.extensions ?? []) as Extension[],
     ];
 
@@ -204,7 +207,121 @@ export class MorphicCodeEditor {
       }),
     });
 
+    // Populate the delete gutter with initial metadata (if onDelete is configured).
+    if (this.metadataEffect && this.metadata.size > 0) {
+      this.editorView.dispatch({
+        effects: this.metadataEffect.of(this.metadata),
+      });
+    }
+
     this.attachSyncListener();
+  }
+
+  private buildDeleteExtensions(
+    cmView: typeof import("@codemirror/view"),
+    cmState: typeof import("@codemirror/state"),
+  ): Extension[] {
+    const onDelete = this.options.onDelete;
+    if (!onDelete) return [];
+
+    const metadataEffect = cmState.StateEffect.define<MorphicCodeGenerationResult["metadata"]>();
+    this.metadataEffect = metadataEffect;
+
+    class DeleteMarker extends cmView.GutterMarker {
+      toDOM() {
+        const el = document.createElement("span");
+        el.textContent = "✕";
+        el.className = "morphic-delete-marker";
+        el.style.cssText = [
+          "display: inline-flex",
+          "align-items: center",
+          "justify-content: center",
+          "width: 16px",
+          "height: 16px",
+          "margin: 0 4px",
+          "border-radius: 50%",
+          "background: rgba(255, 255, 255, 0.12)",
+          "color: rgba(255, 255, 255, 0.7)",
+          "font-size: 10px",
+          "line-height: 1",
+          "cursor: pointer",
+          "transition: background 0.15s, color 0.15s",
+        ].join(";");
+        el.addEventListener("mouseenter", () => {
+          el.style.background = "rgba(255, 255, 255, 0.22)";
+          el.style.color = "#fff";
+        });
+        el.addEventListener("mouseleave", () => {
+          el.style.background = "rgba(255, 255, 255, 0.12)";
+          el.style.color = "rgba(255, 255, 255, 0.7)";
+        });
+        return el;
+      }
+    }
+    const marker = new DeleteMarker();
+
+    const markersField = cmState.StateField.define<import("@codemirror/state").RangeSet<import("@codemirror/view").GutterMarker>>({
+      create() {
+        return cmState.RangeSet.empty;
+      },
+      update(markers, tr) {
+        for (const effect of tr.effects) {
+          if (effect.is(metadataEffect)) {
+            const meta = effect.value;
+            const doc = tr.state.doc;
+            const lines = new Set<number>();
+            for (const { startLine } of meta.values()) {
+              if (startLine >= 1 && startLine <= doc.lines) {
+                lines.add(startLine);
+              }
+            }
+            const ranges = Array.from(lines)
+              .sort((a, b) => a - b)
+              .map((line) => marker.range(doc.line(line).from));
+            return cmState.RangeSet.of(ranges, true);
+          }
+        }
+        return markers.map(tr.changes);
+      },
+    });
+
+    const deleteGutter = cmView.gutter({
+      class: "morphic-delete-gutter",
+      markers(view) {
+        return view.state.field(markersField);
+      },
+      initialSpacer: () => marker,
+      domEventHandlers: {
+        click(view, gutterBlock) {
+          const line = view.state.doc.lineAt(gutterBlock.from).number;
+          onDelete(line);
+          return true;
+        },
+      },
+    });
+
+    const deleteKeymap = cmView.keymap.of([
+      {
+        key: "Delete",
+        run: (view) => {
+          if (!view.state.selection.main.empty) return false;
+          const line = view.state.doc.lineAt(view.state.selection.main.head).number;
+          onDelete(line);
+          return true;
+        },
+      },
+      {
+        key: "Backspace",
+        run: (view) => {
+          if (!view.state.selection.main.empty) return false;
+          const line = view.state.doc.lineAt(view.state.selection.main.head).number;
+          onDelete(line);
+          return true;
+        },
+      },
+    ]);
+
+    return [markersField, deleteGutter, cmState.Prec.highest(deleteKeymap)];
   }
 
   show(): void {
@@ -284,6 +401,7 @@ export class MorphicCodeEditor {
         to: this.editorView.state.doc.length,
         insert: result.code,
       },
+      effects: this.metadataEffect ? [this.metadataEffect.of(result.metadata)] : undefined,
     });
   }
 

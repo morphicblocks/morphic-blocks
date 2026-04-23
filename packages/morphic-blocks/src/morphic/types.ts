@@ -273,6 +273,12 @@ export interface MorphicCodeEditorOptions {
   theme?: MorphicCodeEditorTheme;
   /** Raw CodeMirror extensions for power users. Appended after the built-in ones. */
   extensions?: unknown[];
+  /**
+   * Called when the user requests to delete the block at a given 1-based line
+   * (via Delete/Backspace on an empty selection, or a click on the gutter ✕).
+   * When set, the editor installs a keymap and a delete gutter.
+   */
+  onDelete?: (line: number) => void;
 }
 
 /** Options for `enableSelectionSync()`. */

@@ -356,11 +356,16 @@ export class MorphicBlocks {
     this.codespace?.dispose();
     this.codespaceDropTeardown?.();
 
+    const mergedOptions: MorphicCodeEditorOptions = {
+      ...options,
+      onDelete: options?.onDelete ?? ((line) => this.deleteBlockAtCodespaceLine(line)),
+    };
+
     this.codespace = new MorphicCodeEditor(
       this.mountConfig.codespaceContainer,
       this.workspace,
       () => this.generateCodespaceText(),
-      options,
+      mergedOptions,
     );
 
     await this.codespace.mount();
@@ -398,6 +403,26 @@ export class MorphicBlocks {
       container.removeEventListener("dragover", onDragOver);
       container.removeEventListener("drop", onDrop);
     };
+  }
+
+  private deleteBlockAtCodespaceLine(line: number): void {
+    const meta = this.codespace?.metadata;
+    if (!this.workspace || !meta || meta.size === 0) return;
+
+    // Pick the innermost block whose range contains the line.
+    let bestId: string | null = null;
+    let bestSize = Infinity;
+    for (const [id, { startLine, endLine }] of meta) {
+      if (line < startLine || line > endLine) continue;
+      const size = endLine - startLine;
+      if (size < bestSize) {
+        bestSize = size;
+        bestId = id;
+      }
+    }
+    if (bestId) {
+      this.workspace.getBlockById(bestId)?.dispose(true);
+    }
   }
 
   private generateCodespaceText(): MorphicCodeGenerationResult {
