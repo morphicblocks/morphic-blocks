@@ -15,6 +15,12 @@ interface RenderContext {
   definitions: ReadonlyMap<string, MorphicBlockDefinition>;
   elementTypes: Record<string, MorphicElementType>;
   modeDefs: MorphicModeDefinition[];
+  /**
+   * When set, every block uses `def.elements[elementOverride]` directly
+   * (skipping mode-based resolution). Used by the preview editor to render
+   * a specific element regardless of the active mode's primary source.
+   */
+  elementOverride?: string;
 }
 
 interface RenderState {
@@ -41,9 +47,10 @@ export function generateTextFromWorkspace(
   definitions: ReadonlyMap<string, MorphicBlockDefinition>,
   elementTypes: Record<string, MorphicElementType>,
   modeDefs: MorphicModeDefinition[],
+  elementOverride?: string,
 ): MorphicCodeGenerationResult {
   const state: RenderState = { output: "", metadata: new Map() };
-  const ctx: RenderContext = { mode, definitions, elementTypes, modeDefs };
+  const ctx: RenderContext = { mode, definitions, elementTypes, modeDefs, elementOverride };
 
   let first = true;
   for (const block of workspace.getTopBlocks(true)) {
@@ -90,10 +97,16 @@ function renderBlock(
   if (!definition) return;
 
   let template: string;
-  try {
-    template = resolveBlockView(definition, ctx.mode, ctx.elementTypes, ctx.modeDefs).template;
-  } catch {
-    return;
+  if (ctx.elementOverride) {
+    const explicit = definition.elements[ctx.elementOverride];
+    if (explicit === undefined) return;
+    template = explicit;
+  } else {
+    try {
+      template = resolveBlockView(definition, ctx.mode, ctx.elementTypes, ctx.modeDefs).template;
+    } catch {
+      return;
+    }
   }
 
   const before = state.output.length;

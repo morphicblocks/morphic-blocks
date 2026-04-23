@@ -84,6 +84,7 @@ export class MorphicBlocks {
   private toolboxCanvas?: MorphicToolboxCanvas;
   private codeEditor?: MorphicCodeEditor;
   private codespace?: MorphicCodeEditor;
+  private previewEditor?: MorphicCodeEditor;
   private selectionSync?: MorphicSelectionSync;
   private toolboxDefinition?: NonNullable<Blockly.BlocklyOptions["toolbox"]>;
   private blockCategoryIndex = new Map<string, MorphicBlockCategoryMeta>();
@@ -191,6 +192,9 @@ export class MorphicBlocks {
     this.codespace?.dispose();
     this.codespace = undefined;
 
+    this.previewEditor?.dispose();
+    this.previewEditor = undefined;
+
     this.toolboxCanvas?.dispose();
     this.toolboxCanvas = undefined;
 
@@ -282,6 +286,7 @@ export class MorphicBlocks {
     this.renderWorkspaceBlocks();
     this.renderFlyoutBlocks();
     this.codespace?.refresh();
+    this.previewEditor?.refresh();
   }
 
   public generateJavaScript(): string {
@@ -403,6 +408,54 @@ export class MorphicBlocks {
       container.removeEventListener("dragover", onDragOver);
       container.removeEventListener("drop", onDrop);
     };
+  }
+
+  /**
+   * Mounts a read-only preview editor that renders the current mode's
+   * `preview` element as text. Re-renders on workspace and mode changes.
+   * If the active mode has no `preview` declared, the editor stays empty.
+   */
+  public async mountPreview(
+    container: HTMLElement,
+    options?: MorphicCodeEditorOptions,
+  ): Promise<void> {
+    if (!this.workspace || !this.mountConfig) {
+      throw new Error(
+        "MorphicBlocks must be mounted before mountPreview can be used.",
+      );
+    }
+
+    this.previewEditor?.dispose();
+
+    this.previewEditor = new MorphicCodeEditor(
+      container,
+      this.workspace,
+      () => this.generatePreviewText(),
+      options,
+    );
+
+    await this.previewEditor.mount();
+  }
+
+  private generatePreviewText(): MorphicCodeGenerationResult {
+    if (!this.workspace || !this.mountConfig) {
+      return { code: "", metadata: new Map() };
+    }
+    const mode = (this.mountConfig.modes ?? []).find(
+      (m) => m.name === this.mountConfig?.workspaceMode,
+    );
+    const elementName = mode?.preview;
+    if (!elementName) {
+      return { code: "", metadata: new Map() };
+    }
+    return generateTextFromWorkspace(
+      this.workspace,
+      this.mountConfig.workspaceMode,
+      this.definitions,
+      this.elementTypes,
+      this.mountConfig.modes ?? [],
+      elementName,
+    );
   }
 
   private deleteBlockAtCodespaceLine(line: number): void {
