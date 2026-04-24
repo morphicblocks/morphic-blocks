@@ -103,15 +103,15 @@ const editorTheme = {
   selectionBackground: "#264f78",
 };
 
-engine.mountCodeEditor(codeEditorContainer, { theme: editorTheme }).then(() => {
+Promise.all([
+  engine.mountCodeEditor(codeEditorContainer, { theme: editorTheme }),
+  engine.mountCodespace({ theme: editorTheme }),
+  engine.mountPreview(previewContainer, {
+    theme: { ...editorTheme, background: "#161a24", gutterBackground: "#161a24", foreground: "#bfc7d9" },
+  }),
+]).then(() => {
   engine.hideCodeEditor();
   engine.enableSelectionSync({ highlightColor: "rgba(139, 172, 221, 0.48)" });
-});
-
-engine.mountCodespace({ theme: editorTheme });
-
-engine.mountPreview(previewContainer, {
-  theme: { ...editorTheme, background: "#161a24", gutterBackground: "#161a24", foreground: "#bfc7d9" },
 });
 
 // ── Level Buttons ──────────────────────────────────────
