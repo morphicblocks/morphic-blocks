@@ -397,8 +397,9 @@ export class MorphicBlocks {
       const block = workspace.newBlock(blockType) as Blockly.BlockSvg;
       block.initSvg();
       block.render();
-      const offset = workspace.getTopBlocks(false).length * 40;
+      const offset = workspace.getTopBlocks(false).length * 80;
       block.moveTo(new Blockly.utils.Coordinate(20, 20 + offset));
+      Blockly.svgResize(workspace);
     };
 
     container.addEventListener("dragover", onDragOver);
