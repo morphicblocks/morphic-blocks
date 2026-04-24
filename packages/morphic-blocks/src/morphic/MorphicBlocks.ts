@@ -509,20 +509,31 @@ export class MorphicBlocks {
   }
 
   /**
-   * Enable bidirectional selection sync between the Blockly workspace and the
-   * code editor. Requires `mountCodeEditor()` to have been called first.
+   * Enable bidirectional selection sync between the Blockly workspace and every
+   * currently-mounted editor (code editor, codespace, preview). Requires at
+   * least one of those editors to be mounted first.
    */
   public enableSelectionSync(options?: MorphicSelectionSyncOptions): void {
-    if (!this.workspace || !this.codeEditor) {
+    if (!this.workspace) {
       throw new Error(
-        "MorphicBlocks must be mounted and a code editor must be active before enableSelectionSync can be used.",
+        "MorphicBlocks must be mounted before enableSelectionSync can be used.",
+      );
+    }
+
+    const editors = [this.codeEditor, this.codespace, this.previewEditor].filter(
+      (e): e is MorphicCodeEditor => e !== undefined,
+    );
+
+    if (editors.length === 0) {
+      throw new Error(
+        "enableSelectionSync requires at least one of mountCodeEditor, mountCodespace, or mountPreview to have been called first.",
       );
     }
 
     this.selectionSync?.disable();
     this.selectionSync = new MorphicSelectionSync(
       this.workspace,
-      this.codeEditor,
+      editors,
       options,
     );
     this.selectionSync.enable();

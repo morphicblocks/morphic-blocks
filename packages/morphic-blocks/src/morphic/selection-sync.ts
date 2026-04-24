@@ -1,39 +1,51 @@
 import * as Blockly from "blockly";
 import type { LineSpan, MorphicCodeEditor } from "./code-editor";
-import type { MorphicCodeBlockPosition, MorphicCodeMetadata, MorphicSelectionSyncOptions } from "./types";
+import type {
+  MorphicCodeBlockPosition,
+  MorphicCodeMetadata,
+  MorphicSelectionSyncOptions,
+} from "./types";
 
 const DEFAULT_HIGHLIGHT_COLOR = "rgba(255, 255, 255, 0.07)";
 
 /**
- * Bidirectional selection sync between a Blockly workspace and a MorphicCodeEditor.
+ * Bidirectional selection sync between a Blockly workspace and one or more
+ * `MorphicCodeEditor` instances (code editor, codespace, preview).
  *
- * - Block → Code: selecting a block highlights its **own** lines (excluding children).
- * - Code → Block: clicking a code line selects the corresponding block.
+ * - Block → Code: selecting a block highlights its **own** lines (excluding
+ *   children) in every attached editor. Each editor's spans are computed from
+ *   its own metadata — the same block can map to different line ranges when
+ *   editors render different languages.
+ * - Code → Block: moving the cursor in any editor selects the corresponding
+ *   block and re-broadcasts highlights to the other editors.
  *
- * A guard flag prevents circular A → B → A updates.
+ * A guard flag prevents circular updates.
  */
 export class MorphicSelectionSync {
   private workspace: Blockly.WorkspaceSvg;
-  private editor: MorphicCodeEditor;
+  private editors: MorphicCodeEditor[];
   private blockToCode: boolean;
   private codeToBlock: boolean;
 
   private blockListener?: (event: Blockly.Events.Abstract) => void;
-  private cursorCallback?: (line: number) => void;
+  private cursorCallbacks = new Map<MorphicCodeEditor, (line: number) => void>();
 
   /** Prevents circular updates. */
   private guard = false;
 
   constructor(
     workspace: Blockly.WorkspaceSvg,
-    editor: MorphicCodeEditor,
+    editors: MorphicCodeEditor | MorphicCodeEditor[],
     options: MorphicSelectionSyncOptions = {},
   ) {
     this.workspace = workspace;
-    this.editor = editor;
+    this.editors = Array.isArray(editors) ? [...editors] : [editors];
     this.blockToCode = options.blockToCode !== false;
     this.codeToBlock = options.codeToBlock !== false;
-    editor.setHighlightColor(options.highlightColor ?? DEFAULT_HIGHLIGHT_COLOR);
+    const color = options.highlightColor ?? DEFAULT_HIGHLIGHT_COLOR;
+    for (const editor of this.editors) {
+      editor.setHighlightColor(color);
+    }
   }
 
   /** Start listening for selection events in both directions. */
@@ -42,15 +54,17 @@ export class MorphicSelectionSync {
       this.attachBlockListener();
     }
     if (this.codeToBlock) {
-      this.attachCursorListener();
+      this.attachCursorListeners();
     }
   }
 
   /** Stop listening and clear highlights / selection. */
   disable(): void {
     this.detachBlockListener();
-    this.detachCursorListener();
-    this.editor.clearHighlight();
+    this.detachCursorListeners();
+    for (const editor of this.editors) {
+      editor.clearHighlight();
+    }
   }
 
   // ── Block → Code ────────────────────────────────────────
@@ -62,22 +76,10 @@ export class MorphicSelectionSync {
       if (event.type !== "selected") return;
       if (this.guard) return;
 
-      const selectedEvent = event as Blockly.Events.Selected;
-      const blockId = selectedEvent.newElementId;
-
-      if (!blockId) {
-        this.editor.clearHighlight();
-        return;
-      }
-
-      const spans = this.computeOwnSpans(blockId);
-      if (!spans) {
-        this.editor.clearHighlight();
-        return;
-      }
+      const blockId = (event as Blockly.Events.Selected).newElementId ?? undefined;
 
       this.guard = true;
-      this.editor.highlightLines(spans);
+      this.broadcastHighlight(blockId);
       this.guard = false;
     };
 
@@ -90,67 +92,79 @@ export class MorphicSelectionSync {
     this.blockListener = undefined;
   }
 
-  // ── Code → Block ────────────────────────────────────────
-
-  private attachCursorListener(): void {
-    if (this.cursorCallback) return;
-
-    this.cursorCallback = (line: number) => {
-      if (this.guard) return;
-
-      const blockId = this.findBlockAtLine(line, this.editor.metadata);
-
+  /** Update every editor's highlight for the given block (or clear if undefined). */
+  private broadcastHighlight(blockId?: string): void {
+    for (const editor of this.editors) {
       if (!blockId) {
-        // Clicked a line that doesn't belong to any block — deselect & clear.
-        this.guard = true;
-        Blockly.common.setSelected(null);
-        this.editor.clearHighlight();
-        this.guard = false;
-        return;
+        editor.clearHighlight();
+        continue;
       }
-
-      const block = this.workspace.getBlockById(blockId);
-      if (!block) return;
-
-      // Skip if this block is already selected.
-      if (Blockly.common.getSelected() === block) return;
-
-      this.guard = true;
-      Blockly.common.setSelected(block as Blockly.BlockSvg);
-      // Update highlight directly — the guard blocks the block→code listener,
-      // so we must set the highlight here to keep it in sync.
-      const spans = this.computeOwnSpans(blockId);
+      const spans = this.computeOwnSpans(blockId, editor.metadata);
       if (spans) {
-        this.editor.highlightLines(spans);
+        editor.highlightLines(spans);
+      } else {
+        editor.clearHighlight();
       }
-      this.guard = false;
-    };
-
-    this.editor.onCursorLine = this.cursorCallback;
+    }
   }
 
-  private detachCursorListener(): void {
-    if (!this.cursorCallback) return;
-    if (this.editor.onCursorLine === this.cursorCallback) {
-      this.editor.onCursorLine = undefined;
+  // ── Code → Block ────────────────────────────────────────
+
+  private attachCursorListeners(): void {
+    for (const editor of this.editors) {
+      if (this.cursorCallbacks.has(editor)) continue;
+
+      const callback = (line: number) => {
+        if (this.guard) return;
+
+        const blockId = this.findBlockAtLine(line, editor.metadata);
+
+        if (!blockId) {
+          this.guard = true;
+          Blockly.common.setSelected(null);
+          for (const e of this.editors) e.clearHighlight();
+          this.guard = false;
+          return;
+        }
+
+        const block = this.workspace.getBlockById(blockId);
+        if (!block) return;
+
+        if (Blockly.common.getSelected() === block) return;
+
+        this.guard = true;
+        Blockly.common.setSelected(block as Blockly.BlockSvg);
+        this.broadcastHighlight(blockId);
+        this.guard = false;
+      };
+
+      this.cursorCallbacks.set(editor, callback);
+      editor.onCursorLine = callback;
     }
-    this.cursorCallback = undefined;
+  }
+
+  private detachCursorListeners(): void {
+    for (const [editor, callback] of this.cursorCallbacks) {
+      if (editor.onCursorLine === callback) {
+        editor.onCursorLine = undefined;
+      }
+    }
+    this.cursorCallbacks.clear();
   }
 
   // ── Helpers ─────────────────────────────────────────────
 
   /**
-   * Compute the line spans that belong to a block *excluding* its children.
-   *
-   * For example, a `for` block spanning lines 1–3 with a child at line 2
-   * returns `[{1,1}, {3,3}]` — only the `for(…){` and `}` lines.
+   * Compute the line spans that belong to a block *excluding* its children
+   * within the given metadata.
    */
-  private computeOwnSpans(blockId: string): LineSpan[] | undefined {
-    const metadata = this.editor.metadata;
+  private computeOwnSpans(
+    blockId: string,
+    metadata: MorphicCodeMetadata,
+  ): LineSpan[] | undefined {
     const position = metadata.get(blockId);
     if (!position) return undefined;
 
-    // Find all other blocks whose range is strictly inside this block's range.
     const childRanges: MorphicCodeBlockPosition[] = [];
     for (const [otherId, otherPos] of metadata) {
       if (otherId === blockId) continue;
@@ -163,10 +177,8 @@ export class MorphicSelectionSync {
       return [{ fromLine: position.startLine, toLine: position.endLine }];
     }
 
-    // Sort by start line so the subtraction sweep works.
     childRanges.sort((a, b) => a.startLine - b.startLine);
 
-    // Subtract child ranges from the parent range to get own spans.
     const spans: LineSpan[] = [];
     let cursor = position.startLine;
 
@@ -194,7 +206,6 @@ export class MorphicSelectionSync {
     for (const [blockId, pos] of metadata) {
       if (line >= pos.startLine && line <= pos.endLine) {
         const size = pos.endLine - pos.startLine;
-        // Prefer the tightest (smallest) range — inner blocks over outer.
         if (!best || size < best.size) {
           best = { id: blockId, size };
         }
