@@ -15,6 +15,20 @@ code modes     → codespace (text editor) replaces the workspace
 
 Workspace and toolbox can run in **different modes simultaneously**. Dragging from toolbox to workspace — or dropping onto the codespace — adds a block to the underlying model.
 
+## Use Cases
+
+The primary motivating use case is **gradual block-to-text programming transition** — progressively fading visual scaffolding as learners build fluency. Because the mode system decouples content from presentation, the same architecture supports several other applications without framework changes (only new modes, elements, and CSS):
+
+- **Localization / internationalization** — same blocks with different natural-language labels per mode (English, German, Spanish, …).
+- **Accessibility** — alternate modes for high-contrast, large-text, dyslexia-friendly, or screen-reader-optimized rendering.
+- **Age-appropriate rendering** — icon-centric for young learners; verbose-text for older learners.
+- **Comparative programming education** — render the same program in Python, Java, and C++ syntax side-by-side.
+- **Expert vs novice views** — compact (icon) for experts, verbose (full-text / descriptions) for novices.
+- **Domain-specific visual languages** — custom modes for music, robotics, data science, game design.
+- **Documentation-enriched blocks** — render descriptions, examples, or rationale alongside blocks.
+
+These are potential applications, not currently deployed. They illustrate that the framework's value extends beyond the transition use case.
+
 ## Element Types
 
 | Type    | What it means                                                             |

@@ -163,6 +163,20 @@ engine.mountToolbox(container, {
 })
 ```
 
+## Use Cases
+
+The primary motivating use case is **gradual block-to-text programming transition** (covered by the companion short paper). Because the element-type and mode system decouple block content from presentation, the same architecture can serve several other applications without framework changes — only new modes, elements, and CSS:
+
+- **Localization / internationalization** — same blocks with different natural-language labels per mode (English, German, Spanish, Arabic, …). Classrooms in any language without rewriting block logic.
+- **Accessibility** — alternate modes for high-contrast, large-text, dyslexia-friendly, or screen-reader-optimized rendering.
+- **Age-appropriate rendering** — icon-centric mode for young learners; verbose-text mode for older learners. Same lesson content, multiple age groups.
+- **Comparative programming education** — render the same program in Python, Java, and C++ syntax side-by-side to show how concepts translate across languages.
+- **Expert vs novice views** — compact (icon / short-label) mode for experts, verbose (full-text / description) mode for novices. Same codebase, tailored rendering.
+- **Domain-specific visual languages** — custom modes for music composition, robotics, data science, game design, etc., each with domain-appropriate visuals.
+- **Documentation-enriched blocks** — render descriptions, examples, or rationale alongside blocks for learning or onboarding.
+
+These are *potential* applications, not currently deployed. They are worth keeping in mind when evaluating feature-design decisions — the framework's value extends beyond the transition use case.
+
 ## Planned Features (Roadmap)
 
 ### Completed
