@@ -1,0 +1,9 @@
+{
+  "levels": [
+    { "label": "Iconic",    "toolboxMode": "iconic",     "workspaceMode": "concept" },
+    { "label": "Lexical",   "toolboxMode": "concept",    "workspaceMode": "python" },
+    { "label": "Syntactic", "toolboxMode": "python",     "workspaceMode": "javascript" },
+    { "label": "Code 1",    "toolboxMode": "python-text",     "workspaceMode": "code-python" },
+    { "label": "Code 2",    "toolboxMode": "javascript-text", "workspaceMode": "code-javascript" }
+  ]
+}

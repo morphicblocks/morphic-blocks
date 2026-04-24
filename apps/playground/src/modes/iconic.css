@@ -3,19 +3,25 @@
    ============================================= */
 
 .morphic-block.morphic-mode-iconic {
-  padding: 16px 16px;
+  padding: 16px;
 }
 
 .morphic-mode-iconic > .morphic-element-icon {
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .morphic-mode-iconic > .morphic-element-title {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
+  margin-bottom: 4px;
 }
 
-.morphic-mode-iconic > .morphic-element-text {
+.morphic-mode-iconic > .morphic-element-concept {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.morphic-mode-iconic > .morphic-element-description {
   font-size: 11px;
   color: rgba(255, 255, 255, 0.45);
   margin-top: 6px;

@@ -7,9 +7,18 @@ import {
   type MorphicToolboxCategory,
 } from "morphic-blocks";
 import format from "./definitions.json";
+import config from "./config.json";
 import { behaviors } from "./behaviors";
 import { blockIcons } from "./icons";
 import "./style.css";
+
+interface Level {
+  label: string;
+  toolboxMode: string;
+  workspaceMode: string;
+}
+
+const levels = (config as { levels: Level[] }).levels;
 
 // Auto-discover mode CSS files by filename
 const modeStyles = import.meta.glob("./modes/*.css", {
@@ -17,17 +26,15 @@ const modeStyles = import.meta.glob("./modes/*.css", {
   query: "?url",
 });
 
-// ── State ──────────────────────────────────────────────
-
-let currentMode = "lexical";
-
 // ── DOM ────────────────────────────────────────────────
 
 const workspaceContainer = document.getElementById("workspace-container")!;
 const toolboxPanel = document.getElementById("toolbox-panel")!;
 const codeEditorContainer = document.getElementById("code-editor")!;
+const codespaceContainer = document.getElementById("codespace-container")!;
+const previewContainer = document.getElementById("preview-container")!;
 const outputEl = document.getElementById("output")!;
-const modeButtons = document.querySelectorAll<HTMLButtonElement>("[data-mode]");
+const modeButtonsContainer = document.getElementById("mode-buttons")!;
 const runBtn = document.getElementById("run-btn")!;
 const codeBtn = document.getElementById("code-btn")!;
 const clearBtn = document.getElementById("clear-btn")!;
@@ -50,10 +57,14 @@ const engine = new MorphicBlocks(
   format.elementTypes as Record<string, MorphicElementType>,
 );
 
+let currentLevelIndex = 0;
+const initialLevel = levels[currentLevelIndex]!;
+
 const workspace = engine.mount({
   workspaceContainer,
-  workspaceMode: currentMode,
-  toolboxMode: currentMode,
+  codespaceContainer,
+  workspaceMode: initialLevel.workspaceMode,
+  toolboxMode: initialLevel.toolboxMode,
   modesFolder: modeStyles,
   canvasToolbox: true,
   modes: format.modes as MorphicModeDefinition[],
@@ -80,31 +91,74 @@ const workspace = engine.mount({
   },
 });
 
-// Mount the custom HTML toolbox canvas (replaces Blockly's built-in flyout)
 engine.mountToolbox(toolboxPanel, {
   categories: format.categories as MorphicToolboxCategory[],
 });
 
-// Mount the code editor (hidden by default, async due to dynamic CodeMirror import)
-engine
-  .mountCodeEditor(codeEditorContainer, {
-    theme: {
-      background: "#0f1117",
-      foreground: "#d4d4d4",
-      gutterBackground: "#0f1117",
-      gutterForeground: "#5d677a",
-      selectionBackground: "#264f78",
-    },
-  })
-  .then(() => {
-    engine.hideCodeEditor();
-    engine.enableSelectionSync({ highlightColor: "rgba(139, 172, 221, 0.48)" });
-  });
+const editorTheme = {
+  background: "#0f1117",
+  foreground: "#d4d4d4",
+  gutterBackground: "#0f1117",
+  gutterForeground: "#5d677a",
+  selectionBackground: "#264f78",
+};
 
-// Set the initial active button
-modeButtons.forEach((btn) =>
-  btn.classList.toggle("active", btn.dataset.mode === currentMode),
-);
+engine.mountCodeEditor(codeEditorContainer, { theme: editorTheme }).then(() => {
+  engine.hideCodeEditor();
+  engine.enableSelectionSync({ highlightColor: "rgba(139, 172, 221, 0.48)" });
+});
+
+engine.mountCodespace({ theme: editorTheme });
+
+engine.mountPreview(previewContainer, {
+  theme: { ...editorTheme, background: "#161a24", gutterBackground: "#161a24", foreground: "#bfc7d9" },
+});
+
+// ── Level Buttons ──────────────────────────────────────
+
+function modeByName(name: string): MorphicModeDefinition | undefined {
+  return (format.modes as MorphicModeDefinition[]).find((m) => m.name === name);
+}
+
+function applyLevel(index: number): void {
+  const level = levels[index];
+  if (!level) return;
+  currentLevelIndex = index;
+  engine.setModes({
+    workspaceMode: level.workspaceMode,
+    toolboxMode: level.toolboxMode,
+  });
+  updateLayout(level.workspaceMode);
+  updateActiveButton();
+}
+
+function updateLayout(workspaceModeName: string): void {
+  const mode = modeByName(workspaceModeName);
+  const isCodespacePresentation = mode?.presentation === "codespace";
+  const hasPreview = !!mode?.preview;
+
+  workspaceContainer.style.display = isCodespacePresentation ? "none" : "";
+  codespaceContainer.style.display = isCodespacePresentation ? "" : "none";
+  codespaceContainer.style.flex = isCodespacePresentation ? "1 1 auto" : "";
+  previewContainer.style.display = hasPreview ? "" : "none";
+  Blockly.svgResize(workspace);
+}
+
+function updateActiveButton(): void {
+  const buttons = modeButtonsContainer.querySelectorAll<HTMLButtonElement>("button");
+  buttons.forEach((b, i) => b.classList.toggle("active", i === currentLevelIndex));
+}
+
+modeButtonsContainer.innerHTML = "";
+levels.forEach((level, i) => {
+  const btn = document.createElement("button");
+  btn.textContent = level.label;
+  btn.addEventListener("click", () => applyLevel(i));
+  modeButtonsContainer.appendChild(btn);
+});
+
+updateLayout(initialLevel.workspaceMode);
+updateActiveButton();
 
 // ── Resize Handling ────────────────────────────────────
 
@@ -113,19 +167,7 @@ const resizeObserver = new ResizeObserver(() => {
 });
 resizeObserver.observe(workspaceContainer);
 
-// ── Mode Switching ─────────────────────────────────────
-
-modeButtons.forEach((btn) => {
-  btn.addEventListener("click", () => {
-    const mode = btn.dataset.mode!;
-    if (mode === currentMode) return;
-    currentMode = mode;
-    engine.setModes({ workspaceMode: mode, toolboxMode: mode });
-    modeButtons.forEach((b) => b.classList.toggle("active", b === btn));
-  });
-});
-
-// ── Code Editor Toggle ────────────────────────────────
+// ── Code Editor Toggle ─────────────────────────────────
 
 codeBtn.addEventListener("click", () => {
   if (engine.isCodeEditorVisible()) {

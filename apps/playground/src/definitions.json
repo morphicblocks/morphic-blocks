@@ -1,16 +1,24 @@
 {
   "elementTypes": {
-    "title":  "text",
-    "text":   "text",
-    "icon":   "image",
-    "concept": "code",
-    "block":  "code",
-    "syntax": "code"
+    "title":       "text",
+    "description": "text",
+    "icon":        "image",
+    "concept":     "code",
+    "python":      "code",
+    "javascript":  "code",
+    "go":          "code"
   },
   "modes": [
-    { "name": "iconic",    "elements": ["icon", "title", "text"] },
-    { "name": "lexical",   "elements": ["title", "block"] },
-    { "name": "syntactic", "elements": ["title", "syntax", "text"] }
+    { "name": "iconic",           "elements": ["icon", "title", "description"] },
+    { "name": "concept",          "elements": ["title", "concept"] },
+    { "name": "python",           "elements": ["title", "python"],     "preview": "python" },
+    { "name": "python-text",      "elements": ["title", "python"],     "tileRender": { "python": "text" } },
+    { "name": "javascript",       "elements": ["title", "javascript"], "preview": "javascript" },
+    { "name": "javascript-text",  "elements": ["title", "javascript"], "tileRender": { "javascript": "text" } },
+    { "name": "code-python",      "elements": ["title", "icon"], "presentation": "codespace",
+      "primarySource": "python",     "preview": "javascript" },
+    { "name": "code-javascript",  "elements": ["title", "icon"], "presentation": "codespace",
+      "primarySource": "javascript", "preview": "go" }
   ],
   "categories": [
     { "name": "Output",     "colour": "#b469d6" },
@@ -24,11 +32,12 @@
       "identifier": "text_print",
       "category": "Output",
       "elements": {
-        "title":   "Print",
-        "concept": "Output %1",
-        "block":   "print %1",
-        "syntax":  "console.log( %1 )",
-        "text":    "Prints a value to the console"
+        "title":       "Print",
+        "description": "Prints a value to the console",
+        "concept":     "Output %1",
+        "python":      "print(%1)",
+        "javascript":  "console.log(%1);",
+        "go":          "fmt.Println(%1)"
       },
       "inputSlots": {
         "1": { "kind": "value", "name": "TEXT" }
@@ -41,11 +50,12 @@
       "identifier": "logic_if",
       "category": "Control",
       "elements": {
-        "title":   "If / Then",
-        "concept": "Condition %1 Then %2",
-        "block":   "if %1 do %2",
-        "syntax":  "if ( %1 ) { %2 }",
-        "text":    "Runs code when a condition is true"
+        "title":       "If / Then",
+        "description": "Runs code when a condition is true",
+        "concept":     "Condition %1 Then %2",
+        "python":      "if %1:\n    %2",
+        "javascript":  "if (%1) {\n  %2\n}",
+        "go":          "if %1 {\n    %2\n}"
       },
       "inputSlots": {
         "1": { "kind": "value",     "name": "CONDITION", "check": "Boolean" },
@@ -59,11 +69,12 @@
       "identifier": "loop_for",
       "category": "Control",
       "elements": {
-        "title":   "Repeat",
-        "concept": "Repeat %1 times %2",
-        "block":   "repeat %1 times %2",
-        "syntax":  "for (let i = 0; i < %1 ; i++) { %2 }",
-        "text":    "Runs code a set number of times"
+        "title":       "Repeat",
+        "description": "Runs code a set number of times",
+        "concept":     "Repeat %1 times %2",
+        "python":      "for i in range(%1):\n    %2",
+        "javascript":  "for (let i = 0; i < %1; i++) {\n  %2\n}",
+        "go":          "for i := 0; i < %1; i++ {\n    %2\n}"
       },
       "inputSlots": {
         "1": { "kind": "value",     "name": "TIMES", "check": "Number" },
@@ -77,11 +88,12 @@
       "identifier": "math_arithmetic",
       "category": "Operations",
       "elements": {
-        "title":   "Math",
-        "concept": "%1 operate %3",
-        "block":   "%1 %2 %3",
-        "syntax":  "%1 %2 %3",
-        "text":    "Performs a math operation on two values"
+        "title":       "Math",
+        "description": "Performs a math operation on two values",
+        "concept":     "%1 %2 %3",
+        "python":      "%1 %2 %3",
+        "javascript":  "%1 %2 %3",
+        "go":          "%1 %2 %3"
       },
       "inputSlots": {
         "1": { "kind": "value", "name": "A" },
@@ -95,11 +107,12 @@
       "identifier": "logic_compare",
       "category": "Operations",
       "elements": {
-        "title":   "Compare",
-        "concept": "%1 compare %3",
-        "block":   "%1 %2 %3",
-        "syntax":  "%1 %2 %3",
-        "text":    "Compares two values and returns a boolean"
+        "title":       "Compare",
+        "description": "Compares two values and returns a boolean",
+        "concept":     "%1 %2 %3",
+        "python":      "%1 %2 %3",
+        "javascript":  "%1 %2 %3",
+        "go":          "%1 %2 %3"
       },
       "inputSlots": {
         "1": { "kind": "value", "name": "A" },
@@ -113,11 +126,12 @@
       "identifier": "math_number",
       "category": "Values",
       "elements": {
-        "title":   "Number",
-        "concept": "Number %1",
-        "block":   "%1",
-        "syntax":  "%1",
-        "text":    "A numeric value"
+        "title":       "Number",
+        "description": "A numeric value",
+        "concept":     "%1",
+        "python":      "%1",
+        "javascript":  "%1",
+        "go":          "%1"
       },
       "inputSlots": {
         "1": { "kind": "dummy", "name": "CONTENT" }
@@ -128,11 +142,12 @@
       "identifier": "text_value",
       "category": "Values",
       "elements": {
-        "title":   "Text",
-        "concept": "Text %1",
-        "block":   "\" %1 \"",
-        "syntax":  "\" %1 \"",
-        "text":    "A text string value"
+        "title":       "Text",
+        "description": "A text string value",
+        "concept":     "Text %1",
+        "python":      "\"%1\"",
+        "javascript":  "\"%1\"",
+        "go":          "\"%1\""
       },
       "inputSlots": {
         "1": { "kind": "dummy", "name": "CONTENT" }
@@ -143,11 +158,12 @@
       "identifier": "logic_boolean",
       "category": "Values",
       "elements": {
-        "title":   "Boolean",
-        "concept": "Boolean %1",
-        "block":   "%1",
-        "syntax":  "%1",
-        "text":    "A true or false value"
+        "title":       "Boolean",
+        "description": "A true or false value",
+        "concept":     "%1",
+        "python":      "%1",
+        "javascript":  "%1",
+        "go":          "%1"
       },
       "inputSlots": {
         "1": { "kind": "dummy", "name": "CONTENT" }
@@ -158,11 +174,12 @@
       "identifier": "var_declare",
       "category": "Variables",
       "elements": {
-        "title":   "Create Variable",
-        "concept": "Create variable %1 = %2",
-        "block":   "var %1 = %2",
-        "syntax":  "let %1 = %2 ;",
-        "text":    "Declares a new variable with a value"
+        "title":       "Create Variable",
+        "description": "Declares a new variable with a value",
+        "concept":     "Create variable %1 = %2",
+        "python":      "%1 = %2",
+        "javascript":  "let %1 = %2;",
+        "go":          "%1 := %2"
       },
       "inputSlots": {
         "1": { "kind": "dummy", "name": "NAME" },
@@ -176,11 +193,12 @@
       "identifier": "var_get",
       "category": "Variables",
       "elements": {
-        "title":   "Get Variable",
-        "concept": "Variable %1",
-        "block":   "var %1",
-        "syntax":  "%1",
-        "text":    "Returns the value of a variable"
+        "title":       "Get Variable",
+        "description": "Returns the value of a variable",
+        "concept":     "Variable %1",
+        "python":      "%1",
+        "javascript":  "%1",
+        "go":          "%1"
       },
       "inputSlots": {
         "1": { "kind": "dummy", "name": "CONTENT" }

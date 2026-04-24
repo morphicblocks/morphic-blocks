@@ -9,11 +9,7 @@
     <div id="app">
       <header id="header">
         <span class="brand">Morphic Blocks</span>
-        <div id="mode-buttons">
-          <button data-mode="iconic">Iconic</button>
-          <button data-mode="lexical" class="active">Lexical</button>
-          <button data-mode="syntactic">Syntactic</button>
-        </div>
+        <div id="mode-buttons"></div>
         <div id="header-actions">
           <button id="code-btn">Code</button>
           <button id="run-btn">Run Code</button>
@@ -24,6 +20,8 @@
         <div id="workspace-area">
           <div id="editor-split">
             <div id="workspace-container"></div>
+            <div id="codespace-container"></div>
+            <div id="preview-container"></div>
             <div id="code-editor"></div>
           </div>
           <div id="output-panel">
