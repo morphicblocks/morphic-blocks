@@ -153,7 +153,9 @@ export class MorphicToolboxCanvas {
       tile.style.setProperty("--morphic-block-color", color);
     }
 
-    const modeOrder = this.modes.find((m) => m.name === this.currentMode)?.elements ?? [];
+    const activeMode = this.modes.find((m) => m.name === this.currentMode);
+    const modeOrder = activeMode?.elements ?? [];
+    const tileRender = activeMode?.tileRender ?? {};
     const allEntries = Object.entries(definition.elements);
     const sortedEntries = [
       ...modeOrder.map((name) => allEntries.find(([key]) => key === name)).filter((e): e is [string, string] => e !== undefined),
@@ -164,7 +166,10 @@ export class MorphicToolboxCanvas {
       const el = document.createElement("div");
       el.className = `morphic-element-${toModeClassToken(elementName)}`;
 
-      if (this.elementTypes[elementName] === "code") {
+      const isCodeElement = this.elementTypes[elementName] === "code";
+      const render = tileRender[elementName] ?? (isCodeElement ? "block" : "text");
+
+      if (isCodeElement && render === "block") {
         const svg = this.createBlockPreviewSvg(definition, this.currentMode);
         if (svg) {
           el.appendChild(svg);

@@ -114,13 +114,14 @@ A **mode** declares which elements are visible and, by scanning for the first `t
 
 ### Mode fields
 
-| Field           | Required       | Applies to | Purpose                                                            |
-|-----------------|----------------|------------|--------------------------------------------------------------------|
-| `name`          | yes            | any        | Mode identifier                                                    |
-| `elements`      | yes            | any        | Element names rendered on the toolbox tile                         |
-| `presentation`  | no             | any        | `"workspace"` (default) or `"codespace"`                           |
-| `primarySource` | when codespace | any        | Element name used as the primary view source (must be type `code`) |
-| `preview`       | no             | any        | Element name used by the preview editor (must be type `code`)      |
+| Field           | Required       | Purpose                                                                                 |
+|-----------------|----------------|-----------------------------------------------------------------------------------------|
+| `name`          | yes            | Mode identifier                                                                         |
+| `elements`      | yes            | Element names rendered on the toolbox tile                                              |
+| `presentation`  | no             | `"workspace"` (default) or `"codespace"`                                                |
+| `primarySource` | when codespace | Element name used as the primary view source (must be type `code`)                      |
+| `preview`       | no             | Element name used by the preview editor (must be type `code`)                           |
+| `tileRender`    | no             | Map of element name → `"block"` or `"text"`. Overrides tile rendering for code elements |
 
 Validation at mount: `presentation: "codespace"` requires `primarySource`; `primarySource` and `preview` must reference elements declared as `code` in `elementTypes`.
 

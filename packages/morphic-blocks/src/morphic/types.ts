@@ -57,6 +57,12 @@ export interface MorphicModeDefinition {
    * (read-only). Optional; applies to both workspace and codespace modes.
    */
   preview?: string;
+  /**
+   * Optional per-element override for how tile elements render in the toolbox.
+   * Keys are element names; values are "block" (Blockly SVG preview) or "text"
+   * (HTML text). Applies only to elements of type "code". Defaults to "block".
+   */
+  tileRender?: Record<string, "block" | "text">;
 }
 
 export interface MorphicBlockDefinition {
