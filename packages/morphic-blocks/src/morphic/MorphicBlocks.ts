@@ -737,17 +737,24 @@ export class MorphicBlocks {
     workspace: Blockly.WorkspaceSvg,
     orderedIds: string[],
   ): void {
-    Blockly.Events.setGroup(true);
+    // Disable events around the bulk move so intermediate Y values can't
+    // trigger codespace renders that read the workspace mid-update. Then
+    // refresh the editors explicitly so they pick up the final state.
+    const eventsDisabled = Blockly.Events.disable !== undefined;
+    if (eventsDisabled) Blockly.Events.disable();
     try {
       for (let i = 0; i < orderedIds.length; i++) {
         const block = workspace.getBlockById(orderedIds[i]!) as Blockly.BlockSvg | null;
         if (!block) continue;
-        block.moveTo(new Blockly.utils.Coordinate(20, 20 + i * 80));
+        block.moveTo(new Blockly.utils.Coordinate(20, 20 + i * 100));
       }
     } finally {
-      Blockly.Events.setGroup(false);
+      if (eventsDisabled) Blockly.Events.enable();
     }
     Blockly.svgResize(workspace);
+    this.codespace?.refresh();
+    this.previewEditor?.refresh();
+    this.codeEditor?.refresh();
   }
 
   /**
