@@ -9,7 +9,7 @@ import {
   captureFieldValues,
   restoreFieldValues,
 } from "./block-view";
-import { MorphicCodeEditor } from "./code-editor";
+import { BLOCK_ID_DRAG_KEY, MorphicCodeEditor } from "./code-editor";
 import { generateJavaScriptFromWorkspace, generateJavaScriptWithMetadataFromWorkspace } from "./codegen";
 import { generateTextFromWorkspace } from "./template-codegen";
 import { MorphicSelectionSync } from "./selection-sync";
@@ -364,6 +364,12 @@ export class MorphicBlocks {
     const mergedOptions: MorphicCodeEditorOptions = {
       ...options,
       onDelete: options?.onDelete ?? ((line) => this.deleteBlockAtCodespaceLine(line)),
+      canDragBlock:
+        options?.canDragBlock ??
+        ((blockId) => {
+          const block = this.workspace?.getBlockById(blockId);
+          return !!block && !block.getParent();
+        }),
     };
 
     this.codespace = new MorphicCodeEditor(
@@ -384,31 +390,166 @@ export class MorphicBlocks {
     container: HTMLElement,
     workspace: Blockly.WorkspaceSvg,
   ): () => void {
+    const isCodespaceDrag = (e: DragEvent): boolean => {
+      const types = e.dataTransfer?.types;
+      if (!types) return false;
+      return types.includes(DRAG_DATA_KEY) || types.includes(BLOCK_ID_DRAG_KEY);
+    };
+
     const onDragOver = (e: DragEvent) => {
-      if (e.dataTransfer?.types.includes(DRAG_DATA_KEY)) {
-        e.preventDefault();
+      if (!isCodespaceDrag(e)) return;
+      e.preventDefault();
+      const drop = this.computeCodespaceDrop(e.clientX, e.clientY);
+      if (drop) {
+        this.codespace?.showDropIndicator(drop.indicator.line, drop.indicator.position);
       }
     };
 
+    const onDragLeave = (e: DragEvent) => {
+      const next = e.relatedTarget as Node | null;
+      if (next && container.contains(next)) return;
+      this.codespace?.hideDropIndicator();
+    };
+
     const onDrop = (e: DragEvent) => {
-      const blockType = e.dataTransfer?.getData(DRAG_DATA_KEY);
-      if (!blockType) return;
+      if (!isCodespaceDrag(e)) return;
       e.preventDefault();
-      const block = workspace.newBlock(blockType) as Blockly.BlockSvg;
-      block.initSvg();
-      block.render();
-      const offset = workspace.getTopBlocks(false).length * 80;
-      block.moveTo(new Blockly.utils.Coordinate(20, 20 + offset));
-      Blockly.svgResize(workspace);
+      this.codespace?.hideDropIndicator();
+
+      const drop = this.computeCodespaceDrop(e.clientX, e.clientY);
+      const targetIndex = drop?.index ?? 0;
+
+      const blockType = e.dataTransfer?.getData(DRAG_DATA_KEY);
+      if (blockType) {
+        this.insertTopBlockAt(workspace, blockType, targetIndex);
+        return;
+      }
+
+      const sourceId = e.dataTransfer?.getData(BLOCK_ID_DRAG_KEY);
+      if (sourceId) {
+        this.reorderTopBlock(workspace, sourceId, targetIndex);
+      }
     };
 
     container.addEventListener("dragover", onDragOver);
+    container.addEventListener("dragleave", onDragLeave);
     container.addEventListener("drop", onDrop);
 
     return () => {
       container.removeEventListener("dragover", onDragOver);
+      container.removeEventListener("dragleave", onDragLeave);
       container.removeEventListener("drop", onDrop);
     };
+  }
+
+  /**
+   * Compute both the visual indicator and the target insertion index for a
+   * drop at the given client coords. Above/below is decided by which half of
+   * the line under the cursor the cursor sits in; cursor below the last
+   * rendered line always resolves to "after all".
+   */
+  private computeCodespaceDrop(
+    clientX: number,
+    clientY: number,
+  ): { indicator: { line: number; position: "above" | "below" }; index: number } | null {
+    if (!this.workspace || !this.codespace) return null;
+    const tops = this.workspace.getTopBlocks(true);
+    const meta = this.codespace.metadata;
+    const lineCount = this.codespace.getLineCount();
+
+    if (tops.length === 0) {
+      return { indicator: { line: 1, position: "above" }, index: 0 };
+    }
+
+    if (this.codespace.isBelowLastLine(clientY)) {
+      const lastPos = meta.get(tops[tops.length - 1]!.id);
+      return {
+        indicator: { line: lastPos?.endLine ?? lineCount, position: "below" },
+        index: tops.length,
+      };
+    }
+
+    const line = this.codespace.getLineAtCoords(clientX, clientY);
+    if (line === null) {
+      const firstPos = meta.get(tops[0]!.id);
+      return {
+        indicator: { line: firstPos?.startLine ?? 1, position: "above" },
+        index: 0,
+      };
+    }
+
+    for (let i = 0; i < tops.length; i++) {
+      const pos = meta.get(tops[i]!.id);
+      if (!pos) continue;
+      if (line < pos.startLine || line > pos.endLine) continue;
+
+      const onLastLine = line === pos.endLine;
+      const lowerHalf = this.codespace.isInLowerHalfOfLine(line, clientY);
+      if (onLastLine && lowerHalf) {
+        return {
+          indicator: { line: pos.endLine, position: "below" },
+          index: i + 1,
+        };
+      }
+      return {
+        indicator: { line: pos.startLine, position: "above" },
+        index: i,
+      };
+    }
+
+    const lastPos = meta.get(tops[tops.length - 1]!.id);
+    return {
+      indicator: { line: lastPos?.endLine ?? lineCount, position: "below" },
+      index: tops.length,
+    };
+  }
+
+  private insertTopBlockAt(
+    workspace: Blockly.WorkspaceSvg,
+    blockType: string,
+    targetIndex: number,
+  ): void {
+    const newBlock = workspace.newBlock(blockType) as Blockly.BlockSvg;
+    newBlock.initSvg();
+    newBlock.render();
+
+    const ids = workspace.getTopBlocks(true).map((b) => b.id);
+    const clamped = Math.max(0, Math.min(targetIndex, ids.length));
+    ids.splice(clamped, 0, newBlock.id);
+    this.applyTopBlockOrder(workspace, ids);
+  }
+
+  private reorderTopBlock(
+    workspace: Blockly.WorkspaceSvg,
+    sourceId: string,
+    targetIndex: number,
+  ): void {
+    const ids = workspace.getTopBlocks(true).map((b) => b.id);
+    const fromIndex = ids.indexOf(sourceId);
+    if (fromIndex < 0) return;
+    const adjusted = fromIndex < targetIndex ? targetIndex - 1 : targetIndex;
+    if (adjusted === fromIndex) return;
+    ids.splice(fromIndex, 1);
+    const clamped = Math.max(0, Math.min(adjusted, ids.length));
+    ids.splice(clamped, 0, sourceId);
+    this.applyTopBlockOrder(workspace, ids);
+  }
+
+  private applyTopBlockOrder(
+    workspace: Blockly.WorkspaceSvg,
+    orderedIds: string[],
+  ): void {
+    Blockly.Events.setGroup(true);
+    try {
+      for (let i = 0; i < orderedIds.length; i++) {
+        const block = workspace.getBlockById(orderedIds[i]!) as Blockly.BlockSvg | null;
+        if (!block) continue;
+        block.moveTo(new Blockly.utils.Coordinate(20, 20 + i * 80));
+      }
+    } finally {
+      Blockly.Events.setGroup(false);
+    }
+    Blockly.svgResize(workspace);
   }
 
   /**

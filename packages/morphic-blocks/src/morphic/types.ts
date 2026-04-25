@@ -285,6 +285,13 @@ export interface MorphicCodeEditorOptions {
    * When set, the editor installs a keymap and a delete gutter.
    */
   onDelete?: (line: number) => void;
+  /**
+   * If provided, a "grip" gutter (⋮⋮) appears on the start line of every block
+   * id for which this returns `true`. Mousedown on the grip starts an HTML5
+   * drag whose data transfer includes `morphic/block-id` set to the block id —
+   * the host can then handle the drop (e.g. reorder).
+   */
+  canDragBlock?: (blockId: string) => boolean;
 }
 
 /** Options for `enableSelectionSync()`. */

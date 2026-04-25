@@ -3,19 +3,26 @@ import type {
   MorphicCodeEditorOptions,
   MorphicCodeEditorTheme,
   MorphicCodeGenerationResult,
+  MorphicCodeMetadata,
 } from "./types";
 
 // Re-export the type so MorphicBlocks.ts doesn't need to import CodeMirror types.
 type EditorView = import("@codemirror/view").EditorView;
 type Extension = import("@codemirror/state").Extension;
 type StateEffect<T = unknown> = import("@codemirror/state").StateEffect<T>;
-type StateEffectType<T> = { of: (value: T) => StateEffect<T> };
+type StateEffectType<T> = import("@codemirror/state").StateEffectType<T>;
 
 /** A single span of 1-based lines. */
 export interface LineSpan { fromLine: number; toLine: number }
 
 /** One or more line spans to highlight, or `null` to clear. */
 export type HighlightRange = LineSpan | LineSpan[] | null;
+
+/** Drop-indicator position relative to a line. */
+export interface DropIndicator { line: number; position: "above" | "below" }
+
+/** Data-transfer key carrying a Blockly block id during a codespace drag. */
+export const BLOCK_ID_DRAG_KEY = "morphic/block-id";
 
 const DEFAULT_THEME: Required<MorphicCodeEditorTheme> = {
   fontSize: "14px",
@@ -109,7 +116,8 @@ export class MorphicCodeEditor {
   private themeCompartment?: import("@codemirror/state").Compartment;
   private highlightEffect?: StateEffect<HighlightRange>;
   private highlightColor = "rgba(255, 255, 255, 0.07)";
-  private metadataEffect?: StateEffectType<MorphicCodeGenerationResult["metadata"]>;
+  private metadataEffect?: StateEffectType<MorphicCodeMetadata>;
+  private dropIndicatorEffect?: StateEffectType<DropIndicator | null>;
 
   constructor(
     container: HTMLElement,
@@ -130,6 +138,10 @@ export class MorphicCodeEditor {
     this.themeCompartment = new cmState.Compartment();
 
     const themeExt = buildThemeExtension(cmView, this.options.theme ?? {});
+
+    // Shared metadata effect — dispatched in syncNow, consumed by gutter fields.
+    const metadataEffect = cmState.StateEffect.define<MorphicCodeMetadata>();
+    this.metadataEffect = metadataEffect;
 
     // ── Highlight state field (line decorations driven by StateEffect) ──
     const setHighlight = cmState.StateEffect.define<HighlightRange>();
@@ -196,7 +208,9 @@ export class MorphicCodeEditor {
       highlightField,
       cursorListener,
       this.themeCompartment.of(themeExt),
-      ...this.buildDeleteExtensions(cmView, cmState),
+      ...this.buildDeleteExtensions(cmView, cmState, metadataEffect),
+      ...this.buildGripExtensions(cmView, cmState, metadataEffect),
+      ...this.buildDropIndicatorExtensions(cmView, cmState),
       ...(this.options.extensions ?? []) as Extension[],
     ];
 
@@ -225,12 +239,10 @@ export class MorphicCodeEditor {
   private buildDeleteExtensions(
     cmView: typeof import("@codemirror/view"),
     cmState: typeof import("@codemirror/state"),
+    metadataEffect: StateEffectType<MorphicCodeMetadata>,
   ): Extension[] {
     const onDelete = this.options.onDelete;
     if (!onDelete) return [];
-
-    const metadataEffect = cmState.StateEffect.define<MorphicCodeGenerationResult["metadata"]>();
-    this.metadataEffect = metadataEffect;
 
     class DeleteMarker extends cmView.GutterMarker {
       toDOM() {
@@ -329,6 +341,150 @@ export class MorphicCodeEditor {
     return [markersField, deleteGutter, cmState.Prec.highest(deleteKeymap)];
   }
 
+  private buildGripExtensions(
+    cmView: typeof import("@codemirror/view"),
+    cmState: typeof import("@codemirror/state"),
+    metadataEffect: StateEffectType<MorphicCodeMetadata>,
+  ): Extension[] {
+    const canDragBlock = this.options.canDragBlock;
+    if (!canDragBlock) return [];
+
+    class GripMarker extends cmView.GutterMarker {
+      constructor(public readonly blockId: string) {
+        super();
+      }
+      override eq(other: import("@codemirror/view").GutterMarker): boolean {
+        return other instanceof GripMarker && other.blockId === this.blockId;
+      }
+      toDOM() {
+        const el = document.createElement("span");
+        el.textContent = "⋮⋮";
+        el.draggable = true;
+        el.className = "morphic-grip-marker";
+        el.style.cssText = [
+          "display: inline-flex",
+          "align-items: center",
+          "justify-content: center",
+          "width: 14px",
+          "height: 16px",
+          "margin: 0 2px",
+          "color: rgba(255, 255, 255, 0.45)",
+          "font-size: 11px",
+          "line-height: 1",
+          "letter-spacing: -3px",
+          "cursor: grab",
+          "user-select: none",
+          "transition: color 0.15s",
+        ].join(";");
+        const blockId = this.blockId;
+        el.addEventListener("mouseenter", () => {
+          el.style.color = "rgba(255, 255, 255, 0.85)";
+        });
+        el.addEventListener("mouseleave", () => {
+          el.style.color = "rgba(255, 255, 255, 0.45)";
+        });
+        el.addEventListener("dragstart", (e) => {
+          if (!e.dataTransfer) return;
+          e.dataTransfer.setData(BLOCK_ID_DRAG_KEY, blockId);
+          e.dataTransfer.effectAllowed = "move";
+          el.style.cursor = "grabbing";
+        });
+        el.addEventListener("dragend", () => {
+          el.style.cursor = "grab";
+        });
+        return el;
+      }
+    }
+
+    const markersField = cmState.StateField.define<
+      import("@codemirror/state").RangeSet<import("@codemirror/view").GutterMarker>
+    >({
+      create() {
+        return cmState.RangeSet.empty;
+      },
+      update(markers, tr) {
+        for (const effect of tr.effects) {
+          if (effect.is(metadataEffect)) {
+            const meta = effect.value;
+            const doc = tr.state.doc;
+            // One marker per startLine; first eligible block id wins.
+            const lineToId = new Map<number, string>();
+            for (const [id, { startLine }] of meta) {
+              if (startLine < 1 || startLine > doc.lines) continue;
+              if (lineToId.has(startLine)) continue;
+              if (!canDragBlock(id)) continue;
+              lineToId.set(startLine, id);
+            }
+            const ranges = Array.from(lineToId.entries())
+              .sort((a, b) => a[0] - b[0])
+              .map(([line, id]) => new GripMarker(id).range(doc.line(line).from));
+            return cmState.RangeSet.of(ranges, true);
+          }
+        }
+        return markers.map(tr.changes);
+      },
+    });
+
+    const gripGutter = cmView.gutter({
+      class: "morphic-grip-gutter",
+      markers(view) {
+        return view.state.field(markersField);
+      },
+      initialSpacer: () => new GripMarker(""),
+    });
+
+    return [markersField, gripGutter];
+  }
+
+  private buildDropIndicatorExtensions(
+    cmView: typeof import("@codemirror/view"),
+    cmState: typeof import("@codemirror/state"),
+  ): Extension[] {
+    const setIndicator = cmState.StateEffect.define<DropIndicator | null>();
+    this.dropIndicatorEffect = setIndicator as unknown as StateEffectType<DropIndicator | null>;
+
+    const indicatorField = cmState.StateField.define<
+      import("@codemirror/view").DecorationSet
+    >({
+      create() {
+        return cmView.Decoration.none;
+      },
+      update(decorations, tr) {
+        for (const effect of tr.effects) {
+          if (effect.is(setIndicator)) {
+            const v = effect.value;
+            if (!v) return cmView.Decoration.none;
+            const doc = tr.state.doc;
+            const line = Math.max(1, Math.min(v.line, doc.lines));
+            const lineRef = doc.line(line);
+            const cls =
+              v.position === "above"
+                ? "morphic-drop-indicator-above"
+                : "morphic-drop-indicator-below";
+            const deco = cmView.Decoration.line({ class: cls });
+            return cmView.Decoration.set([deco.range(lineRef.from)]);
+          }
+        }
+        if (!tr.changes.empty) return cmView.Decoration.none;
+        return decorations;
+      },
+      provide(field) {
+        return cmView.EditorView.decorations.from(field);
+      },
+    });
+
+    const indicatorTheme = cmView.EditorView.baseTheme({
+      ".morphic-drop-indicator-above": {
+        boxShadow: "inset 0 2px 0 0 #5a86bc",
+      },
+      ".morphic-drop-indicator-below": {
+        boxShadow: "inset 0 -2px 0 0 #5a86bc",
+      },
+    });
+
+    return [indicatorField, indicatorTheme];
+  }
+
   show(): void {
     if (this.visible) return;
     this.visible = true;
@@ -367,6 +523,57 @@ export class MorphicCodeEditor {
   /** Update the highlight background colour. */
   setHighlightColor(color: string): void {
     this.highlightColor = color;
+  }
+
+  /** Show a drop-position indicator above (or below) the given 1-based line. */
+  showDropIndicator(line: number, position: "above" | "below" = "above"): void {
+    if (!this.editorView || !this.dropIndicatorEffect) return;
+    this.editorView.dispatch({
+      effects: this.dropIndicatorEffect.of({ line, position }),
+    });
+  }
+
+  /** Hide the drop-position indicator if currently shown. */
+  hideDropIndicator(): void {
+    if (!this.editorView || !this.dropIndicatorEffect) return;
+    this.editorView.dispatch({
+      effects: this.dropIndicatorEffect.of(null),
+    });
+  }
+
+  /** Return the 1-based line number at the given client coordinates, or null. */
+  getLineAtCoords(x: number, y: number): number | null {
+    if (!this.editorView) return null;
+    const pos = this.editorView.posAtCoords({ x, y });
+    if (pos === null) return null;
+    return this.editorView.state.doc.lineAt(pos).number;
+  }
+
+  /** Total line count of the editor's current document. */
+  getLineCount(): number {
+    return this.editorView?.state.doc.lines ?? 0;
+  }
+
+  /** Whether the given clientY is past the bottom of the last rendered line. */
+  isBelowLastLine(clientY: number): boolean {
+    if (!this.editorView) return false;
+    const doc = this.editorView.state.doc;
+    const endPos = doc.line(doc.lines).to;
+    const coords = this.editorView.coordsAtPos(endPos);
+    if (!coords) return false;
+    return clientY > coords.bottom;
+  }
+
+  /** Whether clientY is in the lower half of the given 1-based line's bbox. */
+  isInLowerHalfOfLine(line: number, clientY: number): boolean {
+    if (!this.editorView) return false;
+    const doc = this.editorView.state.doc;
+    if (line < 1 || line > doc.lines) return false;
+    const lineRef = doc.line(line);
+    const top = this.editorView.coordsAtPos(lineRef.from);
+    const bottom = this.editorView.coordsAtPos(lineRef.to);
+    if (!top || !bottom) return false;
+    return clientY > (top.top + bottom.bottom) / 2;
   }
 
   setTheme(theme: MorphicCodeEditorTheme): void {
