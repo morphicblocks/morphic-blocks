@@ -9,7 +9,7 @@ import {
   captureFieldValues,
   restoreFieldValues,
 } from "./block-view";
-import { BLOCK_ID_DRAG_KEY, MorphicCodeEditor } from "./code-editor";
+import { BLOCK_ID_DRAG_KEY, MorphicCodeEditor, getActiveGripDragSourceId } from "./code-editor";
 import { resolveElementType } from "./element-types";
 import { generateJavaScriptFromWorkspace, generateJavaScriptWithMetadataFromWorkspace } from "./codegen";
 import { generateTextFromWorkspace } from "./template-codegen";
@@ -525,16 +525,23 @@ export class MorphicBlocks {
     // body (deepest match wins), resolve to a position within that slot's
     // chain. Walking the slot's children inside that range catches the
     // common "between two siblings" case as well as empty bodies.
+    //
+    // When a grip-drag is in progress, exclude the source from the children
+    // walk: hovering on the source's own line then resolves to "after the
+    // remaining last child" (a real move) instead of "after self" (no-op).
     const slotMatch = this.findInnermostStatementSlotAtLine(line, meta);
     if (slotMatch) {
       const parent = this.workspace.getBlockById(slotMatch.blockId) as Blockly.BlockSvg | null;
       if (parent) {
+        const dragSourceId = getActiveGripDragSourceId();
         const children: Blockly.BlockSvg[] = [];
         let cur = parent
           .getInput(slotMatch.inputName)
           ?.connection?.targetBlock() as Blockly.BlockSvg | null;
         while (cur) {
-          children.push(cur);
+          if (cur.id !== dragSourceId) {
+            children.push(cur);
+          }
           cur = cur.getNextBlock() as Blockly.BlockSvg | null;
         }
 

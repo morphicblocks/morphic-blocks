@@ -24,6 +24,17 @@ export interface DropIndicator { line: number; position: "above" | "below" }
 /** Data-transfer key carrying a Blockly block id during a codespace drag. */
 export const BLOCK_ID_DRAG_KEY = "morphic/block-id";
 
+/**
+ * Tracks the block id of the grip-marker currently being dragged. Set on
+ * `dragstart`, cleared on `dragend`. Read during `dragover` / `drop` so the
+ * host can exclude the source from drop-target resolution (otherwise dropping
+ * on the source's own line resolves to a no-op).
+ */
+let activeGripDragSourceId: string | undefined;
+export function getActiveGripDragSourceId(): string | undefined {
+  return activeGripDragSourceId;
+}
+
 const DEFAULT_THEME: Required<MorphicCodeEditorTheme> = {
   fontSize: "14px",
   fontFamily: "monospace",
@@ -418,9 +429,11 @@ export class MorphicCodeEditor {
           e.dataTransfer.setData(BLOCK_ID_DRAG_KEY, blockId);
           e.dataTransfer.effectAllowed = "move";
           el.style.cursor = "grabbing";
+          activeGripDragSourceId = blockId;
         });
         el.addEventListener("dragend", () => {
           el.style.cursor = "grab";
+          activeGripDragSourceId = undefined;
         });
         return el;
       }
