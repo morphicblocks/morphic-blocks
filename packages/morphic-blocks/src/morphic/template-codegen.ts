@@ -1,11 +1,12 @@
 import type * as Blockly from "blockly";
+import { resolveEmptyDefault } from "./element-types";
 import { parseTemplate } from "./template";
 import { resolveBlockView } from "./view-resolver";
 import type {
   MorphicBlockDefinition,
   MorphicCodeBlockPosition,
   MorphicCodeGenerationResult,
-  MorphicElementType,
+  MorphicElementTypeEntry,
   MorphicModeDefinition,
   MorphicModeName,
 } from "./types";
@@ -13,7 +14,7 @@ import type {
 interface RenderContext {
   mode: MorphicModeName;
   definitions: ReadonlyMap<string, MorphicBlockDefinition>;
-  elementTypes: Record<string, MorphicElementType>;
+  elementTypes: Record<string, MorphicElementTypeEntry>;
   modeDefs: MorphicModeDefinition[];
   /**
    * When set, every block uses `def.elements[elementOverride]` directly
@@ -65,7 +66,7 @@ export function generateTextFromWorkspace(
   workspace: Blockly.Workspace,
   mode: MorphicModeName,
   definitions: ReadonlyMap<string, MorphicBlockDefinition>,
-  elementTypes: Record<string, MorphicElementType>,
+  elementTypes: Record<string, MorphicElementTypeEntry>,
   modeDefs: MorphicModeDefinition[],
   elementOverride?: string,
 ): MorphicCodeGenerationResult {
@@ -118,17 +119,22 @@ function renderBlock(
   if (!definition) return;
 
   let template: string;
+  let elementName: string | undefined;
   if (ctx.elementOverride) {
     const explicit = definition.elements[ctx.elementOverride];
     if (explicit === undefined) return;
     template = explicit;
+    elementName = ctx.elementOverride;
   } else {
     try {
-      template = resolveBlockView(definition, ctx.mode, ctx.elementTypes, ctx.modeDefs).template;
+      const view = resolveBlockView(definition, ctx.mode, ctx.elementTypes, ctx.modeDefs);
+      template = view.template;
+      elementName = view.elementName;
     } catch {
       return;
     }
   }
+  const elementEntry = elementName ? ctx.elementTypes[elementName] : undefined;
 
   const before = state.output.length;
   const startLine = currentLine(state.output);
@@ -172,10 +178,19 @@ function renderBlock(
     }
 
     if (!target) {
+      // Field fallback first (preserves any user-typed dropdown / number values).
+      let fieldEmitted = false;
       if (input) {
         for (const field of input.fieldRow) {
           if (!field.name) continue;
           appendText(state, readFieldText(field));
+          fieldEmitted = true;
+        }
+      }
+      if (!fieldEmitted) {
+        const fallback = resolveEmptyDefault(elementEntry, slot?.check);
+        if (fallback !== undefined) {
+          appendText(state, fallback);
         }
       }
       continue;

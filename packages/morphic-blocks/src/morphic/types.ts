@@ -9,6 +9,25 @@ export type MorphicModeName = string;
  * - "image" — rendered as an <img> in the toolbox tile; never shown in the workspace
  */
 export type MorphicElementType = "text" | "code" | "image";
+
+/**
+ * Optional per-element configuration. Used in place of a bare type string in
+ * `elementTypes` when the developer needs to declare extras (e.g. defaults for
+ * empty value slots so the codespace renders `print(0)` instead of `print()`).
+ */
+export interface MorphicElementTypeConfig {
+  type: MorphicElementType;
+  /**
+   * Default value emitted into an empty value slot when no child block is
+   * connected and no field falls back. Keys are the input slot's `check`
+   * (e.g. "Number", "String", "Boolean"); the special key "default" applies
+   * when the slot has no `check` or no matching key.
+   */
+  empty?: Record<string, string>;
+}
+
+/** Either a bare type or a config object with extras. */
+export type MorphicElementTypeEntry = MorphicElementType | MorphicElementTypeConfig;
 export type MorphicConnectionSpec = boolean | string | string[];
 export type MorphicInputKind = "value" | "statement" | "dummy";
 export type MorphicInputAlign = "left" | "centre" | "right";
@@ -93,10 +112,11 @@ export interface MorphicBlockDefinition {
 export interface MorphicBlocksFormat {
   /**
    * Global element type registry.
-   * Maps each element name to its type ("text", "code", or "image").
-   * Declared once here; per-block elements remain plain name→content strings.
+   * Maps each element name to either a bare type ("text" | "code" | "image")
+   * or a config object (`{ type, empty? }`). Declared once here; per-block
+   * elements remain plain name→content strings.
    */
-  elementTypes?: Record<string, MorphicElementType>;
+  elementTypes?: Record<string, MorphicElementTypeEntry>;
   /** Explicit mode definitions — which elements are visible per mode. */
   modes?: MorphicModeDefinition[];
   /** Optional category metadata. Blocks reference categories by name. */
@@ -235,6 +255,8 @@ export interface MorphicMountConfig {
 export interface MorphicResolvedView {
   mode: MorphicModeName;
   template: string;
+  /** Element name the template came from. Used to look up per-element config (e.g. `empty` defaults). */
+  elementName?: string;
   inputSlots?: Record<string, MorphicInputSlotDefinition>;
 }
 

@@ -10,6 +10,7 @@ import {
   restoreFieldValues,
 } from "./block-view";
 import { BLOCK_ID_DRAG_KEY, MorphicCodeEditor } from "./code-editor";
+import { resolveElementType } from "./element-types";
 import { generateJavaScriptFromWorkspace, generateJavaScriptWithMetadataFromWorkspace } from "./codegen";
 import { generateTextFromWorkspace } from "./template-codegen";
 import { MorphicSelectionSync } from "./selection-sync";
@@ -27,7 +28,7 @@ import type {
   MorphicCodeEditorOptions,
   MorphicCodeEditorTheme,
   MorphicCodeGenerationResult,
-  MorphicElementType,
+  MorphicElementTypeEntry,
   MorphicModeDefinition,
   MorphicModeName,
   MorphicModeStyle,
@@ -75,7 +76,7 @@ type MorphicResolvedMountConfig = Omit<
 export class MorphicBlocks {
   private readonly definitions: Map<string, MorphicBlockDefinition>;
   private readonly behaviors: MorphicBehaviorMap;
-  private readonly elementTypes: Record<string, MorphicElementType>;
+  private readonly elementTypes: Record<string, MorphicElementTypeEntry>;
   private readonly styles = new MorphicStyleManager();
   private readonly registeredBlockTypes = new Set<string>();
 
@@ -100,7 +101,7 @@ export class MorphicBlocks {
   public constructor(
     definitions: MorphicBlockDefinition[] | MorphicBlockDefinition,
     behaviors: MorphicBehaviorMap = {},
-    elementTypes: Record<string, MorphicElementType> = {},
+    elementTypes: Record<string, MorphicElementTypeEntry> = {},
   ) {
     this.definitions = createDefinitionMap(definitions);
     this.behaviors = behaviors;
@@ -1034,12 +1035,13 @@ export class MorphicBlocks {
       if (mode.preview) refs.push(["preview", mode.preview]);
 
       for (const [field, name] of refs) {
-        const type = this.elementTypes[name];
-        if (type === undefined) {
+        const entry = this.elementTypes[name];
+        if (entry === undefined) {
           throw new Error(
             `Mode "${mode.name}": ${field} "${name}" is not declared in elementTypes.`,
           );
         }
+        const type = resolveElementType(entry);
         if (type !== "code") {
           throw new Error(
             `Mode "${mode.name}": ${field} "${name}" must be of type "code" (got "${type}").`,

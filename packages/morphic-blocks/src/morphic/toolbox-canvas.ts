@@ -1,12 +1,13 @@
 import * as Blockly from "blockly";
 import { getLifecycleBehavior } from "./behavior-runtime";
 import { applyBlockView } from "./block-view";
+import { resolveElementType } from "./element-types";
 import { parseTemplate, renderTemplateAsHtml, toModeClassToken } from "./template";
 import { resolveBlockView } from "./view-resolver";
 import type {
   MorphicBehaviorMap,
   MorphicBlockDefinition,
-  MorphicElementType,
+  MorphicElementTypeEntry,
   MorphicModeDefinition,
   MorphicModeName,
   MorphicToolboxCanvasOptions,
@@ -22,7 +23,7 @@ export class MorphicToolboxCanvas {
   private readonly definitions: Map<string, MorphicBlockDefinition>;
   private readonly blockColors: Map<string, string>;
   private readonly behaviors: MorphicBehaviorMap;
-  private readonly elementTypes: Record<string, MorphicElementType>;
+  private readonly elementTypes: Record<string, MorphicElementTypeEntry>;
   private readonly options: MorphicToolboxCanvasOptions;
   private readonly modes: MorphicModeDefinition[];
   private currentMode: MorphicModeName;
@@ -40,7 +41,7 @@ export class MorphicToolboxCanvas {
     definitions: Map<string, MorphicBlockDefinition>;
     blockColors: Map<string, string>;
     behaviors: MorphicBehaviorMap;
-    elementTypes?: Record<string, MorphicElementType>;
+    elementTypes?: Record<string, MorphicElementTypeEntry>;
     mode: MorphicModeName;
     modes?: MorphicModeDefinition[];
     options?: MorphicToolboxCanvasOptions;
@@ -166,7 +167,7 @@ export class MorphicToolboxCanvas {
       const el = document.createElement("div");
       el.className = `morphic-element-${toModeClassToken(elementName)}`;
 
-      const isCodeElement = this.elementTypes[elementName] === "code";
+      const isCodeElement = resolveElementType(this.elementTypes[elementName]) === "code";
       const render = tileRender[elementName] ?? (isCodeElement ? "block" : "text");
 
       if (isCodeElement && render === "block") {

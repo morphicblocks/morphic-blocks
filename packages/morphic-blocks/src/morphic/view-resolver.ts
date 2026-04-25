@@ -1,6 +1,7 @@
+import { resolveElementType } from "./element-types";
 import type {
   MorphicBlockDefinition,
-  MorphicElementType,
+  MorphicElementTypeEntry,
   MorphicModeDefinition,
   MorphicModeName,
   MorphicResolvedView,
@@ -19,7 +20,7 @@ import type {
 export function resolveBlockView(
   definition: MorphicBlockDefinition,
   mode: MorphicModeName,
-  elementTypes: Record<string, MorphicElementType> = {},
+  elementTypes: Record<string, MorphicElementTypeEntry> = {},
   modeDefs: MorphicModeDefinition[] = [],
 ): MorphicResolvedView {
   const elements = definition.elements;
@@ -29,35 +30,35 @@ export function resolveBlockView(
   if (modeDef?.primarySource) {
     const explicit = elements[modeDef.primarySource];
     if (explicit !== undefined) {
-      return { mode, template: explicit, inputSlots: definition.inputSlots };
+      return { mode, template: explicit, elementName: modeDef.primarySource, inputSlots: definition.inputSlots };
     }
   }
 
   // Strategy 1: first type:code element listed in this mode's elements array
   if (modeDef) {
     for (const name of modeDef.elements) {
-      if (elementTypes[name] === "code" && elements[name] !== undefined) {
-        return { mode, template: elements[name], inputSlots: definition.inputSlots };
+      if (resolveElementType(elementTypes[name]) === "code" && elements[name] !== undefined) {
+        return { mode, template: elements[name], elementName: name, inputSlots: definition.inputSlots };
       }
     }
   }
 
   // Strategy 2: first type:code element anywhere in the definition
   for (const [name, content] of Object.entries(elements)) {
-    if (elementTypes[name] === "code") {
-      return { mode, template: content, inputSlots: definition.inputSlots };
+    if (resolveElementType(elementTypes[name]) === "code") {
+      return { mode, template: content, elementName: name, inputSlots: definition.inputSlots };
     }
   }
 
   // Strategy 3: backward-compat — element literally named "block"
   if (elements["block"] !== undefined) {
-    return { mode, template: elements["block"], inputSlots: definition.inputSlots };
+    return { mode, template: elements["block"], elementName: "block", inputSlots: definition.inputSlots };
   }
 
   // Strategy 4: first element
-  const first = Object.values(elements)[0];
-  if (first === undefined) {
+  const firstEntry = Object.entries(elements)[0];
+  if (firstEntry === undefined) {
     throw new Error(`Block "${definition.identifier}" does not have any elements.`);
   }
-  return { mode, template: first, inputSlots: definition.inputSlots };
+  return { mode, template: firstEntry[1], elementName: firstEntry[0], inputSlots: definition.inputSlots };
 }

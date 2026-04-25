@@ -4,6 +4,8 @@ export { MorphicBlocks } from "./morphic/MorphicBlocks";
 export { MorphicToolboxCanvas } from "./morphic/toolbox-canvas";
 export type {
   MorphicElementType,
+  MorphicElementTypeConfig,
+  MorphicElementTypeEntry,
   MorphicJavaScriptConfig,
   MorphicBehaviorContext,
   MorphicBehaviorDefinition,
