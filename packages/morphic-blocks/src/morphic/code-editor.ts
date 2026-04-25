@@ -358,30 +358,29 @@ export class MorphicCodeEditor {
       }
       toDOM() {
         const el = document.createElement("span");
-        el.textContent = "⋮⋮";
+        el.textContent = "⠿";
         el.draggable = true;
         el.className = "morphic-grip-marker";
         el.style.cssText = [
           "display: inline-flex",
           "align-items: center",
           "justify-content: center",
-          "width: 14px",
+          "width: 16px",
           "height: 16px",
           "margin: 0 2px",
-          "color: rgba(255, 255, 255, 0.45)",
-          "font-size: 11px",
+          "color: rgba(255, 255, 255, 0.75)",
+          "font-size: 14px",
           "line-height: 1",
-          "letter-spacing: -3px",
           "cursor: grab",
           "user-select: none",
           "transition: color 0.15s",
         ].join(";");
         const blockId = this.blockId;
         el.addEventListener("mouseenter", () => {
-          el.style.color = "rgba(255, 255, 255, 0.85)";
+          el.style.color = "rgba(255, 255, 255, 1)";
         });
         el.addEventListener("mouseleave", () => {
-          el.style.color = "rgba(255, 255, 255, 0.45)";
+          el.style.color = "rgba(255, 255, 255, 0.75)";
         });
         el.addEventListener("dragstart", (e) => {
           if (!e.dataTransfer) return;

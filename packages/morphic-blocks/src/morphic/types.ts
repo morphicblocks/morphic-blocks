@@ -242,6 +242,13 @@ export interface MorphicResolvedView {
 export interface MorphicCodeBlockPosition {
   startLine: number;
   endLine: number;
+  /**
+   * Body line range of each statement input declared on this block, keyed by
+   * the input name. Includes empty bodies — the start/end line points to the
+   * indented body line where children would render. Used by the codespace to
+   * resolve drops into empty `for`/`if` bodies.
+   */
+  statementSlots?: Record<string, { startLine: number; endLine: number }>;
 }
 
 /** Maps Blockly block IDs to their positions in the generated code. */

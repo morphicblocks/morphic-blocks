@@ -23,6 +23,7 @@ import type {
   MorphicBehaviorContext,
   MorphicBehaviorMap,
   MorphicBlockDefinition,
+  MorphicCodeBlockPosition,
   MorphicCodeEditorOptions,
   MorphicCodeEditorTheme,
   MorphicCodeGenerationResult,
@@ -368,7 +369,7 @@ export class MorphicBlocks {
         options?.canDragBlock ??
         ((blockId) => {
           const block = this.workspace?.getBlockById(blockId);
-          return !!block && !block.getParent();
+          return !!block?.previousConnection;
         }),
     };
 
@@ -417,18 +418,45 @@ export class MorphicBlocks {
       this.codespace?.hideDropIndicator();
 
       const drop = this.computeCodespaceDrop(e.clientX, e.clientY);
-      const targetIndex = drop?.index ?? 0;
+      if (!drop) return;
 
       const blockType = e.dataTransfer?.getData(DRAG_DATA_KEY);
+      const sourceId = e.dataTransfer?.getData(BLOCK_ID_DRAG_KEY);
+
+      let block: Blockly.BlockSvg | null = null;
       if (blockType) {
-        this.insertTopBlockAt(workspace, blockType, targetIndex);
+        block = workspace.newBlock(blockType) as Blockly.BlockSvg;
+        block.initSvg();
+        block.render();
+      } else if (sourceId) {
+        block = workspace.getBlockById(sourceId) as Blockly.BlockSvg | null;
+        if (!block) return;
+      } else {
         return;
       }
 
-      const sourceId = e.dataTransfer?.getData(BLOCK_ID_DRAG_KEY);
-      if (sourceId) {
-        this.reorderTopBlock(workspace, sourceId, targetIndex);
+      Blockly.Events.setGroup(true);
+      try {
+        if (sourceId && block.getParent()) {
+          block.unplug(true);
+        }
+        if (drop.target.kind === "top") {
+          this.placeAtTopIndex(workspace, block, drop.target.index);
+        } else if (drop.target.kind === "statement") {
+          if (!block.previousConnection) return;
+          const target = workspace.getBlockById(drop.target.targetBlockId) as Blockly.BlockSvg | null;
+          if (!target || target === block) return;
+          this.connectStatement(block, target, drop.target.position);
+        } else if (drop.target.kind === "into-slot") {
+          if (!block.previousConnection) return;
+          const parent = workspace.getBlockById(drop.target.parentBlockId) as Blockly.BlockSvg | null;
+          if (!parent || parent === block) return;
+          this.connectIntoSlot(block, parent, drop.target.inputName);
+        }
+      } finally {
+        Blockly.Events.setGroup(false);
       }
+      Blockly.svgResize(workspace);
     };
 
     container.addEventListener("dragover", onDragOver);
@@ -443,29 +471,43 @@ export class MorphicBlocks {
   }
 
   /**
-   * Compute both the visual indicator and the target insertion index for a
-   * drop at the given client coords. Above/below is decided by which half of
-   * the line under the cursor the cursor sits in; cursor below the last
-   * rendered line always resolves to "after all".
+   * Resolve a codespace drop into both a visual indicator and a typed target.
+   *
+   * `target.kind === "top"` means the drop becomes a top-level block at
+   * `target.index`. `target.kind === "statement"` means it should be wired into
+   * an existing block's statement chain — `targetBlockId` is the block under
+   * the cursor and `position` says whether to land before or after it.
+   *
+   * Above/below is decided by upper/lower-half of the cursor's line; cursor
+   * past the last rendered line always resolves to "after all" at top level.
    */
   private computeCodespaceDrop(
     clientX: number,
     clientY: number,
-  ): { indicator: { line: number; position: "above" | "below" }; index: number } | null {
+  ): {
+    indicator: { line: number; position: "above" | "below" };
+    target:
+      | { kind: "top"; index: number }
+      | { kind: "statement"; targetBlockId: string; position: "before" | "after" }
+      | { kind: "into-slot"; parentBlockId: string; inputName: string };
+  } | null {
     if (!this.workspace || !this.codespace) return null;
     const tops = this.workspace.getTopBlocks(true);
     const meta = this.codespace.metadata;
     const lineCount = this.codespace.getLineCount();
 
     if (tops.length === 0) {
-      return { indicator: { line: 1, position: "above" }, index: 0 };
+      return {
+        indicator: { line: 1, position: "above" },
+        target: { kind: "top", index: 0 },
+      };
     }
 
     if (this.codespace.isBelowLastLine(clientY)) {
       const lastPos = meta.get(tops[tops.length - 1]!.id);
       return {
         indicator: { line: lastPos?.endLine ?? lineCount, position: "below" },
-        index: tops.length,
+        target: { kind: "top", index: tops.length },
       };
     }
 
@@ -474,10 +516,73 @@ export class MorphicBlocks {
       const firstPos = meta.get(tops[0]!.id);
       return {
         indicator: { line: firstPos?.startLine ?? 1, position: "above" },
-        index: 0,
+        target: { kind: "top", index: 0 },
       };
     }
 
+    // Slot-based detection: if the cursor is inside *any* statement input's
+    // body (deepest match wins), resolve to a position within that slot's
+    // chain. Walking the slot's children inside that range catches the
+    // common "between two siblings" case as well as empty bodies.
+    const slotMatch = this.findInnermostStatementSlotAtLine(line, meta);
+    if (slotMatch) {
+      const parent = this.workspace.getBlockById(slotMatch.blockId) as Blockly.BlockSvg | null;
+      if (parent) {
+        const children: Blockly.BlockSvg[] = [];
+        let cur = parent
+          .getInput(slotMatch.inputName)
+          ?.connection?.targetBlock() as Blockly.BlockSvg | null;
+        while (cur) {
+          children.push(cur);
+          cur = cur.getNextBlock() as Blockly.BlockSvg | null;
+        }
+
+        // Cursor sitting on one of the slot's existing children → before/after.
+        for (const child of children) {
+          const cpos = meta.get(child.id);
+          if (!cpos) continue;
+          if (line < cpos.startLine || line > cpos.endLine) continue;
+
+          const onLastLine = line === cpos.endLine;
+          const lowerHalf = this.codespace.isInLowerHalfOfLine(line, clientY);
+          if (onLastLine && lowerHalf) {
+            return {
+              indicator: { line: cpos.endLine, position: "below" },
+              target: { kind: "statement", targetBlockId: child.id, position: "after" },
+            };
+          }
+          return {
+            indicator: { line: cpos.startLine, position: "above" },
+            target: { kind: "statement", targetBlockId: child.id, position: "before" },
+          };
+        }
+
+        // Cursor is in the slot but not on any existing child — empty body
+        // or whitespace tail line. Append to the slot.
+        if (children.length > 0) {
+          const last = children[children.length - 1]!;
+          const lastPos = meta.get(last.id);
+          return {
+            indicator: { line: lastPos?.endLine ?? slotMatch.range.endLine, position: "below" },
+            target: {
+              kind: "into-slot",
+              parentBlockId: slotMatch.blockId,
+              inputName: slotMatch.inputName,
+            },
+          };
+        }
+        return {
+          indicator: { line: slotMatch.range.startLine, position: "above" },
+          target: {
+            kind: "into-slot",
+            parentBlockId: slotMatch.blockId,
+            inputName: slotMatch.inputName,
+          },
+        };
+      }
+    }
+
+    // Fall through to top-level placement based on which top block holds the line.
     for (let i = 0; i < tops.length; i++) {
       const pos = meta.get(tops[i]!.id);
       if (!pos) continue;
@@ -488,51 +593,144 @@ export class MorphicBlocks {
       if (onLastLine && lowerHalf) {
         return {
           indicator: { line: pos.endLine, position: "below" },
-          index: i + 1,
+          target: { kind: "top", index: i + 1 },
         };
       }
       return {
         indicator: { line: pos.startLine, position: "above" },
-        index: i,
+        target: { kind: "top", index: i },
       };
     }
 
     const lastPos = meta.get(tops[tops.length - 1]!.id);
     return {
       indicator: { line: lastPos?.endLine ?? lineCount, position: "below" },
-      index: tops.length,
+      target: { kind: "top", index: tops.length },
     };
   }
 
-  private insertTopBlockAt(
+  /**
+   * Deepest statement-input slot whose body range contains `line`. Used for
+   * empty/whitespace bodies where no child block anchors the line.
+   */
+  private findInnermostStatementSlotAtLine(
+    line: number,
+    meta: ReadonlyMap<string, MorphicCodeBlockPosition>,
+  ): { blockId: string; inputName: string; range: { startLine: number; endLine: number } } | null {
+    let best: {
+      blockId: string;
+      inputName: string;
+      range: { startLine: number; endLine: number };
+      depth: number;
+      size: number;
+    } | null = null;
+    for (const [id, pos] of meta) {
+      if (!pos.statementSlots) continue;
+      for (const [inputName, range] of Object.entries(pos.statementSlots)) {
+        if (line < range.startLine || line > range.endLine) continue;
+        const size = range.endLine - range.startLine;
+        const depth = this.computeBlockDepth(id);
+        if (
+          best === null ||
+          size < best.size ||
+          (size === best.size && depth > best.depth)
+        ) {
+          best = { blockId: id, inputName, range, size, depth };
+        }
+      }
+    }
+    return best
+      ? { blockId: best.blockId, inputName: best.inputName, range: best.range }
+      : null;
+  }
+
+  /**
+   * Append `source` to the chain in `parent`'s statement input named `inputName`.
+   * Connects to the slot directly when the slot is empty; otherwise walks to
+   * the chain's tail and connects there.
+   */
+  private connectIntoSlot(
+    source: Blockly.BlockSvg,
+    parent: Blockly.BlockSvg,
+    inputName: string,
+  ): void {
+    if (!source.previousConnection) return;
+    const input = parent.getInput(inputName);
+    const conn = input?.connection;
+    if (!conn) return;
+    const firstChild = conn.targetBlock() as Blockly.BlockSvg | null;
+    if (!firstChild) {
+      conn.connect(source.previousConnection);
+      return;
+    }
+    let tail: Blockly.BlockSvg = firstChild;
+    let next = tail.getNextBlock() as Blockly.BlockSvg | null;
+    while (next) {
+      tail = next;
+      next = tail.getNextBlock() as Blockly.BlockSvg | null;
+    }
+    if (tail.nextConnection) {
+      tail.nextConnection.connect(source.previousConnection);
+    }
+  }
+
+  private computeBlockDepth(blockId: string): number {
+    let depth = 0;
+    let cur = this.workspace?.getBlockById(blockId)?.getParent() ?? null;
+    while (cur) {
+      depth++;
+      cur = cur.getParent();
+    }
+    return depth;
+  }
+
+  /** Place `block` at top-level `index`, re-spacing all top blocks. */
+  private placeAtTopIndex(
     workspace: Blockly.WorkspaceSvg,
-    blockType: string,
+    block: Blockly.BlockSvg,
     targetIndex: number,
   ): void {
-    const newBlock = workspace.newBlock(blockType) as Blockly.BlockSvg;
-    newBlock.initSvg();
-    newBlock.render();
-
-    const ids = workspace.getTopBlocks(true).map((b) => b.id);
+    const ids = workspace
+      .getTopBlocks(true)
+      .map((b) => b.id)
+      .filter((id) => id !== block.id);
     const clamped = Math.max(0, Math.min(targetIndex, ids.length));
-    ids.splice(clamped, 0, newBlock.id);
+    ids.splice(clamped, 0, block.id);
     this.applyTopBlockOrder(workspace, ids);
   }
 
-  private reorderTopBlock(
-    workspace: Blockly.WorkspaceSvg,
-    sourceId: string,
-    targetIndex: number,
+  /** Connect `source` into `target`'s statement chain before/after `target`. */
+  private connectStatement(
+    source: Blockly.BlockSvg,
+    target: Blockly.BlockSvg,
+    position: "before" | "after",
   ): void {
-    const ids = workspace.getTopBlocks(true).map((b) => b.id);
-    const fromIndex = ids.indexOf(sourceId);
-    if (fromIndex < 0) return;
-    const adjusted = fromIndex < targetIndex ? targetIndex - 1 : targetIndex;
-    if (adjusted === fromIndex) return;
-    ids.splice(fromIndex, 1);
-    const clamped = Math.max(0, Math.min(adjusted, ids.length));
-    ids.splice(clamped, 0, sourceId);
-    this.applyTopBlockOrder(workspace, ids);
+    if (!source.previousConnection) return;
+
+    if (position === "before") {
+      // Capture the connection target was attached to (parent slot, or prev's
+      // nextConnection), then explicitly detach so chaining is unambiguous.
+      const upstream = target.previousConnection?.targetConnection ?? null;
+      target.previousConnection?.disconnect();
+
+      if (upstream) {
+        upstream.connect(source.previousConnection);
+      }
+      if (source.nextConnection && target.previousConnection) {
+        source.nextConnection.connect(target.previousConnection);
+      }
+    } else {
+      // Capture and detach the next block in chain so we can splice cleanly.
+      const next = target.getNextBlock() as Blockly.BlockSvg | null;
+      next?.previousConnection?.disconnect();
+
+      if (target.nextConnection) {
+        target.nextConnection.connect(source.previousConnection);
+      }
+      if (next?.previousConnection && source.nextConnection) {
+        source.nextConnection.connect(next.previousConnection);
+      }
+    }
   }
 
   private applyTopBlockOrder(
