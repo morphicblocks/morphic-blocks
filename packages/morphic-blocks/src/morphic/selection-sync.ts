@@ -29,6 +29,7 @@ export class MorphicSelectionSync {
 
   private blockListener?: (event: Blockly.Events.Abstract) => void;
   private cursorCallbacks = new Map<MorphicCodeEditor, (line: number) => void>();
+  private emptyClickCallbacks = new Map<MorphicCodeEditor, () => void>();
 
   /** Prevents circular updates. */
   private guard = false;
@@ -112,34 +113,40 @@ export class MorphicSelectionSync {
 
   private attachCursorListeners(): void {
     for (const editor of this.editors) {
-      if (this.cursorCallbacks.has(editor)) continue;
+      if (!this.cursorCallbacks.has(editor)) {
+        const callback = (line: number) => {
+          if (this.guard) return;
 
-      const callback = (line: number) => {
-        if (this.guard) return;
+          const blockId = this.findBlockAtLine(line, editor.metadata);
 
-        const blockId = this.findBlockAtLine(line, editor.metadata);
+          if (!blockId) {
+            this.clearAll();
+            return;
+          }
 
-        if (!blockId) {
+          const block = this.workspace.getBlockById(blockId);
+          if (!block) return;
+
+          if (Blockly.common.getSelected() === block) return;
+
           this.guard = true;
-          Blockly.common.setSelected(null);
-          for (const e of this.editors) e.clearHighlight();
+          Blockly.common.setSelected(block as Blockly.BlockSvg);
+          this.broadcastHighlight(blockId);
           this.guard = false;
-          return;
-        }
+        };
 
-        const block = this.workspace.getBlockById(blockId);
-        if (!block) return;
+        this.cursorCallbacks.set(editor, callback);
+        editor.onCursorLine = callback;
+      }
 
-        if (Blockly.common.getSelected() === block) return;
-
-        this.guard = true;
-        Blockly.common.setSelected(block as Blockly.BlockSvg);
-        this.broadcastHighlight(blockId);
-        this.guard = false;
-      };
-
-      this.cursorCallbacks.set(editor, callback);
-      editor.onCursorLine = callback;
+      if (!this.emptyClickCallbacks.has(editor)) {
+        const emptyCb = () => {
+          if (this.guard) return;
+          this.clearAll();
+        };
+        this.emptyClickCallbacks.set(editor, emptyCb);
+        editor.onEmptyClick = emptyCb;
+      }
     }
   }
 
@@ -150,6 +157,19 @@ export class MorphicSelectionSync {
       }
     }
     this.cursorCallbacks.clear();
+    for (const [editor, callback] of this.emptyClickCallbacks) {
+      if (editor.onEmptyClick === callback) {
+        editor.onEmptyClick = undefined;
+      }
+    }
+    this.emptyClickCallbacks.clear();
+  }
+
+  private clearAll(): void {
+    this.guard = true;
+    Blockly.common.setSelected(null);
+    for (const e of this.editors) e.clearHighlight();
+    this.guard = false;
   }
 
   // ── Helpers ─────────────────────────────────────────────

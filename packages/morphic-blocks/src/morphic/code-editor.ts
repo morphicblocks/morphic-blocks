@@ -111,6 +111,14 @@ export class MorphicCodeEditor {
   /** Called when the user's cursor line changes in the editor. */
   public onCursorLine?: (line: number) => void;
 
+  /**
+   * Called when the user clicks in the empty area below the last rendered
+   * line. CodeMirror snaps the cursor to end-of-doc on such clicks, which
+   * isn't enough to detect "user wants to deselect" — the cursor often lands
+   * on a line that's still inside the currently selected block's range.
+   */
+  public onEmptyClick?: () => void;
+
   // Cached CodeMirror modules (loaded once on first mount).
   private cm?: Awaited<ReturnType<typeof loadCodeMirror>>;
   private themeCompartment?: import("@codemirror/state").Compartment;
@@ -118,6 +126,7 @@ export class MorphicCodeEditor {
   private highlightColor = "rgba(255, 255, 255, 0.07)";
   private metadataEffect?: StateEffectType<MorphicCodeMetadata>;
   private dropIndicatorEffect?: StateEffectType<DropIndicator | null>;
+  private emptyClickListener?: (e: MouseEvent) => void;
 
   constructor(
     container: HTMLElement,
@@ -189,10 +198,15 @@ export class MorphicCodeEditor {
     });
 
     // ── Cursor activity listener ──
-    // Compare head positions rather than checking `selectionSet`, which can
-    // miss clicks in a read-only editor.
+    // Pointer clicks are handled by the mousedown listener below — that path
+    // works even when the cursor doesn't move (e.g. clicking the same line
+    // again) and lets us distinguish "click below content" cleanly. Here we
+    // only react to non-pointer movements (keyboard, programmatic).
     const cursorListener = cmView.EditorView.updateListener.of((update) => {
       if (!editor.onCursorLine) return;
+      if (update.transactions.some((tr) => tr.isUserEvent("select.pointer"))) {
+        return;
+      }
       const pos = update.state.selection.main.head;
       const prevPos = update.startState.selection.main.head;
       if (pos === prevPos) return;
@@ -232,6 +246,23 @@ export class MorphicCodeEditor {
         effects: this.metadataEffect.of(this.metadata),
       });
     }
+
+    this.emptyClickListener = (e: MouseEvent) => {
+      if (this.isBelowLastLine(e.clientY)) {
+        this.onEmptyClick?.();
+        return;
+      }
+      // Resolve the click directly so block selection still fires when the
+      // CodeMirror cursor would otherwise stay put (e.g. clicking the line
+      // it's already parked on after a re-render).
+      if (this.onCursorLine) {
+        const line = this.getLineAtCoords(e.clientX, e.clientY);
+        if (line !== null) {
+          this.onCursorLine(line);
+        }
+      }
+    };
+    this.editorView.scrollDOM.addEventListener("mousedown", this.emptyClickListener);
 
     this.attachSyncListener();
   }
@@ -588,6 +619,10 @@ export class MorphicCodeEditor {
     if (this.syncTimer !== undefined) {
       clearTimeout(this.syncTimer);
       this.syncTimer = undefined;
+    }
+    if (this.emptyClickListener && this.editorView) {
+      this.editorView.scrollDOM.removeEventListener("mousedown", this.emptyClickListener);
+      this.emptyClickListener = undefined;
     }
     this.editorView?.destroy();
     this.editorView = undefined;
