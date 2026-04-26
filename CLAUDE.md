@@ -183,15 +183,26 @@ These are *potential* applications, not currently deployed. They are worth keepi
 
 - ~~**CodeMirror text editor integration**~~ — optional code editor with lazy loading
 - ~~**Block metadata mapping**~~ — maps block IDs to generated code positions
-- ~~**Block ↔ code selection sync**~~ — selecting a block highlights corresponding code lines and vice versa
+- ~~**Block ↔ code selection sync**~~ — multi-editor (code editor, codespace, preview)
+- ~~**Codespace** — editable-by-structure text view of the workspace
+- ~~**Preview editor** — read-only view of `mode.preview`
+- ~~**Drag from toolbox / grip into codespace**~~ with drop-position indicator
+- ~~**Slot-based drop resolution**~~ — drops into empty `for`/`if` bodies and statement chains, not just before/after the parent
+- ~~**Same-chain reorder via grip**~~ — active-source exclusion makes drop-on-self a real move
+- ~~**Indent compounding**~~ in template-codegen across nesting depth
+- ~~**Per-element empty-slot defaults**~~ via `elementTypes` config (`{ type, empty: { Number, String, Boolean, default } }`)
+- ~~**Empty-area click clears highlight**~~ in codespace/preview
 
 ### Upcoming
 
-- **Bidirectional sync** — AST parsing converts text back to blocks (includes character-level highlighting for value blocks)
-- **Drag blocks into text editor**
+- **Drag value blocks into value slots** (numbers, strings, variables)
+- **Field edits in codespace** — replace placeholders, insert variables
+- **Use empty defaults in the Blockly block view** as well (cosmetic)
+- **Per-language syntax highlighting** in codespace/preview
+- **Bidirectional sync** — AST parsing converts text back to blocks (future, separate paper)
 - **Error recovery / draft blocks** — handles incomplete/invalid code gracefully
 - **Headless UI components** (terminal, sidebar, info panel, resizable panes) — unstyled
-- **Monaco editor (optional)** — separate entry point (`morphic-blocks/monaco`) for users who want full IDE features; zero cost for users who don't import it
+- **Monaco editor (optional)** — separate entry point (`morphic-blocks/monaco`)
 
 ### Removed
 

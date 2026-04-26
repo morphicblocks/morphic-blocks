@@ -97,8 +97,8 @@ morphic-blocks/
     "title":      "text",
     "description":"text",
     "concept":    "code",
-    "python":     "code",
-    "javascript": "code"
+    "python":     { "type": "code", "empty": { "Number": "0", "String": "\"text\"", "Boolean": "True",  "default": "None" } },
+    "javascript": { "type": "code", "empty": { "Number": "0", "String": "\"text\"", "Boolean": "true",  "default": "null" } }
   },
   "modes": [
     { "name": "iconic",    "elements": ["icon", "title", "description"] },
@@ -130,7 +130,7 @@ morphic-blocks/
 }
 ```
 
-- `elementTypes` — global registry mapping element names to their type
+- `elementTypes` — global registry mapping element names either to a bare type string (`"text" | "code" | "image"`) or to a config object `{ type, empty }`. The `empty` map provides per-language defaults for empty value slots, keyed by the slot's `check` (`"Number"`, `"String"`, `"Boolean"`, plus `"default"` for unchecked slots). With defaults set, a `print` with no value attached renders as `print("text")` instead of `print()` — keeping generated code syntactically valid.
 - `modes` — list of mode definitions with optional `presentation`, `primarySource`, `preview`, `tileRender`
 - `categories` — optional groupings for the toolbox
 - `blocks` — flat array of block definitions
@@ -254,17 +254,22 @@ Block colours can be driven from CSS via a custom property:
 
 ### Done
 
-- ✅ Codespace — editable text view of the block model
+- ✅ Codespace — editable-by-structure text view of the block model
 - ✅ Preview editor — per-mode alternate language preview
-- ✅ Drag-to-codespace, keyboard + gutter deletion
-- ✅ Block ↔ code selection sync (with code-editor; codespace/preview pending)
-- ✅ Block→line metadata in template codegen
+- ✅ Drag from toolbox or grip handle (`⠿`) into the codespace, with drop-position indicator
+- ✅ Slot-based drops — drop into empty `for`/`if` bodies, or before/after existing siblings
+- ✅ Reorder via grip — including same-chain reorder (drop on own line moves it)
+- ✅ Keyboard + gutter `✕` deletion
+- ✅ Per-element empty-slot defaults (`Number`/`String`/`Boolean`/`default` per language) — generated text stays syntactically valid
+- ✅ Indent compounding — nested templates stack indents automatically
+- ✅ Multi-editor selection sync — block ↔ code editor ↔ codespace ↔ preview, with click-clears-on-empty-area
+- ✅ Block→line metadata in template codegen, plus statement-input body ranges
 
 ### Upcoming
 
-- Selection sync extended to codespace + preview
-- Drag-to-reorder in codespace (with drop-position indicator)
-- Field edits in codespace (replace nulls, insert variables)
+- Drag value blocks (numbers, strings, variables) into value slots
+- Field edits in codespace (replace placeholders, insert variables)
+- Use empty defaults in the Blockly block view as well
 - Per-language syntax highlighting in codespace/preview
-- Bidirectional sync — AST parsing converts JS text back to blocks (future)
+- Bidirectional sync — AST parsing converts text back to blocks (future)
 - Schema simplification — split tiles/modes, move mode composition into definitions (future refactor)
