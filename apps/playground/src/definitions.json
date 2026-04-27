@@ -3,10 +3,10 @@
     "title":       "text",
     "description": "text",
     "icon":        "image",
-    "concept":     "code",
-    "python":      "code",
-    "javascript":  "code",
-    "go":          "code"
+    "concept":     { "type": "code", "empty": { "Number": "0", "String": "\"text\"", "Boolean": "true",  "default": "value" } },
+    "python":      { "type": "code", "empty": { "Number": "0", "String": "\"text\"", "Boolean": "True",  "default": "None" } },
+    "javascript":  { "type": "code", "empty": { "Number": "0", "String": "\"text\"", "Boolean": "true",  "default": "null" } },
+    "go":          { "type": "code", "empty": { "Number": "0", "String": "\"text\"", "Boolean": "true",  "default": "nil"  } }
   },
   "modes": [
     { "name": "iconic",           "elements": ["icon", "title", "description"] },

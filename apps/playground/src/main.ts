@@ -2,7 +2,7 @@ import * as Blockly from "blockly";
 import {
   MorphicBlocks,
   type MorphicBlockDefinition,
-  type MorphicElementType,
+  type MorphicElementTypeEntry,
   type MorphicModeDefinition,
   type MorphicToolboxCategory,
 } from "morphic-blocks";
@@ -54,7 +54,7 @@ const blocks = (format.blocks as MorphicBlockDefinition[]).map((block) => ({
 const engine = new MorphicBlocks(
   blocks,
   behaviors,
-  format.elementTypes as Record<string, MorphicElementType>,
+  format.elementTypes as Record<string, MorphicElementTypeEntry>,
 );
 
 let currentLevelIndex = 0;
