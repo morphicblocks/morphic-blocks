@@ -267,9 +267,10 @@ Block colours can be driven from CSS via a custom property:
 
 ### Upcoming
 
+- Definition-driven syntax highlighting — per-element `highlighting` rules (keywords, strings, comments, numbers + colors), element-name keyed (mode's `primarySource` / `preview` already names the language); CodeMirror `ViewPlugin` + `Decoration.mark`, runtime swap on `setModes()`
 - Drag value blocks (numbers, strings, variables) into value slots
 - Field edits in codespace (replace placeholders, insert variables)
 - Use empty defaults in the Blockly block view as well
-- Per-language syntax highlighting in codespace/preview
 - Bidirectional sync — AST parsing converts text back to blocks (future)
 - Schema simplification — split tiles/modes, move mode composition into definitions (future refactor)
+- Package architecture refactor — split framework into plugin/feature modules (ports-and-adapters or similar); planned as the final cleanup once feature surface stabilises

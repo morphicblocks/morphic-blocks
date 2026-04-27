@@ -195,14 +195,15 @@ These are *potential* applications, not currently deployed. They are worth keepi
 
 ### Upcoming
 
+- **Definition-driven syntax highlighting** — top-level `highlighting` map in definitions, keyed by element name (matches `mode.primarySource` / `mode.preview`); each entry: `{ keywords, strings, comment, numbers, colors }`. Implementation: CodeMirror 6 `ViewPlugin` + `Decoration.mark` (no `StreamLanguage` — keeps highlighting decoupled from language behavior); runtime swap via `Compartment` on `setModes()`. Type: `MorphicHighlightDefinition`.
 - **Drag value blocks into value slots** (numbers, strings, variables)
 - **Field edits in codespace** — replace placeholders, insert variables
 - **Use empty defaults in the Blockly block view** as well (cosmetic)
-- **Per-language syntax highlighting** in codespace/preview
 - **Bidirectional sync** — AST parsing converts text back to blocks (future, separate paper)
 - **Error recovery / draft blocks** — handles incomplete/invalid code gracefully
 - **Headless UI components** (terminal, sidebar, info panel, resizable panes) — unstyled
 - **Monaco editor (optional)** — separate entry point (`morphic-blocks/monaco`)
+- **Package architecture refactor** — split framework into plugin/feature modules (e.g. `core/`, `codespace/`, `toolbox/`, `selection-sync/`, `highlight/`); ports-and-adapters or similar; planned as the final cleanup after feature surface stabilises.
 
 ### Removed
 
