@@ -29,6 +29,7 @@ import type {
   MorphicCodeEditorTheme,
   MorphicCodeGenerationResult,
   MorphicElementTypeEntry,
+  MorphicHighlightDefinition,
   MorphicModeDefinition,
   MorphicModeName,
   MorphicModeStyle,
@@ -287,8 +288,29 @@ export class MorphicBlocks {
     this.bindFlyoutWorkspace();
     this.renderWorkspaceBlocks();
     this.renderFlyoutBlocks();
+    this.codespace?.setHighlightRules(this.resolveHighlightRules("codespace"));
+    this.previewEditor?.setHighlightRules(this.resolveHighlightRules("preview"));
     this.codespace?.refresh();
     this.previewEditor?.refresh();
+  }
+
+  /**
+   * Resolve the highlight rules for the codespace or preview editor by
+   * looking up the active mode's `primarySource` / `preview` element name in
+   * the `mountConfig.highlighting` registry. Returns `undefined` when no
+   * matching entry is configured.
+   */
+  private resolveHighlightRules(
+    kind: "codespace" | "preview",
+  ): MorphicHighlightDefinition | undefined {
+    if (!this.mountConfig) return undefined;
+    const mode = (this.mountConfig.modes ?? []).find(
+      (m) => m.name === this.mountConfig?.workspaceMode,
+    );
+    if (!mode) return undefined;
+    const elementName = kind === "codespace" ? mode.primarySource : mode.preview;
+    if (!elementName) return undefined;
+    return this.mountConfig.highlighting?.[elementName];
   }
 
   public generateJavaScript(): string {
@@ -372,6 +394,7 @@ export class MorphicBlocks {
           const block = this.workspace?.getBlockById(blockId);
           return !!block?.previousConnection;
         }),
+      highlightRules: options?.highlightRules ?? this.resolveHighlightRules("codespace"),
     };
 
     this.codespace = new MorphicCodeEditor(
@@ -782,11 +805,16 @@ export class MorphicBlocks {
 
     this.previewEditor?.dispose();
 
+    const mergedOptions: MorphicCodeEditorOptions = {
+      ...options,
+      highlightRules: options?.highlightRules ?? this.resolveHighlightRules("preview"),
+    };
+
     this.previewEditor = new MorphicCodeEditor(
       container,
       this.workspace,
       () => this.generatePreviewText(),
-      options,
+      mergedOptions,
     );
 
     await this.previewEditor.mount();

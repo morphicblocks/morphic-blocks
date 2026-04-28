@@ -1,9 +1,11 @@
 import type * as Blockly from "blockly";
+import { buildHighlightExtensions } from "./syntax-highlight";
 import type {
   MorphicCodeEditorOptions,
   MorphicCodeEditorTheme,
   MorphicCodeGenerationResult,
   MorphicCodeMetadata,
+  MorphicHighlightDefinition,
 } from "./types";
 
 // Re-export the type so MorphicBlocks.ts doesn't need to import CodeMirror types.
@@ -133,6 +135,7 @@ export class MorphicCodeEditor {
   // Cached CodeMirror modules (loaded once on first mount).
   private cm?: Awaited<ReturnType<typeof loadCodeMirror>>;
   private themeCompartment?: import("@codemirror/state").Compartment;
+  private syntaxHighlightCompartment?: import("@codemirror/state").Compartment;
   private highlightEffect?: StateEffect<HighlightRange>;
   private highlightColor = "rgba(255, 255, 255, 0.07)";
   private metadataEffect?: StateEffectType<MorphicCodeMetadata>;
@@ -156,8 +159,14 @@ export class MorphicCodeEditor {
     const { view: cmView, state: cmState, langJs } = this.cm;
 
     this.themeCompartment = new cmState.Compartment();
+    this.syntaxHighlightCompartment = new cmState.Compartment();
 
     const themeExt = buildThemeExtension(cmView, this.options.theme ?? {});
+    const initialHighlightExt = buildHighlightExtensions(
+      cmView,
+      cmState,
+      this.options.highlightRules,
+    );
 
     // Shared metadata effect — dispatched in syncNow, consumed by gutter fields.
     const metadataEffect = cmState.StateEffect.define<MorphicCodeMetadata>();
@@ -233,6 +242,7 @@ export class MorphicCodeEditor {
       highlightField,
       cursorListener,
       this.themeCompartment.of(themeExt),
+      this.syntaxHighlightCompartment.of(initialHighlightExt),
       ...this.buildDeleteExtensions(cmView, cmState, metadataEffect),
       ...this.buildGripExtensions(cmView, cmState, metadataEffect),
       ...this.buildDropIndicatorExtensions(cmView, cmState),
@@ -624,6 +634,19 @@ export class MorphicCodeEditor {
     const themeExt = buildThemeExtension(this.cm.view, theme);
     this.editorView.dispatch({
       effects: this.themeCompartment.reconfigure(themeExt),
+    });
+  }
+
+  /**
+   * Swap the active token-highlight rules. Pass `undefined` to clear. Used by
+   * MorphicBlocks on `setModes()` so the codespace and preview re-tokenize for
+   * the new mode's `primarySource` / `preview` element.
+   */
+  setHighlightRules(rules: MorphicHighlightDefinition | undefined): void {
+    if (!this.editorView || !this.cm || !this.syntaxHighlightCompartment) return;
+    const ext = buildHighlightExtensions(this.cm.view, this.cm.state, rules);
+    this.editorView.dispatch({
+      effects: this.syntaxHighlightCompartment.reconfigure(ext),
     });
   }
 

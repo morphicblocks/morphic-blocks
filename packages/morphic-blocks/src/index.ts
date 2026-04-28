@@ -6,6 +6,7 @@ export type {
   MorphicElementType,
   MorphicElementTypeConfig,
   MorphicElementTypeEntry,
+  MorphicHighlightDefinition,
   MorphicJavaScriptConfig,
   MorphicBehaviorContext,
   MorphicBehaviorDefinition,

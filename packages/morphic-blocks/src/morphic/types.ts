@@ -108,6 +108,35 @@ export interface MorphicBlockDefinition {
   category?: string;
 }
 
+/**
+ * Token-level highlighting rules for a code element. Keyed by element name
+ * (e.g. "python", "javascript", "concept") so a mode's `primarySource` /
+ * `preview` already names the language — no separate `language` field is
+ * needed on modes.
+ *
+ * The framework applies these as `Decoration.mark` ranges via a CodeMirror
+ * `ViewPlugin`. Highlighting deliberately does NOT install a CodeMirror
+ * language (no bracket matching, no auto-indent, no autocomplete) — Code
+ * Blocks treats text as a rendered view, not a freeform editing surface.
+ */
+export interface MorphicHighlightDefinition {
+  /** Words to highlight as keywords (exact match against `[A-Za-z_]\w*` tokens). */
+  keywords?: string[];
+  /** String delimiters (e.g. `["\"", "'"]`). Span until matching close on same line. */
+  strings?: string[];
+  /** Line-comment marker (e.g. `"#"`, `"//"`). Highlights from the marker to end of line. */
+  comment?: string;
+  /** Highlight integer/decimal numeric literals. Defaults to true; pass `false` to disable. */
+  numbers?: boolean;
+  /** Per-token-class color overrides. Each is optional; framework provides sensible defaults. */
+  colors?: {
+    keyword?: string;
+    string?: string;
+    number?: string;
+    comment?: string;
+  };
+}
+
 /** Top-level format for a definitions JSON file. */
 export interface MorphicBlocksFormat {
   /**
@@ -119,6 +148,12 @@ export interface MorphicBlocksFormat {
   elementTypes?: Record<string, MorphicElementTypeEntry>;
   /** Explicit mode definitions — which elements are visible per mode. */
   modes?: MorphicModeDefinition[];
+  /**
+   * Per-element highlight rules, keyed by element name. The active mode's
+   * `primarySource` and `preview` element names look up entries here for the
+   * codespace and preview editors respectively.
+   */
+  highlighting?: Record<string, MorphicHighlightDefinition>;
   /** Optional category metadata. Blocks reference categories by name. */
   categories?: MorphicToolboxCategory[];
   /** Flat array of block definitions. */
@@ -245,6 +280,13 @@ export interface MorphicMountConfig {
   blockly?: Blockly.BlocklyOptions;
   blocklyOptions?: Blockly.BlocklyOptions;
   javascript?: MorphicJavaScriptConfig;
+  /**
+   * Per-element highlight rules, keyed by element name. The active mode's
+   * `primarySource` and `preview` element names are used to look up entries
+   * here for the codespace and preview editors. Optional — when absent,
+   * editors render plain text.
+   */
+  highlighting?: Record<string, MorphicHighlightDefinition>;
 }
 
 /**
@@ -321,6 +363,13 @@ export interface MorphicCodeEditorOptions {
    * the host can then handle the drop (e.g. reorder).
    */
   canDragBlock?: (blockId: string) => boolean;
+  /**
+   * Token-level syntax highlighting rules. When set, the editor installs a
+   * CodeMirror `ViewPlugin` that emits `Decoration.mark` ranges for keywords,
+   * strings, numbers, and line comments per these rules. Swappable at runtime
+   * via `setHighlightRules`.
+   */
+  highlightRules?: MorphicHighlightDefinition;
 }
 
 /** Options for `enableSelectionSync()`. */
