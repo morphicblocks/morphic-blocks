@@ -20,6 +20,50 @@
     { "name": "code-javascript",  "elements": ["title", "icon"], "presentation": "codespace",
       "primarySource": "javascript", "preview": "go" }
   ],
+  "highlighting": {
+    "concept": {
+      "keywords": ["if", "else", "while", "repeat", "for", "Output"],
+      "strings":  ["\""],
+      "comment":  "//",
+      "numbers":  true
+    },
+    "python": {
+      "keywords": ["if", "elif", "else", "for", "while", "in", "and", "or", "not", "True", "False", "None", "def", "return", "print", "range"],
+      "strings":  ["\"", "'"],
+      "comment":  "#",
+      "numbers":  true,
+      "colors": {
+        "keyword": "#cc7832",
+        "string":  "#6a8759",
+        "number":  "#6897bb",
+        "comment": "#808080"
+      }
+    },
+    "javascript": {
+      "keywords": ["if", "else", "for", "while", "do", "function", "return", "var", "let", "const", "true", "false", "null", "undefined", "console"],
+      "strings":  ["\"", "'", "`"],
+      "comment":  "//",
+      "numbers":  true,
+      "colors": {
+        "keyword": "#569cd6",
+        "string":  "#ce9178",
+        "number":  "#b5cea8",
+        "comment": "#6a9955"
+      }
+    },
+    "go": {
+      "keywords": ["if", "else", "for", "range", "func", "return", "var", "const", "true", "false", "nil", "package", "import", "fmt"],
+      "strings":  ["\"", "`"],
+      "comment":  "//",
+      "numbers":  true,
+      "colors": {
+        "keyword": "#00acd7",
+        "string":  "#dcdcaa",
+        "number":  "#b5cea8",
+        "comment": "#6a9955"
+      }
+    }
+  },
   "categories": [
     { "name": "Output",     "colour": "#b469d6" },
     { "name": "Control",    "colour": "#4aa3df" },

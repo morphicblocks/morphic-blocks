@@ -3,6 +3,7 @@ import {
   MorphicBlocks,
   type MorphicBlockDefinition,
   type MorphicElementTypeEntry,
+  type MorphicHighlightDefinition,
   type MorphicModeDefinition,
   type MorphicToolboxCategory,
 } from "morphic-blocks";
@@ -68,6 +69,7 @@ const workspace = engine.mount({
   modesFolder: modeStyles,
   canvasToolbox: true,
   modes: format.modes as MorphicModeDefinition[],
+  highlighting: format.highlighting as Record<string, MorphicHighlightDefinition>,
   toolbox: {
     categories: format.categories as MorphicToolboxCategory[],
   },
