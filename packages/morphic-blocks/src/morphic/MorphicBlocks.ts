@@ -1119,9 +1119,18 @@ export class MorphicBlocks {
     // Stamp the stable per-block identifier class so mode CSS can target it
     applyBlockIdentifierClass(block, definition.identifier);
 
-    // Let CSS custom property --morphic-block-color override any programmatic colour.
-    // This runs after all classes are applied so computed style reflects the cascade.
+    // Apply mode-scoped CSS color via --morphic-block-color (Tier 2). This runs
+    // after all classes are applied so the computed style reflects the cascade.
     applyBlockColorFromCSS(block);
+
+    // Re-apply per-block color so it wins over CSS (Tier 3 — highest priority).
+    // The principle is "more specific wins": an explicit `definition.color` is
+    // a per-block assertion that should not be silently overruled when the
+    // active mode changes the CSS theme.
+    if (definition.color !== undefined) {
+      block.setColour(definition.color);
+      if (block.rendered) block.render();
+    }
 
     const lifecycleBehavior = getLifecycleBehavior(
       this.behaviors[definition.identifier],
