@@ -314,7 +314,7 @@
       "inputsInline": true
     },
     {
-      "identifier": "math_number",
+      "identifier": "m_math_number",
       "category": "Values",
       "elements": {
         "title": "Number",
@@ -346,7 +346,7 @@
       "output": "String"
     },
     {
-      "identifier": "logic_boolean",
+      "identifier": "m_logic_boolean",
       "category": "Values",
       "elements": {
         "title": "Boolean",

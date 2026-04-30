@@ -98,7 +98,7 @@ export const behaviors: MorphicBehaviorMap = {
 
   // ── Values ──────────────────────────────────────────────
 
-  math_number: {
+  m_math_number: {
     onViewApplied(block, { Blockly }) {
       const input = block.getInput("CONTENT");
       if (input) {
@@ -123,7 +123,7 @@ export const behaviors: MorphicBehaviorMap = {
     },
   },
 
-  logic_boolean: {
+  m_logic_boolean: {
     onViewApplied(block, { Blockly }) {
       const input = block.getInput("CONTENT");
       if (input) {

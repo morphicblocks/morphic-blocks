@@ -28,9 +28,9 @@ export const blockIcons: Record<string, string> = {
   loop_for: imgTag(MdLoop),
   math_arithmetic: imgTag(MdCalculate),
   logic_compare: imgTag(MdCompare),
-  math_number: imgTag(MdPin),
+  m_math_number: imgTag(MdPin),
   text_value: imgTag(MdTextFields),
-  logic_boolean: imgTag(MdToggleOn),
+  m_logic_boolean: imgTag(MdToggleOn),
   var_declare: imgTag(MdEditNote),
   var_get: imgTag(MdDataObject),
 };
