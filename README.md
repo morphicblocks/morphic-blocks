@@ -109,7 +109,7 @@ morphic-blocks/
       "presentation": "codespace", "primarySource": "python", "preview": "javascript" }
   ],
   "categories": [
-    { "name": "Output", "colour": "#5C81A6" }
+    { "name": "Output", "color": "#5C81A6" }
   ],
   "blocks": [
     {

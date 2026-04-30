@@ -88,7 +88,7 @@ A **mode** declares which elements are visible and, by scanning for the first `t
     { "name": "syntactic", "elements": ["title", "syntax", "text"] }
   ],
   "categories": [
-    { "name": "Output", "colour": "#5C81A6" }
+    { "name": "Output", "color": "#5C81A6" }
   ],
   "blocks": [
     {

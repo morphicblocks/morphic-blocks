@@ -117,8 +117,8 @@ export class MorphicToolboxCanvas {
 
       const group = document.createElement("div");
       group.setAttribute("data-category", toModeClassToken(category.name));
-      if (category.colour) {
-        group.style.setProperty("--morphic-category-color", category.colour);
+      if (category.color) {
+        group.style.setProperty("--morphic-category-color", category.color);
       }
 
       for (const id of ids) {

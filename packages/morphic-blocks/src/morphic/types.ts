@@ -249,7 +249,7 @@ export interface MorphicStyleBundle {
 
 export interface MorphicToolboxCategory {
   name: string;
-  colour?: string;
+  color?: string;
   /** Explicit block list. If omitted the framework derives it from block definitions whose `category` matches this name. */
   blocks?: string[];
 }

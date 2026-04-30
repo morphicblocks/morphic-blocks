@@ -47,17 +47,17 @@ export class MorphicStyleManager {
 
   public ensureCategoryStyles(categories: MorphicToolboxCategory[]): void {
     for (const category of categories) {
-      if (!category.colour) {
+      if (!category.color) {
         continue;
       }
       const token = toModeClassToken(category.name);
-      const cssKey = `category:${token}:${category.colour}`;
+      const cssKey = `category:${token}:${category.color}`;
       if (this.loadedStyleKeys.has(cssKey)) {
         continue;
       }
       const styleEl = document.createElement("style");
       styleEl.dataset.morphicSource = `category:${token}`;
-      styleEl.textContent = `.morphic-category-${token} { --morphic-category-color: ${category.colour}; }`;
+      styleEl.textContent = `.morphic-category-${token} { --morphic-category-color: ${category.color}; }`;
       document.head.appendChild(styleEl);
       this.loadedStyleKeys.add(cssKey);
     }

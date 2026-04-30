@@ -1103,10 +1103,10 @@ export class MorphicBlocks {
   ): void {
     const category = this.blockCategoryIndex.get(definition.identifier);
 
-    // Apply category colour before applyBlockView so the internal render() uses it.
-    // Only used when the definition has no explicit colour of its own.
-    if (definition.color === undefined && category?.colour !== undefined) {
-      block.setColour(category.colour);
+    // Apply category color before applyBlockView so the internal render() uses it.
+    // Only used when the definition has no explicit color of its own.
+    if (definition.color === undefined && category?.color !== undefined) {
+      block.setColour(category.color);
     }
 
     // Preserve user-added field values (dropdowns, text inputs, etc.) across re-renders
@@ -1345,7 +1345,7 @@ export class MorphicBlocks {
   private buildBlockColorMap(): Map<string, string> {
     const colorMap = new Map<string, string>();
     for (const [id, def] of this.definitions) {
-      const color = def.color ?? this.blockCategoryIndex.get(id)?.colour;
+      const color = def.color ?? this.blockCategoryIndex.get(id)?.color;
       if (color !== undefined) {
         colorMap.set(id, String(color));
       }
@@ -1376,14 +1376,14 @@ export class MorphicBlocks {
       const token = toModeClassToken(category.name);
       categoryMetaByName.set(category.name.toLowerCase(), {
         token,
-        colour: category.colour,
+        color: category.color,
       });
 
       // Index blocks from explicit `category.blocks` list if provided
       if (category.blocks) {
         for (const type of category.blocks) {
           if (!index.has(type)) {
-            index.set(type, { token, colour: category.colour });
+            index.set(type, { token, color: category.color });
           }
         }
       }
@@ -1437,5 +1437,5 @@ type MorphicBlocklyKind = "flyoutToolbox" | "categoryToolbox";
 
 interface MorphicBlockCategoryMeta {
   token: string;
-  colour?: string;
+  color?: string;
 }

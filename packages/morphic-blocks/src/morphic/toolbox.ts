@@ -42,7 +42,8 @@ export function buildToolboxDefinition(
       contents: categories.map((category) => ({
         kind: "category",
         name: category.name,
-        colour: category.colour,
+        // Blockly's toolbox API uses British "colour" — read from our `color` field.
+        colour: category.color,
         contents: resolveCategoryBlocks(category, definitions).map((type) => ({
           kind: "block",
           type,

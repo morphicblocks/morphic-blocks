@@ -182,11 +182,11 @@
     }
   },
   "categories": [
-    { "name": "Output", "colour": "#b469d6" },
-    { "name": "Control", "colour": "#4aa3df" },
-    { "name": "Operations", "colour": "#5ba55b" },
-    { "name": "Values", "colour": "#d8b13f" },
-    { "name": "Variables", "colour": "#e65a6f" }
+    { "name": "Output", "color": "#b469d6" },
+    { "name": "Control", "color": "#4aa3df" },
+    { "name": "Operations", "color": "#5ba55b" },
+    { "name": "Values", "color": "#d8b13f" },
+    { "name": "Variables", "color": "#e65a6f" }
   ],
   "blocks": [
     {
