@@ -1007,6 +1007,21 @@ export class MorphicBlocks {
         continue;
       }
 
+      // Warn when a Morphic block identifier collides with a Blockly built-in
+      // block type. The Morphic definition will overwrite the built-in entry,
+      // which can break shadow blocks (used by empty-default config) and any
+      // other framework or developer code that relies on the built-in type.
+      if (Blockly.Blocks[definition.identifier]) {
+        console.warn(
+          `[morphic-blocks] Block identifier "${definition.identifier}" ` +
+            `collides with a Blockly built-in block type. The Morphic ` +
+            `definition will override it, which can break shadow blocks ` +
+            `and other Blockly machinery that relies on the built-in. ` +
+            `Consider prefixing your identifier (e.g. ` +
+            `"m_${definition.identifier}").`,
+        );
+      }
+
       const engine = this;
       Blockly.Blocks[definition.identifier] = {
         init(this: Blockly.BlockSvg) {
@@ -1113,7 +1128,19 @@ export class MorphicBlocks {
     const savedFieldValues = captureFieldValues(block);
 
     const view = resolveBlockView(definition, mode, this.elementTypes, this.mountConfig?.modes ?? []);
-    applyBlockView({ block, definition, view, mode, context });
+    // Empty-default shadows should only attach on the engine's main editing
+    // workspace — not on the toolbox-canvas preview workspace (used for SVG
+    // snapshots) and not on the Blockly flyout. Pass elementTypes only when
+    // the block is actually on the main workspace.
+    const isMainWorkspace = block.workspace === this.workspace;
+    applyBlockView({
+      block,
+      definition,
+      view,
+      mode,
+      context,
+      elementTypes: isMainWorkspace ? this.elementTypes : undefined,
+    });
     applyBlockCategoryClass(block, category?.token);
 
     // Stamp the stable per-block identifier class so mode CSS can target it

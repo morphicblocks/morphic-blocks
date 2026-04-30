@@ -8,6 +8,7 @@ import {
   ALIGN_LEFT,
   ALIGN_RIGHT,
 } from "./constants";
+import { resolveDefaultConfig } from "./element-types";
 import {
   normalizeTemplateText,
   parseTemplate,
@@ -16,6 +17,7 @@ import {
 import type {
   MorphicBlockDefinition,
   MorphicConnectionSpec,
+  MorphicElementTypeEntry,
   MorphicInputSlotDefinition,
   MorphicModeName,
   MorphicRenderContext,
@@ -33,10 +35,18 @@ export interface MorphicApplyBlockViewParams {
   view: MorphicResolvedView;
   mode: MorphicModeName;
   context: MorphicRenderContext;
+  /**
+   * Global element type registry. When provided, value inputs with a
+   * configured shadow get a Blockly shadow block attached via
+   * `setShadowState`. Pass only for the engine's main editing workspace —
+   * toolbox-canvas SVG previews and Blockly's flyout don't benefit from
+   * shadows and skip this step by omitting elementTypes.
+   */
+  elementTypes?: Record<string, MorphicElementTypeEntry>;
 }
 
 export function applyBlockView(params: MorphicApplyBlockViewParams): void {
-  const { block, definition, view, mode, context } = params;
+  const { block, definition, view, mode, context, elementTypes } = params;
   const connectedChildren = captureConnectedChildren(block);
 
   removeInputs(block);
@@ -57,6 +67,9 @@ export function applyBlockView(params: MorphicApplyBlockViewParams): void {
   }
 
   restoreConnectedChildren(block, connectedChildren);
+  if (elementTypes) {
+    attachEmptyDefaultShadows(block, definition, view, elementTypes);
+  }
   decorateBlockRoot(block, mode, context);
 
   const managedBlock = block as MorphicManagedBlock;
@@ -292,11 +305,64 @@ function captureConnectedChildren(
   const connectedChildren = new Map<string, Blockly.Block>();
   for (const input of block.inputList) {
     const target = input.connection?.targetBlock();
-    if (target) {
+    // Skip shadow placeholders — they're recreated by attachEmptyDefaultShadows
+    // each render based on the active mode's element entry.
+    if (target && !target.isShadow()) {
       connectedChildren.set(input.name, target);
     }
   }
   return connectedChildren;
+}
+
+/**
+ * For each value input that has a configured shadow (via the resolution chain
+ * of per-slot `default` → element-type `empty[check]`), declare it via
+ * Blockly's `setShadowState`. Blockly handles lazy materialisation,
+ * replacement when a real block connects, and restoration on disconnect.
+ *
+ * Each `setShadowState` call is wrapped in a try/catch so a per-input failure
+ * (most likely an output-check mismatch the developer configured) does not
+ * abort rendering of the rest of the block.
+ */
+function attachEmptyDefaultShadows(
+  block: Blockly.BlockSvg,
+  definition: MorphicBlockDefinition,
+  view: MorphicResolvedView,
+  elementTypes: Record<string, MorphicElementTypeEntry>,
+): void {
+  const elementEntry = view.elementName ? elementTypes[view.elementName] : undefined;
+
+  // Build a lookup so we can find the slot definition for each input by name.
+  const slotByInputName = new Map<string, MorphicInputSlotDefinition>();
+  for (const slot of Object.values(definition.inputSlots ?? {})) {
+    if (!slot?.name) continue;
+    if ((slot.kind ?? "value") !== "value") continue;
+    slotByInputName.set(slot.name, slot);
+  }
+  if (slotByInputName.size === 0) return;
+
+  for (const input of block.inputList) {
+    const connection = input.connection;
+    if (!connection) continue;
+    if (connection.type !== Blockly.INPUT_VALUE) continue;
+
+    const slot = slotByInputName.get(input.name);
+    if (!slot) continue;
+
+    const config = resolveDefaultConfig(slot, elementEntry);
+    if (!config?.shadow) continue;
+
+    try {
+      connection.setShadowState({
+        type: config.shadow,
+        fields: config.fieldValues ?? {},
+      });
+    } catch {
+      // Defensive — Blockly may reject the shadow if its output check doesn't
+      // match the slot's check. Skip the placeholder for this slot rather
+      // than break the rest of the block render.
+    }
+  }
 }
 
 function restoreConnectedChildren(

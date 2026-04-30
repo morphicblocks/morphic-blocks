@@ -158,7 +158,11 @@ function renderBlock(
     const inputName = slot?.name;
     if (!inputName) continue;
     const input = block.getInput(inputName);
-    const target = input?.connection?.targetBlock() ?? null;
+    const rawTarget = input?.connection?.targetBlock() ?? null;
+    // Shadow blocks (empty-slot placeholders attached by block-view) are
+    // re-emitted as text via the empty-default fallback, not recursed into,
+    // so the codespace stays consistent with the workspace view.
+    const target = rawTarget?.isShadow() ? null : rawTarget;
 
     if (slot?.kind === "statement") {
       const slotStart = currentLine(state.output);
