@@ -1,90 +1,214 @@
 {
   "elementTypes": {
-    "title":       "text",
+    "title": "text",
     "description": "text",
-    "icon":        "image",
-    "concept":     { "type": "code", "empty": { "Number": "0", "String": "\"text\"", "Boolean": "true",  "default": "value" } },
-    "python":      { "type": "code", "empty": { "Number": "0", "String": "\"text\"", "Boolean": "True",  "default": "None" } },
-    "javascript":  { "type": "code", "empty": { "Number": "0", "String": "\"text\"", "Boolean": "true",  "default": "null" } },
-    "go":          { "type": "code", "empty": { "Number": "0", "String": "\"text\"", "Boolean": "true",  "default": "nil"  } }
+    "icon": "image",
+    "concept": {
+      "type": "code",
+      "empty": {
+        "Number": { "shadow": "math_number", "fieldValues": { "NUM": "5" } },
+        "String": { "shadow": "text", "fieldValues": { "TEXT": "value" } }
+      }
+    },
+    "python": {
+      "type": "code",
+      "empty": {
+        "Number": { "shadow": "math_number", "fieldValues": { "NUM": "42" } },
+        "String": { "shadow": "text", "fieldValues": { "TEXT": "world" } },
+        "Boolean": {
+          "shadow": "logic_boolean",
+          "fieldValues": { "BOOL": "TRUE" }
+        }
+      }
+    },
+    "javascript": {
+      "type": "code",
+      "empty": {
+        "Number": {
+          "shadow": "math_number",
+          "placeholder": "math_number",
+          "fieldValues": { "NUM": "7" }
+        },
+        "String": {
+          "shadow": "text",
+          "placeholder": "text",
+          "fieldValues": { "TEXT": "hello" }
+        },
+        "Boolean": {
+          "shadow": "logic_boolean",
+          "placeholder": "logic_boolean",
+          "fieldValues": { "BOOL": "FALSE" }
+        }
+      }
+    },
+    "go": {
+      "type": "code",
+      "empty": {
+        "Number": {
+          "placeholder": "math_number",
+          "fieldValues": { "NUM": "100" }
+        },
+        "Boolean": {
+          "placeholder": "logic_boolean",
+          "fieldValues": { "BOOL": "TRUE" }
+        }
+      }
+    }
   },
   "modes": [
-    { "name": "iconic",           "elements": ["icon", "title", "description"] },
-    { "name": "concept",          "elements": ["title", "concept"] },
-    { "name": "python",           "elements": ["title", "python"],     "preview": "python" },
-    { "name": "python-text",      "elements": ["title", "python"],     "tileRender": { "python": "text" } },
-    { "name": "javascript",       "elements": ["title", "javascript"], "preview": "javascript" },
-    { "name": "javascript-text",  "elements": ["title", "javascript"], "tileRender": { "javascript": "text" } },
-    { "name": "code-python",      "elements": ["title", "icon"], "presentation": "codespace",
-      "primarySource": "python",     "preview": "javascript" },
-    { "name": "code-javascript",  "elements": ["title", "icon"], "presentation": "codespace",
-      "primarySource": "javascript", "preview": "go" }
+    { "name": "iconic", "elements": ["icon", "title", "description"] },
+    { "name": "concept", "elements": ["title", "concept"] },
+    { "name": "python", "elements": ["title", "python"], "preview": "python" },
+    {
+      "name": "python-text",
+      "elements": ["title", "python"],
+      "tileRender": { "python": "text" }
+    },
+    {
+      "name": "javascript",
+      "elements": ["title", "javascript"],
+      "preview": "javascript"
+    },
+    {
+      "name": "javascript-text",
+      "elements": ["title", "javascript"],
+      "tileRender": { "javascript": "text" }
+    },
+    {
+      "name": "code-python",
+      "elements": ["title", "icon"],
+      "presentation": "codespace",
+      "primarySource": "python",
+      "preview": "javascript"
+    },
+    {
+      "name": "code-javascript",
+      "elements": ["title", "icon"],
+      "presentation": "codespace",
+      "primarySource": "javascript",
+      "preview": "go"
+    }
   ],
   "highlighting": {
     "concept": {
       "keywords": ["if", "else", "while", "repeat", "for", "Output"],
-      "strings":  ["\""],
-      "comment":  "//",
-      "numbers":  true
+      "strings": ["\""],
+      "comment": "//",
+      "numbers": true
     },
     "python": {
-      "keywords": ["if", "elif", "else", "for", "while", "in", "and", "or", "not", "True", "False", "None", "def", "return", "print", "range"],
-      "strings":  ["\"", "'"],
-      "comment":  "#",
-      "numbers":  true,
+      "keywords": [
+        "if",
+        "elif",
+        "else",
+        "for",
+        "while",
+        "in",
+        "and",
+        "or",
+        "not",
+        "True",
+        "False",
+        "None",
+        "def",
+        "return",
+        "print",
+        "range"
+      ],
+      "strings": ["\"", "'"],
+      "comment": "#",
+      "numbers": true,
       "colors": {
         "keyword": "#cc7832",
-        "string":  "#6a8759",
-        "number":  "#6897bb",
+        "string": "#6a8759",
+        "number": "#6897bb",
         "comment": "#808080"
       }
     },
     "javascript": {
-      "keywords": ["if", "else", "for", "while", "do", "function", "return", "var", "let", "const", "true", "false", "null", "undefined", "console"],
-      "strings":  ["\"", "'", "`"],
-      "comment":  "//",
-      "numbers":  true,
+      "keywords": [
+        "if",
+        "else",
+        "for",
+        "while",
+        "do",
+        "function",
+        "return",
+        "var",
+        "let",
+        "const",
+        "true",
+        "false",
+        "null",
+        "undefined",
+        "console"
+      ],
+      "strings": ["\"", "'", "`"],
+      "comment": "//",
+      "numbers": true,
       "colors": {
         "keyword": "#569cd6",
-        "string":  "#ce9178",
-        "number":  "#b5cea8",
+        "string": "#ce9178",
+        "number": "#b5cea8",
         "comment": "#6a9955"
       }
     },
     "go": {
-      "keywords": ["if", "else", "for", "range", "func", "return", "var", "const", "true", "false", "nil", "package", "import", "fmt"],
-      "strings":  ["\"", "`"],
-      "comment":  "//",
-      "numbers":  true,
+      "keywords": [
+        "if",
+        "else",
+        "for",
+        "range",
+        "func",
+        "return",
+        "var",
+        "const",
+        "true",
+        "false",
+        "nil",
+        "package",
+        "import",
+        "fmt"
+      ],
+      "strings": ["\"", "`"],
+      "comment": "//",
+      "numbers": true,
       "colors": {
         "keyword": "#00acd7",
-        "string":  "#dcdcaa",
-        "number":  "#b5cea8",
+        "string": "#dcdcaa",
+        "number": "#b5cea8",
         "comment": "#6a9955"
       }
     }
   },
   "categories": [
-    { "name": "Output",     "colour": "#b469d6" },
-    { "name": "Control",    "colour": "#4aa3df" },
+    { "name": "Output", "colour": "#b469d6" },
+    { "name": "Control", "colour": "#4aa3df" },
     { "name": "Operations", "colour": "#5ba55b" },
-    { "name": "Values",     "colour": "#d8b13f" },
-    { "name": "Variables",  "colour": "#e65a6f" }
+    { "name": "Values", "colour": "#d8b13f" },
+    { "name": "Variables", "colour": "#e65a6f" }
   ],
   "blocks": [
     {
       "identifier": "text_print",
       "category": "Output",
       "elements": {
-        "title":       "Print",
+        "title": "Print",
         "description": "Prints a value to the console",
-        "concept":     "Output %1",
-        "python":      "print(%1)",
-        "javascript":  "console.log(%1);",
-        "go":          "fmt.Println(%1)"
+        "concept": "Output %1",
+        "python": "print(%1)",
+        "javascript": "console.log(%1);",
+        "go": "fmt.Println(%1)"
       },
       "inputSlots": {
-        "1": { "kind": "value", "name": "TEXT" }
+        "1": {
+          "kind": "value",
+          "name": "TEXT",
+          "default": {
+            "shadow": "text",
+            "fieldValues": { "TEXT": "Hello, world!" }
+          }
+        }
       },
       "previousStatement": true,
       "nextStatement": true,
@@ -94,15 +218,15 @@
       "identifier": "logic_if",
       "category": "Control",
       "elements": {
-        "title":       "If / Then",
+        "title": "If / Then",
         "description": "Runs code when a condition is true",
-        "concept":     "Condition %1 Then %2",
-        "python":      "if %1:\n    %2",
-        "javascript":  "if (%1) {\n  %2\n}",
-        "go":          "if %1 {\n    %2\n}"
+        "concept": "Condition %1 Then %2",
+        "python": "if %1:\n    %2",
+        "javascript": "if (%1) {\n  %2\n}",
+        "go": "if %1 {\n    %2\n}"
       },
       "inputSlots": {
-        "1": { "kind": "value",     "name": "CONDITION", "check": "Boolean" },
+        "1": { "kind": "value", "name": "CONDITION", "check": "Boolean" },
         "2": { "kind": "statement", "name": "DO" }
       },
       "previousStatement": true,
@@ -113,15 +237,15 @@
       "identifier": "loop_for",
       "category": "Control",
       "elements": {
-        "title":       "Repeat",
+        "title": "Repeat",
         "description": "Runs code a set number of times",
-        "concept":     "Repeat %1 times %2",
-        "python":      "for i in range(%1):\n    %2",
-        "javascript":  "for (let i = 0; i < %1; i++) {\n  %2\n}",
-        "go":          "for i := 0; i < %1; i++ {\n    %2\n}"
+        "concept": "Repeat %1 times %2",
+        "python": "for i in range(%1):\n    %2",
+        "javascript": "for (let i = 0; i < %1; i++) {\n  %2\n}",
+        "go": "for i := 0; i < %1; i++ {\n    %2\n}"
       },
       "inputSlots": {
-        "1": { "kind": "value",     "name": "TIMES", "check": "Number" },
+        "1": { "kind": "value", "name": "TIMES", "check": "Number" },
         "2": { "kind": "statement", "name": "DO" }
       },
       "previousStatement": true,
@@ -132,17 +256,32 @@
       "identifier": "math_arithmetic",
       "category": "Operations",
       "elements": {
-        "title":       "Math",
+        "title": "Math",
         "description": "Performs a math operation on two values",
-        "concept":     "%1 %2 %3",
-        "python":      "%1 %2 %3",
-        "javascript":  "%1 %2 %3",
-        "go":          "%1 %2 %3"
+        "concept": "%1 %2 %3",
+        "python": "%1 %2 %3",
+        "javascript": "%1 %2 %3",
+        "go": "%1 %2 %3"
       },
       "inputSlots": {
-        "1": { "kind": "value", "name": "A" },
+        "1": {
+          "kind": "value",
+          "name": "A",
+          "default": {
+            "shadow": "math_number",
+            "placeholder": "math_number",
+            "fieldValues": { "NUM": "3" }
+          }
+        },
         "2": { "kind": "dummy", "name": "OPERATOR" },
-        "3": { "kind": "value", "name": "B" }
+        "3": {
+          "kind": "value",
+          "name": "B",
+          "default": {
+            "placeholder": "math_number",
+            "fieldValues": { "NUM": "5" }
+          }
+        }
       },
       "output": true,
       "inputsInline": true
@@ -151,17 +290,25 @@
       "identifier": "logic_compare",
       "category": "Operations",
       "elements": {
-        "title":       "Compare",
+        "title": "Compare",
         "description": "Compares two values and returns a boolean",
-        "concept":     "%1 %2 %3",
-        "python":      "%1 %2 %3",
-        "javascript":  "%1 %2 %3",
-        "go":          "%1 %2 %3"
+        "concept": "%1 %2 %3",
+        "python": "%1 %2 %3",
+        "javascript": "%1 %2 %3",
+        "go": "%1 %2 %3"
       },
       "inputSlots": {
-        "1": { "kind": "value", "name": "A" },
+        "1": {
+          "kind": "value",
+          "name": "A",
+          "default": { "shadow": "math_number", "fieldValues": { "NUM": "10" } }
+        },
         "2": { "kind": "dummy", "name": "COMPARATOR" },
-        "3": { "kind": "value", "name": "B" }
+        "3": {
+          "kind": "value",
+          "name": "B",
+          "default": { "shadow": "math_number", "fieldValues": { "NUM": "20" } }
+        }
       },
       "output": "Boolean",
       "inputsInline": true
@@ -170,12 +317,12 @@
       "identifier": "math_number",
       "category": "Values",
       "elements": {
-        "title":       "Number",
+        "title": "Number",
         "description": "A numeric value",
-        "concept":     "%1",
-        "python":      "%1",
-        "javascript":  "%1",
-        "go":          "%1"
+        "concept": "%1",
+        "python": "%1",
+        "javascript": "%1",
+        "go": "%1"
       },
       "inputSlots": {
         "1": { "kind": "dummy", "name": "CONTENT" }
@@ -186,12 +333,12 @@
       "identifier": "text_value",
       "category": "Values",
       "elements": {
-        "title":       "Text",
+        "title": "Text",
         "description": "A text string value",
-        "concept":     "Text %1",
-        "python":      "\"%1\"",
-        "javascript":  "\"%1\"",
-        "go":          "\"%1\""
+        "concept": "Text %1",
+        "python": "\"%1\"",
+        "javascript": "\"%1\"",
+        "go": "\"%1\""
       },
       "inputSlots": {
         "1": { "kind": "dummy", "name": "CONTENT" }
@@ -202,12 +349,12 @@
       "identifier": "logic_boolean",
       "category": "Values",
       "elements": {
-        "title":       "Boolean",
+        "title": "Boolean",
         "description": "A true or false value",
-        "concept":     "%1",
-        "python":      "%1",
-        "javascript":  "%1",
-        "go":          "%1"
+        "concept": "%1",
+        "python": "%1",
+        "javascript": "%1",
+        "go": "%1"
       },
       "inputSlots": {
         "1": { "kind": "dummy", "name": "CONTENT" }
@@ -218,16 +365,23 @@
       "identifier": "var_declare",
       "category": "Variables",
       "elements": {
-        "title":       "Create Variable",
+        "title": "Create Variable",
         "description": "Declares a new variable with a value",
-        "concept":     "Create variable %1 = %2",
-        "python":      "%1 = %2",
-        "javascript":  "let %1 = %2;",
-        "go":          "%1 := %2"
+        "concept": "Create variable %1 = %2",
+        "python": "%1 = %2",
+        "javascript": "let %1 = %2;",
+        "go": "%1 := %2"
       },
       "inputSlots": {
         "1": { "kind": "dummy", "name": "NAME" },
-        "2": { "kind": "value", "name": "VAL" }
+        "2": {
+          "kind": "value",
+          "name": "VAL",
+          "default": {
+            "placeholder": "math_number",
+            "fieldValues": { "NUM": "100" }
+          }
+        }
       },
       "previousStatement": true,
       "nextStatement": true,
@@ -237,12 +391,12 @@
       "identifier": "var_get",
       "category": "Variables",
       "elements": {
-        "title":       "Get Variable",
+        "title": "Get Variable",
         "description": "Returns the value of a variable",
-        "concept":     "Variable %1",
-        "python":      "%1",
-        "javascript":  "%1",
-        "go":          "%1"
+        "concept": "Variable %1",
+        "python": "%1",
+        "javascript": "%1",
+        "go": "%1"
       },
       "inputSlots": {
         "1": { "kind": "dummy", "name": "CONTENT" }
