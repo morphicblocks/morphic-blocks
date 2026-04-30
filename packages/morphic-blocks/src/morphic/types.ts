@@ -11,19 +11,53 @@ export type MorphicModeName = string;
 export type MorphicElementType = "text" | "code" | "image";
 
 /**
+ * Configuration for a value slot's empty-state default. Keyed by slot
+ * `check` in `elementTypes[name].empty[check]`, or set per-slot via
+ * `inputSlot.default`. Both `shadow` and `placeholder` are optional; when
+ * both are configured, the placeholder is created first and Blockly's
+ * native shadow restoration brings the shadow up if the user removes the
+ * placeholder.
+ */
+export interface MorphicEmptyDefaultConfig {
+  /**
+   * Blockly block type used as a *shadow* — ghosted, immutable, auto-replaced
+   * when a real block connects, restored when the user disconnects.
+   * Standard examples: `"math_number"`, `"text"`, `"logic_boolean"`.
+   * The shadow's output type must be compatible with the slot's `check`,
+   * otherwise Blockly silently rejects the connection.
+   */
+  shadow?: string;
+  /**
+   * Blockly block type used as a *placeholder* — a real (non-shadow) block
+   * attached on render. Movable, editable, deletable. When both `shadow`
+   * and `placeholder` are configured, the placeholder takes priority on
+   * the visible slot.
+   */
+  placeholder?: string;
+  /**
+   * Initial values applied to the chosen block's internal Blockly fields
+   * (e.g. `{ NUM: "0" }` for `math_number`, `{ TEXT: "text" }` for `text`).
+   * Plural because a single shadow/placeholder block can carry multiple
+   * fields (`{ MIN: "0", MAX: "100", STEP: "1" }` for a range picker).
+   */
+  fieldValues?: Record<string, string>;
+}
+
+/**
  * Optional per-element configuration. Used in place of a bare type string in
- * `elementTypes` when the developer needs to declare extras (e.g. defaults for
- * empty value slots so the codespace renders `print(0)` instead of `print()`).
+ * `elementTypes` when the developer needs to declare extras (e.g. shadows /
+ * placeholders for empty value slots).
  */
 export interface MorphicElementTypeConfig {
   type: MorphicElementType;
   /**
-   * Default value emitted into an empty value slot when no child block is
-   * connected and no field falls back. Keys are the input slot's `check`
-   * (e.g. "Number", "String", "Boolean"); the special key "default" applies
-   * when the slot has no `check` or no matching key.
+   * Per-slot-check defaults for empty value inputs. Keys are the slot's
+   * `check` string (e.g. `"Number"`, `"String"`, or any developer-defined
+   * check name). Slots without a matching key get no default — the
+   * codespace renders the marker (`___`) and the workspace shows an empty
+   * socket. Per-slot overrides via `inputSlots[i].default` take priority.
    */
-  empty?: Record<string, string>;
+  empty?: Record<string, MorphicEmptyDefaultConfig>;
 }
 
 /** Either a bare type or a config object with extras. */
@@ -38,6 +72,13 @@ export interface MorphicInputSlotDefinition {
   check?: string | string[];
   align?: MorphicInputAlign;
   label?: string;
+  /**
+   * Block-level override for this slot's empty-state default. Highest
+   * priority: when set, takes precedence over the elementType-level
+   * `empty[check]` lookup. Lets a specific block (e.g. a tutorial's first
+   * `print` block) supply richer defaults than its language's generic ones.
+   */
+  default?: MorphicEmptyDefaultConfig;
 }
 
 /**

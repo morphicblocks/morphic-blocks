@@ -188,7 +188,12 @@ function renderBlock(
         }
       }
       if (!fieldEmitted) {
-        const fallback = resolveEmptyDefault(elementEntry, slot?.check);
+        const fallback = resolveEmptyDefault(
+          elementEntry,
+          slot?.check,
+          definition,
+          inputName,
+        );
         if (fallback !== undefined) {
           appendText(state, fallback);
         }
