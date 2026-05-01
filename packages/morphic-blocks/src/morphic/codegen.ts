@@ -196,5 +196,5 @@ function extractMetadata(rawCode: string): MorphicCodeGenerationResult {
     cleanLineNum++;
   }
 
-  return { code: cleanLines.join("\n"), metadata };
+  return { code: cleanLines.join("\n"), metadata, placeholders: [] };
 }

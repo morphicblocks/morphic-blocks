@@ -359,10 +359,26 @@ export interface MorphicCodeBlockPosition {
 /** Maps Blockly block IDs to their positions in the generated code. */
 export type MorphicCodeMetadata = Map<string, MorphicCodeBlockPosition>;
 
+/**
+ * Range in the generated code occupied by a value slot. The codespace overlays
+ * an always-on underline on every value position; `kind: "default"` adds dim
+ * italic styling for shadow targets and empty fallbacks (framework-supplied
+ * defaults), while `kind: "set"` marks user-attached or placeholder content.
+ */
+export interface MorphicPlaceholderRange {
+  /** Inclusive 0-based character offset in `code`. */
+  start: number;
+  /** Exclusive 0-based character offset in `code`. */
+  end: number;
+  kind: "default" | "set";
+}
+
 /** Result of `generateJavaScriptWithMetadata()`. */
 export interface MorphicCodeGenerationResult {
   code: string;
   metadata: MorphicCodeMetadata;
+  /** Value-slot ranges with default/set classification. Empty if no value slots emitted. */
+  placeholders: MorphicPlaceholderRange[];
 }
 
 /** Theme configuration for the code editor. */

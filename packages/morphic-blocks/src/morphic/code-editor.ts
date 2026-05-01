@@ -6,6 +6,7 @@ import type {
   MorphicCodeGenerationResult,
   MorphicCodeMetadata,
   MorphicHighlightDefinition,
+  MorphicPlaceholderRange,
 } from "./types";
 
 // Re-export the type so MorphicBlocks.ts doesn't need to import CodeMirror types.
@@ -103,6 +104,16 @@ function buildThemeExtension(
     "&.cm-focused .cm-selectionBackground, .cm-selectionBackground": {
       backgroundColor: `${t.selectionBackground} !important`,
     },
+    ".morphic-placeholder-default, .morphic-placeholder-set": {
+      textDecoration: "underline",
+      textDecorationColor: "rgba(255, 255, 255, 0.3)",
+      textDecorationThickness: "1px",
+      textUnderlineOffset: "3px",
+    },
+    ".morphic-placeholder-default": {
+      fontStyle: "italic",
+      opacity: "0.55",
+    },
   });
 }
 
@@ -120,6 +131,21 @@ export class MorphicCodeEditor {
 
   /** Latest metadata from the most recent code generation. */
   public metadata: MorphicCodeGenerationResult["metadata"] = new Map();
+
+  /**
+   * Latest placeholder ranges. Sorted by `start` ascending. Used to suppress
+   * block-line highlighting when the cursor lands inside a value-slot range
+   * (a placeholder is its own selectable target).
+   */
+  private placeholders: MorphicPlaceholderRange[] = [];
+
+  private findPlaceholderAtPos(pos: number): MorphicPlaceholderRange | null {
+    for (const p of this.placeholders) {
+      if (p.start > pos) break;
+      if (pos >= p.start && pos < p.end) return p;
+    }
+    return null;
+  }
 
   /** Called when the user's cursor line changes in the editor. */
   public onCursorLine?: (line: number) => void;
@@ -139,6 +165,7 @@ export class MorphicCodeEditor {
   private highlightEffect?: StateEffect<HighlightRange>;
   private highlightColor = "rgba(255, 255, 255, 0.07)";
   private metadataEffect?: StateEffectType<MorphicCodeMetadata>;
+  private placeholderEffect?: StateEffectType<MorphicPlaceholderRange[]>;
   private dropIndicatorEffect?: StateEffectType<DropIndicator | null>;
   private emptyClickListener?: (e: MouseEvent) => void;
 
@@ -171,6 +198,44 @@ export class MorphicCodeEditor {
     // Shared metadata effect — dispatched in syncNow, consumed by gutter fields.
     const metadataEffect = cmState.StateEffect.define<MorphicCodeMetadata>();
     this.metadataEffect = metadataEffect;
+
+    // ── Placeholder marker state field ──
+    // Codespace overlays an always-on underline on every value position.
+    // Ranges with kind: "default" get an additional dim-italic style; "set"
+    // ranges (placeholder or user-attached real block) keep normal style.
+    const placeholderEffect = cmState.StateEffect.define<MorphicPlaceholderRange[]>();
+    this.placeholderEffect = placeholderEffect;
+    const placeholderDefaultMark = cmView.Decoration.mark({ class: "morphic-placeholder-default" });
+    const placeholderSetMark = cmView.Decoration.mark({ class: "morphic-placeholder-set" });
+    const placeholderField = cmState.StateField.define<import("@codemirror/view").DecorationSet>({
+      create() {
+        return cmView.Decoration.none;
+      },
+      update(decorations, tr) {
+        for (const effect of tr.effects) {
+          if (effect.is(placeholderEffect)) {
+            const ranges = effect.value;
+            if (!ranges || ranges.length === 0) return cmView.Decoration.none;
+            const docLen = tr.state.doc.length;
+            const sorted = [...ranges]
+              .filter((r) => r.start < r.end && r.end <= docLen)
+              .sort((a, b) => a.start - b.start || a.end - b.end);
+            const builder = new cmState.RangeSetBuilder<import("@codemirror/view").Decoration>();
+            for (const r of sorted) {
+              builder.add(r.start, r.end, r.kind === "default" ? placeholderDefaultMark : placeholderSetMark);
+            }
+            return builder.finish();
+          }
+        }
+        if (!tr.changes.empty) {
+          return cmView.Decoration.none;
+        }
+        return decorations;
+      },
+      provide(field) {
+        return cmView.EditorView.decorations.from(field);
+      },
+    });
 
     // ── Highlight state field (line decorations driven by StateEffect) ──
     const setHighlight = cmState.StateEffect.define<HighlightRange>();
@@ -223,13 +288,19 @@ export class MorphicCodeEditor {
     // again) and lets us distinguish "click below content" cleanly. Here we
     // only react to non-pointer movements (keyboard, programmatic).
     const cursorListener = cmView.EditorView.updateListener.of((update) => {
-      if (!editor.onCursorLine) return;
       if (update.transactions.some((tr) => tr.isUserEvent("select.pointer"))) {
         return;
       }
       const pos = update.state.selection.main.head;
       const prevPos = update.startState.selection.main.head;
       if (pos === prevPos) return;
+      // Cursor inside a placeholder: clear block highlight rather than re-selecting
+      // the enclosing block. The placeholder is the selectable target here.
+      if (editor.findPlaceholderAtPos(pos)) {
+        editor.onEmptyClick?.();
+        return;
+      }
+      if (!editor.onCursorLine) return;
       const line = update.state.doc.lineAt(pos).number;
       editor.onCursorLine(line);
     });
@@ -240,6 +311,7 @@ export class MorphicCodeEditor {
       cmState.EditorState.readOnly.of(true),
       langJs.javascript(),
       highlightField,
+      placeholderField,
       cursorListener,
       this.themeCompartment.of(themeExt),
       this.syntaxHighlightCompartment.of(initialHighlightExt),
@@ -252,6 +324,7 @@ export class MorphicCodeEditor {
     const result = this.generateWithMetadata();
     this.lastCode = result.code;
     this.metadata = result.metadata;
+    this.placeholders = [...result.placeholders].sort((a, b) => a.start - b.start);
 
     this.editorView = new cmView.EditorView({
       parent: this.container,
@@ -268,8 +341,22 @@ export class MorphicCodeEditor {
       });
     }
 
+    // Populate placeholder decorations for the initial doc.
+    if (this.placeholderEffect && result.placeholders.length > 0) {
+      this.editorView.dispatch({
+        effects: this.placeholderEffect.of(result.placeholders),
+      });
+    }
+
     this.emptyClickListener = (e: MouseEvent) => {
       if (this.isBelowLastLine(e.clientY)) {
+        this.onEmptyClick?.();
+        return;
+      }
+      // Click inside a placeholder: clear block highlight (placeholder is the
+      // selectable target). Otherwise resolve to the enclosing block's line.
+      const pos = this.editorView?.posAtCoords({ x: e.clientX, y: e.clientY });
+      if (typeof pos === "number" && this.findPlaceholderAtPos(pos)) {
         this.onEmptyClick?.();
         return;
       }
@@ -663,6 +750,7 @@ export class MorphicCodeEditor {
     this.editorView?.destroy();
     this.editorView = undefined;
     this.metadata = new Map();
+    this.placeholders = [];
     this.lastCode = "";
   }
 
@@ -677,13 +765,17 @@ export class MorphicCodeEditor {
     if (result.code === this.lastCode) return;
     this.lastCode = result.code;
     this.metadata = result.metadata;
+    this.placeholders = [...result.placeholders].sort((a, b) => a.start - b.start);
+    const effects: StateEffect<unknown>[] = [];
+    if (this.metadataEffect) effects.push(this.metadataEffect.of(result.metadata));
+    if (this.placeholderEffect) effects.push(this.placeholderEffect.of(result.placeholders));
     this.editorView.dispatch({
       changes: {
         from: 0,
         to: this.editorView.state.doc.length,
         insert: result.code,
       },
-      effects: this.metadataEffect ? [this.metadataEffect.of(result.metadata)] : undefined,
+      effects: effects.length > 0 ? effects : undefined,
     });
   }
 

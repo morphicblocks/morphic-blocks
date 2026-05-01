@@ -9,6 +9,7 @@ import type {
   MorphicElementTypeEntry,
   MorphicModeDefinition,
   MorphicModeName,
+  MorphicPlaceholderRange,
 } from "./types";
 
 interface RenderContext {
@@ -27,6 +28,7 @@ interface RenderContext {
 interface RenderState {
   output: string;
   metadata: Map<string, MorphicCodeBlockPosition>;
+  placeholders: MorphicPlaceholderRange[];
   /**
    * Whitespace prefixed to every newline emitted while rendering. Updated when
    * descending into a statement input so nested templates' own indents stack
@@ -70,7 +72,7 @@ export function generateTextFromWorkspace(
   modeDefs: MorphicModeDefinition[],
   elementOverride?: string,
 ): MorphicCodeGenerationResult {
-  const state: RenderState = { output: "", metadata: new Map(), indent: "" };
+  const state: RenderState = { output: "", metadata: new Map(), placeholders: [], indent: "" };
   const ctx: RenderContext = { mode, definitions, elementTypes, modeDefs, elementOverride };
 
   let first = true;
@@ -86,7 +88,7 @@ export function generateTextFromWorkspace(
     }
   }
 
-  return { code: state.output, metadata: state.metadata };
+  return { code: state.output, metadata: state.metadata, placeholders: state.placeholders };
 }
 
 function renderStatementChain(
@@ -190,6 +192,7 @@ function renderBlock(
       continue;
     }
 
+    const slotOffsetStart = state.output.length;
     if (!target) {
       // Field fallback first (preserves any user-typed dropdown / number values).
       let fieldEmitted = false;
@@ -211,10 +214,12 @@ function renderBlock(
           appendText(state, fallback);
         }
       }
+      recordPlaceholder(state, slotOffsetStart, "default");
       continue;
     }
 
     renderBlock(target, ctx, state);
+    recordPlaceholder(state, slotOffsetStart, "set");
   }
 
   if (state.output.length === before) {
@@ -251,6 +256,21 @@ function emitNonMorphicBlockText(
       if (!field.name) continue;
       appendText(state, readFieldText(field));
     }
+  }
+}
+
+/**
+ * Record a value-slot range covering everything emitted between `start` and the
+ * current output position. Skipped when nothing was emitted (zero-width range).
+ */
+function recordPlaceholder(
+  state: RenderState,
+  start: number,
+  kind: "default" | "set",
+): void {
+  const end = state.output.length;
+  if (end > start) {
+    state.placeholders.push({ start, end, kind });
   }
 }
 

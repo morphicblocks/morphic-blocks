@@ -822,14 +822,14 @@ export class MorphicBlocks {
 
   private generatePreviewText(): MorphicCodeGenerationResult {
     if (!this.workspace || !this.mountConfig) {
-      return { code: "", metadata: new Map() };
+      return { code: "", metadata: new Map(), placeholders: [] };
     }
     const mode = (this.mountConfig.modes ?? []).find(
       (m) => m.name === this.mountConfig?.workspaceMode,
     );
     const elementName = mode?.preview;
     if (!elementName) {
-      return { code: "", metadata: new Map() };
+      return { code: "", metadata: new Map(), placeholders: [] };
     }
     return generateTextFromWorkspace(
       this.workspace,
@@ -863,7 +863,7 @@ export class MorphicBlocks {
 
   private generateCodespaceText(): MorphicCodeGenerationResult {
     if (!this.workspace || !this.mountConfig) {
-      return { code: "", metadata: new Map() };
+      return { code: "", metadata: new Map(), placeholders: [] };
     }
     return generateTextFromWorkspace(
       this.workspace,
