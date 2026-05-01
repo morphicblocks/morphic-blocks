@@ -116,7 +116,16 @@ function renderBlock(
   state: RenderState,
 ): void {
   const definition = ctx.definitions.get(block.type);
-  if (!definition) return;
+  if (!definition) {
+    // Non-morphic block (Blockly stock — typically a placeholder block
+    // like `math_number`, `text`, or `logic_boolean` attached via the
+    // empty-default config). It has no morphic template, so emit its
+    // current field values directly. This is a best-effort one-presentation
+    // rendering: placeholders show their typed value but have no per-mode
+    // template (e.g. no automatic string quoting).
+    emitNonMorphicBlockText(block, state);
+    return;
+  }
 
   let template: string;
   let elementName: string | undefined;
@@ -225,6 +234,24 @@ function renderBlock(
     position.statementSlots = statementSlots;
   }
   state.metadata.set(block.id, position);
+}
+
+/**
+ * Emit the named field values of a non-morphic Blockly block (e.g. a stock
+ * `math_number`, `text`, or `logic_boolean` used as a placeholder). Walks
+ * every input's fieldRow and appends each named field's display text. Image
+ * fields and labels (no `name`) are skipped.
+ */
+function emitNonMorphicBlockText(
+  block: Blockly.Block,
+  state: RenderState,
+): void {
+  for (const input of block.inputList) {
+    for (const field of input.fieldRow) {
+      if (!field.name) continue;
+      appendText(state, readFieldText(field));
+    }
+  }
 }
 
 function readFieldText(field: Blockly.Field | null | undefined): string {

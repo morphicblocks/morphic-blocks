@@ -68,7 +68,7 @@ export function applyBlockView(params: MorphicApplyBlockViewParams): void {
 
   restoreConnectedChildren(block, connectedChildren);
   if (elementTypes) {
-    attachEmptyDefaultShadows(block, definition, view, elementTypes);
+    attachEmptyDefaults(block, definition, view, elementTypes);
   }
   decorateBlockRoot(block, mode, context);
 
@@ -315,16 +315,22 @@ function captureConnectedChildren(
 }
 
 /**
- * For each value input that has a configured shadow (via the resolution chain
- * of per-slot `default` → element-type `empty[check]`), declare it via
- * Blockly's `setShadowState`. Blockly handles lazy materialisation,
- * replacement when a real block connects, and restoration on disconnect.
+ * For each value input that has a configured empty-state default (via the
+ * resolution chain of per-slot `default` → element-type `empty[check]`),
+ * apply the configured primitives in priority order:
  *
- * Each `setShadowState` call is wrapped in a try/catch so a per-input failure
- * (most likely an output-check mismatch the developer configured) does not
- * abort rendering of the rest of the block.
+ *   1. Shadow — declared via Blockly's `setShadowState`. Blockly handles
+ *      lazy materialisation, replacement when a real block connects, and
+ *      restoration on disconnect.
+ *   2. Placeholder — a real (non-shadow) block of the developer's chosen
+ *      type, attached over any shadow that was just declared. Movable,
+ *      editable, deletable. When the user removes it, Blockly's stored
+ *      shadow state restores the shadow as a fallback.
+ *
+ * Each operation is wrapped in a try/catch so a per-input failure
+ * (e.g. output-check mismatch) does not abort the rest of the block render.
  */
-function attachEmptyDefaultShadows(
+function attachEmptyDefaults(
   block: Blockly.BlockSvg,
   definition: MorphicBlockDefinition,
   view: MorphicResolvedView,
@@ -341,6 +347,8 @@ function attachEmptyDefaultShadows(
   }
   if (slotByInputName.size === 0) return;
 
+  const workspace = block.workspace;
+
   for (const input of block.inputList) {
     const connection = input.connection;
     if (!connection) continue;
@@ -350,17 +358,48 @@ function attachEmptyDefaultShadows(
     if (!slot) continue;
 
     const config = resolveDefaultConfig(slot, elementEntry);
-    if (!config?.shadow) continue;
+    if (!config) continue;
 
-    try {
-      connection.setShadowState({
-        type: config.shadow,
-        fields: config.fieldValues ?? {},
-      });
-    } catch {
-      // Defensive — Blockly may reject the shadow if its output check doesn't
-      // match the slot's check. Skip the placeholder for this slot rather
-      // than break the rest of the block render.
+    // 1. Shadow — Blockly stores the shadow state regardless of current
+    // connection; the shadow materialises only when no real block is present.
+    if (config.shadow) {
+      try {
+        connection.setShadowState({
+          type: config.shadow,
+          fields: config.fieldValues ?? {},
+        });
+      } catch {
+        // Output-check mismatch — skip this slot's shadow rather than abort.
+      }
+    }
+
+    // 2. Placeholder — only create when the slot is empty (target null) or
+    // currently shows a shadow that we want to override on initial render.
+    // A real (non-shadow) child means the user already attached something;
+    // do not displace it.
+    if (config.placeholder) {
+      const target = connection.targetBlock();
+      const slotIsEffectivelyEmpty = !target || target.isShadow();
+      if (slotIsEffectivelyEmpty) {
+        try {
+          const placeholder = workspace.newBlock(config.placeholder) as Blockly.BlockSvg;
+          if (config.fieldValues) {
+            for (const [fieldName, value] of Object.entries(config.fieldValues)) {
+              const field = placeholder.getField(fieldName);
+              if (field) field.setValue(value);
+            }
+          }
+          if (block.rendered) {
+            placeholder.initSvg();
+            placeholder.render();
+          }
+          if (placeholder.outputConnection) {
+            connection.connect(placeholder.outputConnection);
+          }
+        } catch {
+          // Skip — most likely a missing block type or output-check mismatch.
+        }
+      }
     }
   }
 }
