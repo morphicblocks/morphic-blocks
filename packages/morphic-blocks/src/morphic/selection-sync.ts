@@ -165,7 +165,12 @@ export class MorphicSelectionSync {
     this.emptyClickCallbacks.clear();
   }
 
-  private clearAll(): void {
+  /**
+   * Clear the workspace selection and every editor's line highlight. Public
+   * so consumers can reset selection state on view transitions (e.g. when
+   * switching between workspace and codespace presentations).
+   */
+  public clearAll(): void {
     this.guard = true;
     Blockly.common.setSelected(null);
     for (const e of this.editors) e.clearHighlight();

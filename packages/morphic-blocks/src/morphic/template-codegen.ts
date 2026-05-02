@@ -1,4 +1,4 @@
-import type * as Blockly from "blockly";
+import * as Blockly from "blockly";
 import { resolveEmptyDefault } from "./element-types";
 import { parseTemplate } from "./template";
 import { resolveBlockView } from "./view-resolver";
@@ -9,6 +9,7 @@ import type {
   MorphicElementTypeEntry,
   MorphicModeDefinition,
   MorphicModeName,
+  MorphicPlaceholderEditTarget,
   MorphicPlaceholderRange,
 } from "./types";
 
@@ -194,9 +195,19 @@ function renderBlock(
 
     const slotOffsetStart = state.output.length;
     if (!target) {
-      // Field fallback first (preserves any user-typed dropdown / number values).
       let fieldEmitted = false;
-      if (input) {
+      // Shadows: read the shadow's own fields so codespace text matches the
+      // shadow's current values (and supports inline editing of the shadow).
+      if (rawTarget?.isShadow()) {
+        for (const shadowInput of rawTarget.inputList) {
+          for (const field of shadowInput.fieldRow) {
+            if (!field.name) continue;
+            appendText(state, readFieldText(field));
+            fieldEmitted = true;
+          }
+        }
+      } else if (input) {
+        // Fields directly on the parent's input (uncommon).
         for (const field of input.fieldRow) {
           if (!field.name) continue;
           appendText(state, readFieldText(field));
@@ -214,12 +225,13 @@ function renderBlock(
           appendText(state, fallback);
         }
       }
-      recordPlaceholder(state, slotOffsetStart, "default");
+      const editTarget = rawTarget?.isShadow() ? detectAtomicEdit(rawTarget) ?? undefined : undefined;
+      recordPlaceholder(state, slotOffsetStart, "default", editTarget);
       continue;
     }
 
     renderBlock(target, ctx, state);
-    recordPlaceholder(state, slotOffsetStart, "set");
+    recordPlaceholder(state, slotOffsetStart, "set", detectAtomicEdit(target) ?? undefined);
   }
 
   if (state.output.length === before) {
@@ -267,11 +279,54 @@ function recordPlaceholder(
   state: RenderState,
   start: number,
   kind: "default" | "set",
+  edit?: MorphicPlaceholderEditTarget,
 ): void {
   const end = state.output.length;
   if (end > start) {
-    state.placeholders.push({ start, end, kind });
+    const range: MorphicPlaceholderRange = { start, end, kind };
+    if (edit) range.edit = edit;
+    state.placeholders.push(range);
   }
+}
+
+/**
+ * Inspect a Blockly block to determine whether it's an "atomic single-field"
+ * block — exactly one named field, no value-input children. Such blocks are
+ * the only ones currently inline-editable in the codespace (math_number,
+ * text, logic_boolean, and morphic blocks with the same shape).
+ */
+function detectAtomicEdit(block: Blockly.Block): MorphicPlaceholderEditTarget | null {
+  let fieldName: string | null = null;
+  let fieldRef: Blockly.Field | null = null;
+  let fieldCount = 0;
+  for (const input of block.inputList) {
+    if (input.connection && input.connection.type === Blockly.INPUT_VALUE) return null;
+    for (const field of input.fieldRow) {
+      if (!field.name) continue;
+      fieldCount++;
+      fieldName = field.name;
+      fieldRef = field;
+    }
+  }
+  if (fieldCount !== 1 || !fieldName || !fieldRef) return null;
+  const ctorName = fieldRef.constructor.name;
+  let fieldType: MorphicPlaceholderEditTarget["fieldType"] = "text";
+  let options: [string, string][] | undefined;
+  if (ctorName.includes("Number")) {
+    fieldType = "number";
+  } else if (ctorName.includes("Dropdown")) {
+    fieldType = "dropdown";
+    const getOptions = (fieldRef as { getOptions?: () => unknown }).getOptions;
+    if (typeof getOptions === "function") {
+      const raw = getOptions.call(fieldRef);
+      if (Array.isArray(raw)) {
+        options = raw
+          .filter((entry): entry is [unknown, unknown] => Array.isArray(entry) && entry.length >= 2)
+          .map(([label, value]) => [String(label), String(value)] as [string, string]);
+      }
+    }
+  }
+  return { blockId: block.id, fieldName, fieldType, options };
 }
 
 function readFieldText(field: Blockly.Field | null | undefined): string {

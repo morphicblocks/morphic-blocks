@@ -6,6 +6,7 @@ import type {
   MorphicCodeGenerationResult,
   MorphicCodeMetadata,
   MorphicHighlightDefinition,
+  MorphicPlaceholderEditTarget,
   MorphicPlaceholderRange,
 } from "./types";
 
@@ -109,6 +110,9 @@ function buildThemeExtension(
       textDecorationColor: "rgba(255, 255, 255, 0.3)",
       textDecorationThickness: "1px",
       textUnderlineOffset: "3px",
+      // Pad the mark visually so short placeholders (e.g. a single digit) have
+      // a wider underline and a bigger click target.
+      padding: "0 0.25em",
     },
     ".morphic-placeholder-default": {
       fontStyle: "italic",
@@ -139,12 +143,148 @@ export class MorphicCodeEditor {
    */
   private placeholders: MorphicPlaceholderRange[] = [];
 
+  /**
+   * Find the placeholder that covers `pos`. End is inclusive so a click that
+   * lands just past a single-digit marker still resolves; when ranges nest
+   * (e.g. "0 < 0" outer with two inner "0" markers) the narrowest match wins
+   * so clicks resolve to the editable inner range.
+   */
   private findPlaceholderAtPos(pos: number): MorphicPlaceholderRange | null {
+    let best: MorphicPlaceholderRange | null = null;
+    let bestSize = Infinity;
     for (const p of this.placeholders) {
       if (p.start > pos) break;
-      if (pos >= p.start && pos < p.end) return p;
+      if (pos >= p.start && pos <= p.end) {
+        const size = p.end - p.start;
+        if (size < bestSize) {
+          bestSize = size;
+          best = p;
+        }
+      }
     }
-    return null;
+    return best;
+  }
+
+  /** DOM root of the active inline placeholder editor (input/select), if open. */
+  private placeholderEditorEl?: HTMLElement;
+  private placeholderEditorScrollHandler?: () => void;
+
+  private closePlaceholderEditor(): void {
+    if (this.placeholderEditorScrollHandler && this.editorView) {
+      this.editorView.scrollDOM.removeEventListener("scroll", this.placeholderEditorScrollHandler);
+      this.placeholderEditorScrollHandler = undefined;
+    }
+    this.placeholderEditorEl?.remove();
+    this.placeholderEditorEl = undefined;
+  }
+
+  /**
+   * Open an inline editor (input/select) over the placeholder range and call
+   * `onPlaceholderApply` when the user commits. Read-only CodeMirror stays
+   * read-only; this overlay is a separate DOM element positioned via
+   * `coordsAtPos`. Closed on Enter/blur (apply), Escape (cancel), or doc
+   * change / scroll.
+   */
+  private openPlaceholderEditor(range: MorphicPlaceholderRange): void {
+    if (!this.editorView || !range.edit) return;
+    const onApply = this.options.onPlaceholderApply;
+    if (!onApply) return;
+
+    this.closePlaceholderEditor();
+
+    const view = this.editorView;
+    const startCoords = view.coordsAtPos(range.start);
+    const endCoords = view.coordsAtPos(range.end);
+    if (!startCoords || !endCoords) return;
+    const scrollerRect = view.scrollDOM.getBoundingClientRect();
+
+    const currentText = view.state.doc.sliceString(range.start, range.end);
+    const edit = range.edit;
+
+    let inputEl: HTMLInputElement | HTMLSelectElement;
+    if (edit.fieldType === "dropdown") {
+      const select = document.createElement("select");
+      for (const [label, value] of edit.options ?? []) {
+        const opt = document.createElement("option");
+        opt.value = value;
+        opt.textContent = label;
+        select.appendChild(opt);
+      }
+      inputEl = select;
+    } else {
+      const input = document.createElement("input");
+      input.type = edit.fieldType === "number" ? "number" : "text";
+      input.value = currentText;
+      inputEl = input;
+    }
+
+    const computed = getComputedStyle(view.contentDOM);
+    Object.assign(inputEl.style, {
+      position: "absolute",
+      left: `${startCoords.left - scrollerRect.left + view.scrollDOM.scrollLeft}px`,
+      top: `${startCoords.top - scrollerRect.top + view.scrollDOM.scrollTop}px`,
+      minWidth: `${Math.max(40, endCoords.right - startCoords.left + 8)}px`,
+      height: `${startCoords.bottom - startCoords.top}px`,
+      font: computed.font,
+      lineHeight: computed.lineHeight,
+      padding: "0 2px",
+      margin: "0",
+      border: "1px solid rgba(255,255,255,0.4)",
+      borderRadius: "2px",
+      background: "rgba(40,40,40,0.95)",
+      color: computed.color,
+      boxSizing: "border-box",
+      zIndex: "20",
+    });
+
+    view.scrollDOM.appendChild(inputEl);
+    this.placeholderEditorEl = inputEl;
+
+    const apply = (): void => {
+      const newValue = inputEl.value;
+      this.closePlaceholderEditor();
+      onApply(edit, newValue);
+    };
+    const cancel = (): void => {
+      this.closePlaceholderEditor();
+    };
+
+    inputEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); apply(); }
+      else if (e.key === "Escape") { e.preventDefault(); cancel(); }
+    });
+    inputEl.addEventListener("blur", () => apply());
+    // Don't let clicks on the input bubble into CodeMirror's pointer handling
+    // — otherwise CodeMirror would try to position its cursor in the doc and
+    // could steal focus before the input commits.
+    inputEl.addEventListener("mousedown", (e) => e.stopPropagation());
+    if (edit.fieldType === "dropdown") {
+      // The codespace renders the dropdown's display label (e.g. "=="), but
+      // <option> values carry the stored key (e.g. "EQ"). Pre-select using
+      // the field's actual stored value so the current option is highlighted.
+      const block = this.workspace.getBlockById(edit.blockId);
+      const field = block?.getField(edit.fieldName);
+      const currentValue = field?.getValue();
+      if (currentValue != null) {
+        (inputEl as HTMLSelectElement).value = String(currentValue);
+      }
+      // Apply on change so the dropdown commits without an explicit blur.
+      inputEl.addEventListener("change", () => apply());
+    }
+
+    // Close on editor scroll — repositioning is more work than re-opening.
+    this.placeholderEditorScrollHandler = () => this.closePlaceholderEditor();
+    view.scrollDOM.addEventListener("scroll", this.placeholderEditorScrollHandler);
+
+    // Defer focus to the next paint frame — `setTimeout(0)` runs before
+    // CodeMirror has finished its own pointer/focus handling on the click
+    // that opened us, so focus would land on the editor instead of the input
+    // (especially noticeable right after a drag-in, when Blockly's drag
+    // sequence is still settling). One requestAnimationFrame is enough.
+    requestAnimationFrame(() => {
+      inputEl.focus();
+      if (inputEl instanceof HTMLInputElement) inputEl.select();
+    });
   }
 
   /** Called when the user's cursor line changes in the editor. */
@@ -354,11 +494,19 @@ export class MorphicCodeEditor {
         return;
       }
       // Click inside a placeholder: clear block highlight (placeholder is the
-      // selectable target). Otherwise resolve to the enclosing block's line.
+      // selectable target). If the placeholder is editable, open inline editor.
       const pos = this.editorView?.posAtCoords({ x: e.clientX, y: e.clientY });
-      if (typeof pos === "number" && this.findPlaceholderAtPos(pos)) {
-        this.onEmptyClick?.();
-        return;
+      if (typeof pos === "number") {
+        const range = this.findPlaceholderAtPos(pos);
+        if (range) {
+          this.onEmptyClick?.();
+          if (range.edit && this.options.onPlaceholderApply) {
+            // Defer to the next frame so CodeMirror's own focus/cursor
+            // handling doesn't immediately steal focus from the input.
+            requestAnimationFrame(() => this.openPlaceholderEditor(range));
+          }
+          return;
+        }
       }
       // Resolve the click directly so block selection still fires when the
       // CodeMirror cursor would otherwise stay put (e.g. clicking the line
@@ -763,6 +911,9 @@ export class MorphicCodeEditor {
     if (!this.editorView || !this.cm) return;
     const result = this.generateWithMetadata();
     if (result.code === this.lastCode) return;
+    // Code is changing — close any open inline placeholder editor; its anchor
+    // ranges no longer exist after the doc is replaced.
+    this.closePlaceholderEditor();
     this.lastCode = result.code;
     this.metadata = result.metadata;
     this.placeholders = [...result.placeholders].sort((a, b) => a.start - b.start);

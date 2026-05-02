@@ -29,6 +29,8 @@ export type {
   MorphicModeName,
   MorphicModeStyle,
   MorphicMountConfig,
+  MorphicPlaceholderEditTarget,
+  MorphicPlaceholderRange,
   MorphicRenderContext,
   MorphicResolvedView,
   MorphicStyleBundle,

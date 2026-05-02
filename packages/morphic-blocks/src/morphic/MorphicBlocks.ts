@@ -34,6 +34,7 @@ import type {
   MorphicModeName,
   MorphicModeStyle,
   MorphicMountConfig,
+  MorphicPlaceholderEditTarget,
   MorphicRenderContext,
   MorphicSelectionSyncOptions,
   MorphicToolboxCanvasOptions,
@@ -292,6 +293,10 @@ export class MorphicBlocks {
     this.previewEditor?.setHighlightRules(this.resolveHighlightRules("preview"));
     this.codespace?.refresh();
     this.previewEditor?.refresh();
+    // Clear selection + line highlights on mode switch — the previous selection
+    // can refer to a presentation that's no longer visible, leaving stale
+    // highlights in views the user can no longer reach.
+    this.selectionSync?.clearAll();
   }
 
   /**
@@ -395,6 +400,8 @@ export class MorphicBlocks {
           return !!block?.previousConnection;
         }),
       highlightRules: options?.highlightRules ?? this.resolveHighlightRules("codespace"),
+      onPlaceholderApply:
+        options?.onPlaceholderApply ?? ((edit, newValue) => this.applyPlaceholderEdit(edit, newValue)),
     };
 
     this.codespace = new MorphicCodeEditor(
@@ -839,6 +846,62 @@ export class MorphicBlocks {
       this.mountConfig.modes ?? [],
       elementName,
     );
+  }
+
+  /**
+   * Write `newValue` to `edit.fieldName` on the Blockly block identified by
+   * `edit.blockId`. The change event listener will trigger codespace re-sync.
+   */
+  private applyPlaceholderEdit(edit: MorphicPlaceholderEditTarget, newValue: string): void {
+    if (!this.workspace) return;
+    let block = this.workspace.getBlockById(edit.blockId);
+    if (!block) return;
+
+    // If the user is editing a shadow, materialize it as a real (non-shadow)
+    // placeholder block of the same type. Two reasons:
+    //   1. Persistence — `attachEmptyDefaults` resets shadows on every
+    //      `applyView`; only real blocks are left alone.
+    //   2. Semantics — the marker transitions from "default" (dim italic)
+    //      to "set" (solid), matching the design: an edited value is no
+    //      longer the framework's default.
+    if (block.isShadow()) {
+      const parentConn = block.outputConnection?.targetConnection;
+      if (parentConn) {
+        const real = this.workspace.newBlock(block.type) as Blockly.BlockSvg;
+        // Copy the shadow's current field values onto the real block.
+        for (const input of block.inputList) {
+          for (const shadowField of input.fieldRow) {
+            if (!shadowField.name) continue;
+            const target = real.getField(shadowField.name);
+            if (target) target.setValue(shadowField.getValue());
+          }
+        }
+        if ((block as Blockly.BlockSvg).rendered) {
+          real.initSvg();
+          real.render();
+        }
+        // Connecting the real block disconnects the shadow but preserves the
+        // stored shadow state on the connection (so removing the real block
+        // would re-materialize the shadow).
+        parentConn.connect(real.outputConnection!);
+        block = real;
+      }
+    }
+
+    const field = block.getField(edit.fieldName);
+    if (!field) return;
+    field.setValue(newValue);
+
+    // Force re-render so the workspace SVG reflects the change even if the
+    // workspace is currently hidden — without this, the visual can stay
+    // stale until the next layout pass.
+    const svg = block as Blockly.BlockSvg;
+    if (svg.rendered && typeof svg.render === "function") svg.render();
+    const parent = block.getParent();
+    if (parent) {
+      const parentSvg = parent as Blockly.BlockSvg;
+      if (parentSvg.rendered && typeof parentSvg.render === "function") parentSvg.render();
+    }
   }
 
   private deleteBlockAtCodespaceLine(line: number): void {

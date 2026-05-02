@@ -362,14 +362,23 @@ function attachEmptyDefaults(
 
     // 1. Shadow — Blockly stores the shadow state regardless of current
     // connection; the shadow materialises only when no real block is present.
+    // Only attach when no shadow is already configured for this connection;
+    // re-attaching would clobber any user edits to the shadow's fields (e.g.
+    // editing a text shadow's TEXT field via the codespace inline editor).
     if (config.shadow) {
-      try {
-        connection.setShadowState({
-          type: config.shadow,
-          fields: config.fieldValues ?? {},
-        });
-      } catch {
-        // Output-check mismatch — skip this slot's shadow rather than abort.
+      const existingShadow =
+        (connection as { getShadowState?: (returnCurrent?: boolean) => unknown })
+          .getShadowState?.(true) ??
+        (connection as { getShadowDom?: () => unknown }).getShadowDom?.();
+      if (!existingShadow) {
+        try {
+          connection.setShadowState({
+            type: config.shadow,
+            fields: config.fieldValues ?? {},
+          });
+        } catch {
+          // Output-check mismatch — skip this slot's shadow rather than abort.
+        }
       }
     }
 

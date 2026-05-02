@@ -360,6 +360,23 @@ export interface MorphicCodeBlockPosition {
 export type MorphicCodeMetadata = Map<string, MorphicCodeBlockPosition>;
 
 /**
+ * Edit target for a placeholder range, when its content is an atomic
+ * single-field block (shadow, placeholder, or user-attached value block with
+ * exactly one field and no nested children). Empty-fallback ranges and
+ * multi-field blocks have no `edit` and are not inline-editable.
+ */
+export interface MorphicPlaceholderEditTarget {
+  /** Blockly block id whose field produced the rendered text. */
+  blockId: string;
+  /** Field name on that block. */
+  fieldName: string;
+  /** Input UI form to use for editing. */
+  fieldType: "text" | "number" | "dropdown";
+  /** Dropdown options as `[label, value]` pairs (only when `fieldType === "dropdown"`). */
+  options?: [string, string][];
+}
+
+/**
  * Range in the generated code occupied by a value slot. The codespace overlays
  * an always-on underline on every value position; `kind: "default"` adds dim
  * italic styling for shadow targets and empty fallbacks (framework-supplied
@@ -371,6 +388,8 @@ export interface MorphicPlaceholderRange {
   /** Exclusive 0-based character offset in `code`. */
   end: number;
   kind: "default" | "set";
+  /** Editing target when the slot contains an atomic single-field block. */
+  edit?: MorphicPlaceholderEditTarget;
 }
 
 /** Result of `generateJavaScriptWithMetadata()`. */
@@ -427,6 +446,12 @@ export interface MorphicCodeEditorOptions {
    * via `setHighlightRules`.
    */
   highlightRules?: MorphicHighlightDefinition;
+  /**
+   * Called when the user commits an inline placeholder edit. The host should
+   * write `newValue` to `edit.fieldName` on the Blockly block identified by
+   * `edit.blockId`. Re-codegen + re-render then refresh the codespace.
+   */
+  onPlaceholderApply?: (edit: MorphicPlaceholderEditTarget, newValue: string) => void;
 }
 
 /** Options for `enableSelectionSync()`. */
