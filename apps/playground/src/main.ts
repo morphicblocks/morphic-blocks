@@ -10,7 +10,6 @@ import {
 import format from "./definitions.json";
 import config from "./config.json";
 import { behaviors } from "./behaviors";
-import { blockIcons } from "./icons";
 import "./style.css";
 
 interface Level {
@@ -42,18 +41,8 @@ const clearBtn = document.getElementById("clear-btn")!;
 
 // ── Engine Setup ───────────────────────────────────────
 
-const blocks = (format.blocks as MorphicBlockDefinition[]).map((block) => ({
-  ...block,
-  elements: {
-    ...block.elements,
-    ...(blockIcons[block.identifier]
-      ? { icon: blockIcons[block.identifier] }
-      : {}),
-  },
-}));
-
 const engine = new MorphicBlocks(
-  blocks,
+  format.blocks as unknown as MorphicBlockDefinition[],
   behaviors,
   format.elementTypes as Record<string, MorphicElementTypeEntry>,
 );

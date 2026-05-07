@@ -6,18 +6,40 @@
     "concept": {
       "type": "code",
       "empty": {
-        "Number": { "shadow": "math_number", "fieldValues": { "NUM": "5" } },
-        "String": { "shadow": "text", "fieldValues": { "TEXT": "value" } }
+        "Number": {
+          "shadow": "math_number",
+          "fieldValues": {
+            "NUM": "5"
+          }
+        },
+        "String": {
+          "shadow": "text",
+          "fieldValues": {
+            "TEXT": "value"
+          }
+        }
       }
     },
     "python": {
       "type": "code",
       "empty": {
-        "Number": { "shadow": "math_number", "fieldValues": { "NUM": "42" } },
-        "String": { "shadow": "text", "fieldValues": { "TEXT": "world" } },
+        "Number": {
+          "shadow": "math_number",
+          "fieldValues": {
+            "NUM": "42"
+          }
+        },
+        "String": {
+          "shadow": "text",
+          "fieldValues": {
+            "TEXT": "world"
+          }
+        },
         "Boolean": {
           "shadow": "logic_boolean",
-          "fieldValues": { "BOOL": "TRUE" }
+          "fieldValues": {
+            "BOOL": "TRUE"
+          }
         }
       }
     },
@@ -27,17 +49,23 @@
         "Number": {
           "shadow": "math_number",
           "placeholder": "math_number",
-          "fieldValues": { "NUM": "7" }
+          "fieldValues": {
+            "NUM": "7"
+          }
         },
         "String": {
           "shadow": "text",
           "placeholder": "text",
-          "fieldValues": { "TEXT": "hello" }
+          "fieldValues": {
+            "TEXT": "hello"
+          }
         },
         "Boolean": {
           "shadow": "logic_boolean",
           "placeholder": "logic_boolean",
-          "fieldValues": { "BOOL": "FALSE" }
+          "fieldValues": {
+            "BOOL": "FALSE"
+          }
         }
       }
     },
@@ -46,23 +74,39 @@
       "empty": {
         "Number": {
           "placeholder": "math_number",
-          "fieldValues": { "NUM": "100" }
+          "fieldValues": {
+            "NUM": "100"
+          }
         },
         "Boolean": {
           "placeholder": "logic_boolean",
-          "fieldValues": { "BOOL": "TRUE" }
+          "fieldValues": {
+            "BOOL": "TRUE"
+          }
         }
       }
     }
   },
   "modes": [
-    { "name": "iconic", "elements": ["icon", "title", "description"] },
-    { "name": "concept", "elements": ["title", "concept"] },
-    { "name": "python", "elements": ["title", "python"], "preview": "python" },
+    {
+      "name": "iconic",
+      "elements": ["icon", "title", "description"]
+    },
+    {
+      "name": "concept",
+      "elements": ["title", "concept"]
+    },
+    {
+      "name": "python",
+      "elements": ["title", "python"],
+      "preview": "python"
+    },
     {
       "name": "python-text",
       "elements": ["title", "python"],
-      "tileRender": { "python": "text" }
+      "tileRender": {
+        "python": "text"
+      }
     },
     {
       "name": "javascript",
@@ -72,7 +116,9 @@
     {
       "name": "javascript-text",
       "elements": ["title", "javascript"],
-      "tileRender": { "javascript": "text" }
+      "tileRender": {
+        "javascript": "text"
+      }
     },
     {
       "name": "code-python",
@@ -182,17 +228,33 @@
     }
   },
   "categories": [
-    { "name": "Output", "color": "#b469d6" },
-    { "name": "Control", "color": "#4aa3df" },
-    { "name": "Operations", "color": "#5ba55b" },
-    { "name": "Values", "color": "#d8b13f" },
-    { "name": "Variables", "color": "#e65a6f" }
+    {
+      "name": "Output",
+      "color": "#b469d6"
+    },
+    {
+      "name": "Control",
+      "color": "#4aa3df"
+    },
+    {
+      "name": "Operations",
+      "color": "#5ba55b"
+    },
+    {
+      "name": "Values",
+      "color": "#d8b13f"
+    },
+    {
+      "name": "Variables",
+      "color": "#e65a6f"
+    }
   ],
   "blocks": [
     {
       "identifier": "text_print",
       "category": "Output",
       "elements": {
+        "icon": "icons/text_print.svg",
         "title": "Print",
         "description": "Prints a value to the console",
         "concept": "Output %1",
@@ -206,7 +268,9 @@
           "name": "TEXT",
           "default": {
             "shadow": "text",
-            "fieldValues": { "TEXT": "Hello, world!" }
+            "fieldValues": {
+              "TEXT": "Hello, world!"
+            }
           }
         }
       },
@@ -218,6 +282,7 @@
       "identifier": "logic_if",
       "category": "Control",
       "elements": {
+        "icon": "icons/logic_if.svg",
         "title": "If / Then",
         "description": "Runs code when a condition is true",
         "concept": "Condition %1 Then %2",
@@ -226,8 +291,15 @@
         "go": "if %1 {\n    %2\n}"
       },
       "inputSlots": {
-        "1": { "kind": "value", "name": "CONDITION", "check": "Boolean" },
-        "2": { "kind": "statement", "name": "DO" }
+        "1": {
+          "kind": "value",
+          "name": "CONDITION",
+          "check": "Boolean"
+        },
+        "2": {
+          "kind": "statement",
+          "name": "DO"
+        }
       },
       "previousStatement": true,
       "nextStatement": true,
@@ -237,6 +309,7 @@
       "identifier": "loop_for",
       "category": "Control",
       "elements": {
+        "icon": "icons/loop_for.svg",
         "title": "Repeat",
         "description": "Runs code a set number of times",
         "concept": "Repeat %1 times %2",
@@ -245,8 +318,15 @@
         "go": "for i := 0; i < %1; i++ {\n    %2\n}"
       },
       "inputSlots": {
-        "1": { "kind": "value", "name": "TIMES", "check": "Number" },
-        "2": { "kind": "statement", "name": "DO" }
+        "1": {
+          "kind": "value",
+          "name": "TIMES",
+          "check": "Number"
+        },
+        "2": {
+          "kind": "statement",
+          "name": "DO"
+        }
       },
       "previousStatement": true,
       "nextStatement": true,
@@ -256,6 +336,7 @@
       "identifier": "math_arithmetic",
       "category": "Operations",
       "elements": {
+        "icon": "icons/math_arithmetic.svg",
         "title": "Math",
         "description": "Performs a math operation on two values",
         "concept": "%1 %2 %3",
@@ -270,16 +351,23 @@
           "default": {
             "shadow": "math_number",
             "placeholder": "math_number",
-            "fieldValues": { "NUM": "3" }
+            "fieldValues": {
+              "NUM": "3"
+            }
           }
         },
-        "2": { "kind": "dummy", "name": "OPERATOR" },
+        "2": {
+          "kind": "dummy",
+          "name": "OPERATOR"
+        },
         "3": {
           "kind": "value",
           "name": "B",
           "default": {
             "placeholder": "math_number",
-            "fieldValues": { "NUM": "5" }
+            "fieldValues": {
+              "NUM": "5"
+            }
           }
         }
       },
@@ -290,6 +378,7 @@
       "identifier": "logic_compare",
       "category": "Operations",
       "elements": {
+        "icon": "icons/logic_compare.svg",
         "title": "Compare",
         "description": "Compares two values and returns a boolean",
         "concept": "%1 %2 %3",
@@ -301,13 +390,26 @@
         "1": {
           "kind": "value",
           "name": "A",
-          "default": { "shadow": "math_number", "fieldValues": { "NUM": "10" } }
+          "default": {
+            "shadow": "math_number",
+            "fieldValues": {
+              "NUM": "10"
+            }
+          }
         },
-        "2": { "kind": "dummy", "name": "COMPARATOR" },
+        "2": {
+          "kind": "dummy",
+          "name": "COMPARATOR"
+        },
         "3": {
           "kind": "value",
           "name": "B",
-          "default": { "shadow": "math_number", "fieldValues": { "NUM": "20" } }
+          "default": {
+            "shadow": "math_number",
+            "fieldValues": {
+              "NUM": "20"
+            }
+          }
         }
       },
       "output": "Boolean",
@@ -317,6 +419,7 @@
       "identifier": "m_math_number",
       "category": "Values",
       "elements": {
+        "icon": "icons/m_math_number.svg",
         "title": "Number",
         "description": "A numeric value",
         "concept": "%1",
@@ -325,7 +428,10 @@
         "go": "%1"
       },
       "inputSlots": {
-        "1": { "kind": "dummy", "name": "CONTENT" }
+        "1": {
+          "kind": "dummy",
+          "name": "CONTENT"
+        }
       },
       "output": "Number"
     },
@@ -333,6 +439,7 @@
       "identifier": "text_value",
       "category": "Values",
       "elements": {
+        "icon": "icons/text_value.svg",
         "title": "Text",
         "description": "A text string value",
         "concept": "Text %1",
@@ -341,7 +448,10 @@
         "go": "\"%1\""
       },
       "inputSlots": {
-        "1": { "kind": "dummy", "name": "CONTENT" }
+        "1": {
+          "kind": "dummy",
+          "name": "CONTENT"
+        }
       },
       "output": "String"
     },
@@ -349,6 +459,7 @@
       "identifier": "m_logic_boolean",
       "category": "Values",
       "elements": {
+        "icon": "icons/m_logic_boolean.svg",
         "title": "Boolean",
         "description": "A true or false value",
         "concept": "%1",
@@ -357,7 +468,10 @@
         "go": "%1"
       },
       "inputSlots": {
-        "1": { "kind": "dummy", "name": "CONTENT" }
+        "1": {
+          "kind": "dummy",
+          "name": "CONTENT"
+        }
       },
       "output": "Boolean"
     },
@@ -365,6 +479,7 @@
       "identifier": "var_declare",
       "category": "Variables",
       "elements": {
+        "icon": "icons/var_declare.svg",
         "title": "Create Variable",
         "description": "Declares a new variable with a value",
         "concept": "Create variable %1 = %2",
@@ -373,13 +488,18 @@
         "go": "%1 := %2"
       },
       "inputSlots": {
-        "1": { "kind": "dummy", "name": "NAME" },
+        "1": {
+          "kind": "dummy",
+          "name": "NAME"
+        },
         "2": {
           "kind": "value",
           "name": "VAL",
           "default": {
             "placeholder": "math_number",
-            "fieldValues": { "NUM": "100" }
+            "fieldValues": {
+              "NUM": "100"
+            }
           }
         }
       },
@@ -391,6 +511,7 @@
       "identifier": "var_get",
       "category": "Variables",
       "elements": {
+        "icon": "icons/var_get.svg",
         "title": "Get Variable",
         "description": "Returns the value of a variable",
         "concept": "Variable %1",
@@ -399,7 +520,10 @@
         "go": "%1"
       },
       "inputSlots": {
-        "1": { "kind": "dummy", "name": "CONTENT" }
+        "1": {
+          "kind": "dummy",
+          "name": "CONTENT"
+        }
       },
       "output": true
     }
