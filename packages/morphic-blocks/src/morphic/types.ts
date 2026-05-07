@@ -58,6 +58,17 @@ export interface MorphicElementTypeConfig {
    * socket. Per-slot overrides via `inputSlots[i].default` take priority.
    */
   empty?: Record<string, MorphicEmptyDefaultConfig>;
+  /**
+   * Display size for `type: "image"` elements. Used when the element value is
+   * a file path (e.g. `"assets/icon.svg"`) and the framework auto-wraps it as
+   * an `<img>` tag. Accepted formats:
+   *   - number: square, e.g. `32` → 32×32
+   *   - `"32"`: square
+   *   - `"32x32"`: explicit width × height
+   * Defaults to 16×16 if omitted. Ignored for non-image element types and for
+   * values that are already `<img>` HTML.
+   */
+  size?: number | string;
 }
 
 /** Either a bare type or a config object with extras. */

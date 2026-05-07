@@ -135,6 +135,32 @@ function escapeAttr(value: string): string {
   return value.replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
+const IMAGE_PATH_PATTERN = /\.(svg|png|jpe?g|gif|webp)(?:[#?].*)?$/i;
+
+/**
+ * Normalise the value of a `type: "image"` element so it always becomes an
+ * `<img>` tag. Behaviour:
+ *   - Already-formed `<img …>` HTML → returned unchanged.
+ *   - Recognised image path (.svg, .png, .jpg, .jpeg, .gif, .webp) → wrapped
+ *     as `<img src="value" width="W" height="H">` with the supplied size.
+ *   - Anything else → returned unchanged (treated as plain text downstream).
+ *
+ * Use the size from `resolveImageSize(elementTypes[name])` so per-element
+ * `size` overrides take effect.
+ */
+export function normalizeImageValue(
+  value: string,
+  size: { width: number; height: number },
+): string {
+  if (!value) return value;
+  const trimmed = value.trim();
+  if (/^<img\b/i.test(trimmed)) return value;
+  if (IMAGE_PATH_PATTERN.test(trimmed)) {
+    return `<img src="${escapeAttr(trimmed)}" width="${size.width}" height="${size.height}">`;
+  }
+  return value;
+}
+
 function parseImageTag(tag: string): MorphicImageToken | null {
   if (!/^<img\b/i.test(tag)) {
     return null;

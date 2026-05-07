@@ -1,8 +1,13 @@
 import * as Blockly from "blockly";
 import { getLifecycleBehavior } from "./behavior-runtime";
 import { applyBlockView } from "./block-view";
-import { resolveElementType } from "./element-types";
-import { parseTemplate, renderTemplateAsHtml, toModeClassToken } from "./template";
+import { resolveElementType, resolveImageSize } from "./element-types";
+import {
+  normalizeImageValue,
+  parseTemplate,
+  renderTemplateAsHtml,
+  toModeClassToken,
+} from "./template";
 import { resolveBlockView } from "./view-resolver";
 import type {
   MorphicBehaviorMap,
@@ -167,18 +172,27 @@ export class MorphicToolboxCanvas {
       const el = document.createElement("div");
       el.className = `morphic-element-${toModeClassToken(elementName)}`;
 
-      const isCodeElement = resolveElementType(this.elementTypes[elementName]) === "code";
+      const elementEntry = this.elementTypes[elementName];
+      const elementType = resolveElementType(elementEntry);
+      const isCodeElement = elementType === "code";
+      const isImageElement = elementType === "image";
       const render = tileRender[elementName] ?? (isCodeElement ? "block" : "text");
+
+      // For type "image", auto-wrap file paths into <img> tags using the
+      // per-element `size` config (or 16×16 default).
+      const resolvedContent = isImageElement
+        ? normalizeImageValue(content, resolveImageSize(elementEntry))
+        : content;
 
       if (isCodeElement && render === "block") {
         const svg = this.createBlockPreviewSvg(definition, this.currentMode);
         if (svg) {
           el.appendChild(svg);
         } else {
-          el.innerHTML = renderTemplateAsHtml(parseTemplate(content));
+          el.innerHTML = renderTemplateAsHtml(parseTemplate(resolvedContent));
         }
       } else {
-        el.innerHTML = renderTemplateAsHtml(parseTemplate(content));
+        el.innerHTML = renderTemplateAsHtml(parseTemplate(resolvedContent));
       }
 
       tile.appendChild(el);
