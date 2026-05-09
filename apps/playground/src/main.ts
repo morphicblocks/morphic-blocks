@@ -7,7 +7,7 @@ import {
   type MorphicModeDefinition,
   type MorphicToolboxCategory,
 } from "morphic-blocks";
-import format from "./definitions.json";
+import definitions from "./definitions.json";
 import config from "./config.json";
 import { behaviors } from "./behaviors";
 import "./style.css";
@@ -42,9 +42,9 @@ const clearBtn = document.getElementById("clear-btn")!;
 // ── Engine Setup ───────────────────────────────────────
 
 const engine = new MorphicBlocks(
-  format.blocks as unknown as MorphicBlockDefinition[],
+  definitions.blocks as unknown as MorphicBlockDefinition[],
   behaviors,
-  format.elementTypes as Record<string, MorphicElementTypeEntry>,
+  definitions.elementTypes as Record<string, MorphicElementTypeEntry>,
 );
 
 let currentLevelIndex = 0;
@@ -57,10 +57,10 @@ const workspace = engine.mount({
   toolboxMode: initialLevel.toolboxMode,
   modesFolder: modeStyles,
   canvasToolbox: true,
-  modes: format.modes as MorphicModeDefinition[],
-  highlighting: format.highlighting as Record<string, MorphicHighlightDefinition>,
+  modes: definitions.modes as MorphicModeDefinition[],
+  highlighting: definitions.highlighting as Record<string, MorphicHighlightDefinition>,
   toolbox: {
-    categories: format.categories as MorphicToolboxCategory[],
+    categories: definitions.categories as MorphicToolboxCategory[],
   },
   blockly: {
     scrollbars: true,
@@ -83,7 +83,7 @@ const workspace = engine.mount({
 });
 
 engine.mountToolbox(toolboxPanel, {
-  categories: format.categories as MorphicToolboxCategory[],
+  categories: definitions.categories as MorphicToolboxCategory[],
 });
 
 const editorTheme = {
@@ -108,7 +108,7 @@ Promise.all([
 // ── Level Buttons ──────────────────────────────────────
 
 function modeByName(name: string): MorphicModeDefinition | undefined {
-  return (format.modes as MorphicModeDefinition[]).find((m) => m.name === name);
+  return (definitions.modes as MorphicModeDefinition[]).find((m) => m.name === name);
 }
 
 function applyLevel(index: number): void {
