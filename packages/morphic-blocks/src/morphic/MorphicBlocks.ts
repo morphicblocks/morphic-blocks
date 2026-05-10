@@ -953,6 +953,14 @@ export class MorphicBlocks {
     this.codeEditor?.setTheme(theme);
   }
 
+  public setCodespaceTheme(theme: MorphicCodeEditorTheme): void {
+    this.codespace?.setTheme(theme);
+  }
+
+  public setPreviewTheme(theme: MorphicCodeEditorTheme): void {
+    this.previewEditor?.setTheme(theme);
+  }
+
   /**
    * Enable bidirectional selection sync between the Blockly workspace and every
    * currently-mounted editor (code editor, codespace, preview). Requires at

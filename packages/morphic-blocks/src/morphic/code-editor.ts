@@ -50,6 +50,9 @@ const DEFAULT_THEME: Required<MorphicCodeEditorTheme> = {
   selectionBackground: "#264f78",
 };
 
+const mix = (color: string, pct: number) =>
+  `color-mix(in srgb, ${color} ${pct}%, transparent)`;
+
 const SYNC_DEBOUNCE_MS = 150;
 
 /** Blockly event types that can change generated code. */
@@ -107,7 +110,7 @@ function buildThemeExtension(
     },
     ".morphic-placeholder-default, .morphic-placeholder-set": {
       textDecoration: "underline",
-      textDecorationColor: "rgba(255, 255, 255, 0.3)",
+      textDecorationColor: mix(t.foreground, 30),
       textDecorationThickness: "1px",
       textUnderlineOffset: "3px",
       // Pad the mark visually so short placeholders (e.g. a single digit) have
@@ -117,6 +120,20 @@ function buildThemeExtension(
     ".morphic-placeholder-default": {
       fontStyle: "italic",
       opacity: "0.55",
+    },
+    ".morphic-delete-marker": {
+      color: mix(t.foreground, 70),
+      backgroundColor: mix(t.foreground, 12),
+    },
+    ".morphic-delete-marker:hover": {
+      color: t.foreground,
+      backgroundColor: mix(t.foreground, 22),
+    },
+    ".morphic-grip-marker": {
+      color: mix(t.foreground, 75),
+    },
+    ".morphic-grip-marker:hover": {
+      color: t.foreground,
     },
   });
 }
@@ -544,21 +561,11 @@ export class MorphicCodeEditor {
           "height: 16px",
           "margin: 0 4px",
           "border-radius: 50%",
-          "background: rgba(255, 255, 255, 0.12)",
-          "color: rgba(255, 255, 255, 0.7)",
           "font-size: 10px",
           "line-height: 1",
           "cursor: pointer",
           "transition: background 0.15s, color 0.15s",
         ].join(";");
-        el.addEventListener("mouseenter", () => {
-          el.style.background = "rgba(255, 255, 255, 0.22)";
-          el.style.color = "#fff";
-        });
-        el.addEventListener("mouseleave", () => {
-          el.style.background = "rgba(255, 255, 255, 0.12)";
-          el.style.color = "rgba(255, 255, 255, 0.7)";
-        });
         return el;
       }
     }
@@ -655,7 +662,6 @@ export class MorphicCodeEditor {
           "width: 16px",
           "height: 16px",
           "margin: 0 2px",
-          "color: rgba(255, 255, 255, 0.75)",
           "font-size: 14px",
           "line-height: 1",
           "cursor: grab",
@@ -663,12 +669,6 @@ export class MorphicCodeEditor {
           "transition: color 0.15s",
         ].join(";");
         const blockId = this.blockId;
-        el.addEventListener("mouseenter", () => {
-          el.style.color = "rgba(255, 255, 255, 1)";
-        });
-        el.addEventListener("mouseleave", () => {
-          el.style.color = "rgba(255, 255, 255, 0.75)";
-        });
         el.addEventListener("dragstart", (e) => {
           if (!e.dataTransfer) return;
           e.dataTransfer.setData(BLOCK_ID_DRAG_KEY, blockId);
