@@ -230,11 +230,11 @@
   "categories": [
     {
       "name": "Output",
-      "color": "#b469d6"
+      "color": "#55bdcb"
     },
     {
       "name": "Control",
-      "color": "#4aa3df"
+      "color": "#b469d6"
     },
     {
       "name": "Operations",

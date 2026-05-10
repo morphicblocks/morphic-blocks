@@ -38,51 +38,74 @@ const modeButtonsContainer = document.getElementById("mode-buttons")!;
 const runBtn = document.getElementById("run-btn")!;
 const codeBtn = document.getElementById("code-btn")!;
 const clearBtn = document.getElementById("clear-btn")!;
-const themeToggleBtn = document.getElementById("theme-toggle")!;
+const themeSelect = document.getElementById("theme-select") as HTMLSelectElement;
 
 // ── Theme ──────────────────────────────────────────────
 
-type ThemeName = "dark" | "light";
+type ThemeName = "dark" | "light" | "luh";
 
 const THEME_STORAGE_KEY = "morphic-playground-theme";
 
-const editorThemeFor = (name: ThemeName) =>
-  name === "dark"
-    ? {
-        background: "#0f1117",
-        foreground: "#d4d4d4",
-        gutterBackground: "#0f1117",
-        gutterForeground: "#5d677a",
-        selectionBackground: "#264f78",
-      }
-    : {
-        background: "#f5efdc",
-        foreground: "#3d3a30",
-        gutterBackground: "#f5efdc",
-        gutterForeground: "#a59c80",
-        selectionBackground: "#e0d9c2",
-      };
+const editorThemeFor = (name: ThemeName) => {
+  if (name === "dark") {
+    return {
+      background: "#0f1117",
+      foreground: "#d4d4d4",
+      gutterBackground: "#0f1117",
+      gutterForeground: "#5d677a",
+      selectionBackground: "#264f78",
+    };
+  }
+  if (name === "luh") {
+    return {
+      background: "#ffffff",
+      foreground: "#000000",
+      gutterBackground: "#e5e5e5",
+      gutterForeground: "#666666",
+      selectionBackground: "#55bdcb",
+    };
+  }
+  return {
+    background: "#f5efdc",
+    foreground: "#3d3a30",
+    gutterBackground: "#f5efdc",
+    gutterForeground: "#a59c80",
+    selectionBackground: "#e0d9c2",
+  };
+};
 
-const previewThemeFor = (name: ThemeName) =>
-  name === "dark"
-    ? {
-        background: "#161a24",
-        foreground: "#bfc7d9",
-        gutterBackground: "#161a24",
-        gutterForeground: "#5d677a",
-        selectionBackground: "#264f78",
-      }
-    : {
-        background: "#ebe5d2",
-        foreground: "#3d3a30",
-        gutterBackground: "#ebe5d2",
-        gutterForeground: "#a59c80",
-        selectionBackground: "#e0d9c2",
-      };
+const previewThemeFor = (name: ThemeName) => {
+  if (name === "dark") {
+    return {
+      background: "#161a24",
+      foreground: "#bfc7d9",
+      gutterBackground: "#161a24",
+      gutterForeground: "#5d677a",
+      selectionBackground: "#264f78",
+    };
+  }
+  if (name === "luh") {
+    return {
+      background: "#ffffff",
+      foreground: "#000000",
+      gutterBackground: "#e5e5e5",
+      gutterForeground: "#666666",
+      selectionBackground: "#55bdcb",
+    };
+  }
+  return {
+    background: "#ebe5d2",
+    foreground: "#3d3a30",
+    gutterBackground: "#ebe5d2",
+    gutterForeground: "#a59c80",
+    selectionBackground: "#e0d9c2",
+  };
+};
 
 function readInitialTheme(): ThemeName {
   const stored = localStorage.getItem(THEME_STORAGE_KEY);
-  return stored === "light" ? "light" : "dark";
+  if (stored === "dark" || stored === "light") return stored;
+  return "luh";
 }
 
 let currentTheme: ThemeName = readInitialTheme();
@@ -90,8 +113,7 @@ let currentTheme: ThemeName = readInitialTheme();
 function applyTheme(theme: ThemeName, syncEditors: boolean): void {
   currentTheme = theme;
   document.documentElement.setAttribute("data-theme", theme);
-  themeToggleBtn.textContent = theme === "dark" ? "☀" : "☾";
-  themeToggleBtn.title = theme === "dark" ? "Switch to light mode" : "Switch to dark mode";
+  themeSelect.value = theme;
   if (syncEditors) {
     engine.setCodeEditorTheme(editorThemeFor(theme));
     engine.setCodespaceTheme(editorThemeFor(theme));
@@ -102,8 +124,8 @@ function applyTheme(theme: ThemeName, syncEditors: boolean): void {
 
 applyTheme(currentTheme, false);
 
-themeToggleBtn.addEventListener("click", () => {
-  applyTheme(currentTheme === "dark" ? "light" : "dark", true);
+themeSelect.addEventListener("change", () => {
+  applyTheme(themeSelect.value as ThemeName, true);
 });
 
 // ── Engine Setup ───────────────────────────────────────
