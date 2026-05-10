@@ -18,11 +18,11 @@
 
 .morphic-mode-iconic > .morphic-element-concept {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--tile-muted);
 }
 
 .morphic-mode-iconic > .morphic-element-description {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--tile-muted-soft);
   margin-top: 6px;
 }

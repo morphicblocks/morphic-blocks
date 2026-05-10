@@ -16,7 +16,7 @@
 .morphic-mode-javascript > .morphic-element-javascript {
   font-size: 13px;
   font-family: "Consolas", "Fira Code", monospace;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--tile-muted-strong);
 }
 
 .morphic-workspace-root.morphic-mode-javascript .blocklyText {

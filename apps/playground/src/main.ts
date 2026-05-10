@@ -38,6 +38,73 @@ const modeButtonsContainer = document.getElementById("mode-buttons")!;
 const runBtn = document.getElementById("run-btn")!;
 const codeBtn = document.getElementById("code-btn")!;
 const clearBtn = document.getElementById("clear-btn")!;
+const themeToggleBtn = document.getElementById("theme-toggle")!;
+
+// ── Theme ──────────────────────────────────────────────
+
+type ThemeName = "dark" | "light";
+
+const THEME_STORAGE_KEY = "morphic-playground-theme";
+
+const editorThemeFor = (name: ThemeName) =>
+  name === "dark"
+    ? {
+        background: "#0f1117",
+        foreground: "#d4d4d4",
+        gutterBackground: "#0f1117",
+        gutterForeground: "#5d677a",
+        selectionBackground: "#264f78",
+      }
+    : {
+        background: "#f5efdc",
+        foreground: "#3d3a30",
+        gutterBackground: "#f5efdc",
+        gutterForeground: "#a59c80",
+        selectionBackground: "#e0d9c2",
+      };
+
+const previewThemeFor = (name: ThemeName) =>
+  name === "dark"
+    ? {
+        background: "#161a24",
+        foreground: "#bfc7d9",
+        gutterBackground: "#161a24",
+        gutterForeground: "#5d677a",
+        selectionBackground: "#264f78",
+      }
+    : {
+        background: "#ebe5d2",
+        foreground: "#3d3a30",
+        gutterBackground: "#ebe5d2",
+        gutterForeground: "#a59c80",
+        selectionBackground: "#e0d9c2",
+      };
+
+function readInitialTheme(): ThemeName {
+  const stored = localStorage.getItem(THEME_STORAGE_KEY);
+  return stored === "light" ? "light" : "dark";
+}
+
+let currentTheme: ThemeName = readInitialTheme();
+
+function applyTheme(theme: ThemeName, syncEditors: boolean): void {
+  currentTheme = theme;
+  document.documentElement.setAttribute("data-theme", theme);
+  themeToggleBtn.textContent = theme === "dark" ? "☀" : "☾";
+  themeToggleBtn.title = theme === "dark" ? "Switch to light mode" : "Switch to dark mode";
+  if (syncEditors) {
+    engine.setCodeEditorTheme(editorThemeFor(theme));
+    engine.setCodespaceTheme(editorThemeFor(theme));
+    engine.setPreviewTheme(previewThemeFor(theme));
+  }
+  localStorage.setItem(THEME_STORAGE_KEY, theme);
+}
+
+applyTheme(currentTheme, false);
+
+themeToggleBtn.addEventListener("click", () => {
+  applyTheme(currentTheme === "dark" ? "light" : "dark", true);
+});
 
 // ── Engine Setup ───────────────────────────────────────
 
@@ -86,20 +153,10 @@ engine.mountToolbox(toolboxPanel, {
   categories: definitions.categories as MorphicToolboxCategory[],
 });
 
-const editorTheme = {
-  background: "#0f1117",
-  foreground: "#d4d4d4",
-  gutterBackground: "#0f1117",
-  gutterForeground: "#5d677a",
-  selectionBackground: "#264f78",
-};
-
 Promise.all([
-  engine.mountCodeEditor(codeEditorContainer, { theme: editorTheme }),
-  engine.mountCodespace({ theme: editorTheme }),
-  engine.mountPreview(previewContainer, {
-    theme: { ...editorTheme, background: "#161a24", gutterBackground: "#161a24", foreground: "#bfc7d9" },
-  }),
+  engine.mountCodeEditor(codeEditorContainer, { theme: editorThemeFor(currentTheme) }),
+  engine.mountCodespace({ theme: editorThemeFor(currentTheme) }),
+  engine.mountPreview(previewContainer, { theme: previewThemeFor(currentTheme) }),
 ]).then(() => {
   engine.hideCodeEditor();
   engine.enableSelectionSync({ highlightColor: "rgba(139, 172, 221, 0.48)" });

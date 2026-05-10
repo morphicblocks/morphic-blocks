@@ -5,10 +5,49 @@
 :root {
   --bg-dark: #131722;
   --bg-panel: #171d2a;
+  --bg-deep: #0f1117;
+  --bg-preview: #161a24;
   --border: #2a3345;
   --text: #e5ecff;
   --accent: #8fd3ff;
   --text-muted: #8b8fa3;
+  --grid-color: #2a3345;
+  --block-bg: rgba(255, 255, 255, 0.04);
+  --block-bg-hover: rgba(255, 255, 255, 0.08);
+  --block-border-hover: rgba(255, 255, 255, 0.1);
+  --block-text: #fff;
+  --slot-bg: rgba(255, 255, 255, 0.1);
+  --divider: rgba(255, 255, 255, 0.05);
+  --tile-muted-strong: rgba(255, 255, 255, 0.85);
+  --tile-muted: rgba(255, 255, 255, 0.75);
+  --tile-muted-soft: rgba(255, 255, 255, 0.45);
+  --run-btn-from: #4aa3df;
+  --run-btn-to: #8fd3ff;
+  --run-btn-text: #0f1117;
+}
+
+[data-theme="light"] {
+  --bg-dark: #fdf6e3;
+  --bg-panel: #f0eada;
+  --bg-deep: #f5efdc;
+  --bg-preview: #ebe5d2;
+  --border: #d6cfb8;
+  --text: #3d3a30;
+  --accent: #268bd2;
+  --text-muted: #7a7461;
+  --grid-color: #e8e1c8;
+  --block-bg: rgba(0, 0, 0, 0.035);
+  --block-bg-hover: rgba(0, 0, 0, 0.07);
+  --block-border-hover: rgba(0, 0, 0, 0.1);
+  --block-text: #1a1d29;
+  --slot-bg: rgba(0, 0, 0, 0.1);
+  --divider: rgba(0, 0, 0, 0.07);
+  --tile-muted-strong: rgba(0, 0, 0, 0.85);
+  --tile-muted: rgba(0, 0, 0, 0.7);
+  --tile-muted-soft: rgba(0, 0, 0, 0.45);
+  --run-btn-from: #2575c4;
+  --run-btn-to: #4aa3df;
+  --run-btn-text: #ffffff;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -19,6 +58,7 @@ body {
   color: var(--text);
   height: 100vh;
   overflow: hidden;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 #app {
@@ -46,7 +86,7 @@ body {
 
 #mode-buttons {
   display: flex;
-  background: #0f1117;
+  background: var(--bg-deep);
   border-radius: 6px;
   padding: 3px;
 }
@@ -64,7 +104,7 @@ body {
 
 #mode-buttons button.active {
   background: var(--border);
-  color: #fff;
+  color: var(--text);
 }
 
 #mode-buttons button:hover:not(.active) {
@@ -96,15 +136,40 @@ body {
 
 #code-btn.active {
   background: var(--border);
-  color: #fff;
+  color: var(--text);
   border-color: var(--border);
+}
+
+#theme-toggle {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s, border-color 0.2s, transform 0.2s;
+}
+
+#theme-toggle:hover {
+  color: var(--text);
+  border-color: var(--text-muted);
+}
+
+#theme-toggle:active {
+  transform: scale(0.94);
 }
 
 #run-btn {
   padding: 8px 20px;
   border-radius: 6px;
-  background: linear-gradient(135deg, #4aa3df, #8fd3ff);
-  color: #0f1117;
+  background: linear-gradient(135deg, var(--run-btn-from), var(--run-btn-to));
+  color: var(--run-btn-text);
   border: none;
   font-weight: bold;
   cursor: pointer;
@@ -169,7 +234,7 @@ body {
   min-width: 200px;
   border-left: 1px solid var(--border);
   overflow: hidden;
-  background: #0f1117;
+  background: var(--bg-deep);
 }
 
 #codespace-container .cm-editor {
@@ -181,7 +246,7 @@ body {
   min-width: 180px;
   border-left: 1px solid var(--border);
   overflow: hidden;
-  background: #161a24;
+  background: var(--bg-preview);
 }
 
 #preview-container .cm-editor {
@@ -201,7 +266,7 @@ body {
 #output-panel {
   height: 160px;
   min-height: 80px;
-  background: #0f1117;
+  background: var(--bg-deep);
   border-top: 1px solid var(--border);
   display: flex;
   flex-direction: column;
@@ -256,6 +321,7 @@ body {
 .blocklyMainBackground { fill: var(--bg-dark) !important; }
 .blocklyScrollbarBackground { fill: transparent; }
 .blocklyScrollbarHandle { fill: var(--border); }
+.blocklyGridPattern line { stroke: var(--grid-color) !important; }
 
 /* =============================================
    Morphic Toolbox Canvas — Shared Styles
@@ -276,7 +342,7 @@ body {
   font-weight: 800;
   padding-bottom: 6px;
   margin-bottom: 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--divider);
 }
 
 /* Block tiles */
@@ -284,21 +350,21 @@ body {
   display: block;
   width: 100%;
   text-align: left;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--block-bg);
   border: 1px solid transparent;
   border-left: 3px solid var(--morphic-block-color, #666);
   padding: 10px 12px;
   margin-bottom: 6px;
   border-radius: 4px;
-  color: #fff;
+  color: var(--block-text);
   cursor: grab;
   transition: all 0.2s ease;
   font-size: 13px;
 }
 
 .morphic-block:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.1);
+  background: var(--block-bg-hover);
+  border-color: var(--block-border-hover);
   border-left-color: var(--morphic-block-color, #666);
 }
 
@@ -311,7 +377,7 @@ body {
   display: inline-block;
   width: 24px;
   height: 12px;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--slot-bg);
   border-radius: 3px;
   vertical-align: middle;
   margin: 0 2px;
@@ -323,4 +389,9 @@ body {
   max-width: 100%;
   height: auto;
   pointer-events: none;
+}
+
+/* Icons in toolbox tiles bake `color: white` into their SVGs; invert in light mode. */
+[data-theme="light"] .morphic-element-icon img {
+  filter: invert(1);
 }

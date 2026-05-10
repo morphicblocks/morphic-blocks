@@ -14,5 +14,5 @@
 
 .morphic-mode-concept > .morphic-element-concept {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--tile-muted-strong);
 }
