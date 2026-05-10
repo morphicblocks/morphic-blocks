@@ -55,6 +55,21 @@ morphic-blocks/
 
 Demo app. Uses `import.meta.glob()` to auto-discover mode CSS files by filename. Seeds a demo workspace on load. Shows live code generation and execution.
 
+### Themes
+
+The playground ships three themes selectable via the header dropdown: `Dark`, `Light`, and `LUH`. Theme state persists in `localStorage` under `morphic-playground-theme`. CSS variables are defined per theme in `src/style.css` (`:root`, `[data-theme="light"]`, `[data-theme="luh"]`); editor and preview themes are wired in `src/main.ts`.
+
+**LUH theme — Leibniz University Hannover corporate identity colors.** Source: <https://www.corporate.uni-hannover.de/die-marke/farben>
+
+| Role | Hex |
+|---|---|
+| Primary | `#00509B`, `#C8D317` |
+| Secondary | `#99B9D8`, `#DEE574` |
+| Typography | `#000000`, `#666666`, `#b2b2b2`, `#e5e5e5` |
+| Department (this lab) | `#55bdcb` |
+
+The LUH theme uses these colors plus white (`#ffffff`) for backgrounds. Greens (`#C8D317`, `#DEE574`) are reserved for explicit branding moments and are not currently used in the demo.
+
 ## Core Concept: Morphic Block
 
 A **Morphic Block** is the fundamental unit. It has named **elements** — the visual parts it can show. Each element name is **free-form**; its **type** drives rendering behavior.
