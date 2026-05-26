@@ -815,6 +815,9 @@ export class MorphicBlocks {
     const mergedOptions: MorphicCodeEditorOptions = {
       ...options,
       highlightRules: options?.highlightRules ?? this.resolveHighlightRules("preview"),
+      // Preview is read-only by design; the form-field underline marker is
+      // only meaningful on the editable codespace, so suppress it here.
+      showPlaceholderMarkers: options?.showPlaceholderMarkers ?? false,
     };
 
     this.previewEditor = new MorphicCodeEditor(

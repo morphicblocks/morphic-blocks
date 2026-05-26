@@ -164,9 +164,12 @@ export class MorphicCodeEditor {
    * Find the placeholder that covers `pos`. End is inclusive so a click that
    * lands just past a single-digit marker still resolves; when ranges nest
    * (e.g. "0 < 0" outer with two inner "0" markers) the narrowest match wins
-   * so clicks resolve to the editable inner range.
+   * so clicks resolve to the editable inner range. Returns `null` when the
+   * editor has placeholder markers disabled (e.g. the preview editor) so
+   * clicks fall through to the block-line selection path instead.
    */
   private findPlaceholderAtPos(pos: number): MorphicPlaceholderRange | null {
+    if (this.options.showPlaceholderMarkers === false) return null;
     let best: MorphicPlaceholderRange | null = null;
     let bestSize = Infinity;
     for (const p of this.placeholders) {
@@ -187,12 +190,19 @@ export class MorphicCodeEditor {
   private placeholderEditorScrollHandler?: () => void;
 
   private closePlaceholderEditor(): void {
+    // Clear state references BEFORE calling .remove(): removal of a focused
+    // element synchronously fires a blur event, whose handler re-enters this
+    // method. Without the early bailout, the second call tries to remove an
+    // element that's already detached and throws NotFoundError — which then
+    // leaves the editor in a stuck state where new placeholders can't open.
+    const el = this.placeholderEditorEl;
+    if (!el) return;
+    this.placeholderEditorEl = undefined;
     if (this.placeholderEditorScrollHandler && this.editorView) {
       this.editorView.scrollDOM.removeEventListener("scroll", this.placeholderEditorScrollHandler);
       this.placeholderEditorScrollHandler = undefined;
     }
-    this.placeholderEditorEl?.remove();
-    this.placeholderEditorEl = undefined;
+    if (el.parentNode) el.parentNode.removeChild(el);
   }
 
   /**
@@ -236,6 +246,19 @@ export class MorphicCodeEditor {
     }
 
     const computed = getComputedStyle(view.contentDOM);
+    // Inherit the editor's own background so the input matches the active
+    // theme. The CodeMirror theme's `&` selector targets `view.dom` (the
+    // editor root), so that's where the opaque background lives; walk up
+    // from contentDOM if needed in case the theme set it elsewhere.
+    const editorBg = (() => {
+      let el: HTMLElement | null = view.dom;
+      while (el) {
+        const bg = getComputedStyle(el).backgroundColor;
+        if (bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent") return bg;
+        el = el.parentElement;
+      }
+      return "#fff";
+    })();
     Object.assign(inputEl.style, {
       position: "absolute",
       left: `${startCoords.left - scrollerRect.left + view.scrollDOM.scrollLeft}px`,
@@ -246,9 +269,9 @@ export class MorphicCodeEditor {
       lineHeight: computed.lineHeight,
       padding: "0 2px",
       margin: "0",
-      border: "1px solid rgba(255,255,255,0.4)",
+      border: `1px solid ${computed.color}`,
       borderRadius: "2px",
-      background: "rgba(40,40,40,0.95)",
+      background: editorBg,
       color: computed.color,
       boxSizing: "border-box",
       zIndex: "20",
@@ -445,6 +468,11 @@ export class MorphicCodeEditor {
     // again) and lets us distinguish "click below content" cleanly. Here we
     // only react to non-pointer movements (keyboard, programmatic).
     const cursorListener = cmView.EditorView.updateListener.of((update) => {
+      // Doc replacements (codespace re-sync after a Blockly change) snap the
+      // cursor to a new position. That's not a user-initiated cursor move —
+      // treating it as one would spuriously select the first block whenever
+      // the user commits an edit or drops a new block into the workspace.
+      if (update.docChanged) return;
       if (update.transactions.some((tr) => tr.isUserEvent("select.pointer"))) {
         return;
       }
@@ -462,13 +490,14 @@ export class MorphicCodeEditor {
       editor.onCursorLine(line);
     });
 
+    const showPlaceholderMarkers = this.options.showPlaceholderMarkers !== false;
     const extensions: Extension[] = [
       cmView.lineNumbers(),
       cmView.highlightSpecialChars(),
       cmState.EditorState.readOnly.of(true),
       langJs.javascript(),
       highlightField,
-      placeholderField,
+      ...(showPlaceholderMarkers ? [placeholderField] : []),
       cursorListener,
       this.themeCompartment.of(themeExt),
       this.syntaxHighlightCompartment.of(initialHighlightExt),

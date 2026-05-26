@@ -463,6 +463,12 @@ export interface MorphicCodeEditorOptions {
    * `edit.blockId`. Re-codegen + re-render then refresh the codespace.
    */
   onPlaceholderApply?: (edit: MorphicPlaceholderEditTarget, newValue: string) => void;
+  /**
+   * Whether value-slot underline markers are shown in this editor. The codespace
+   * uses them as a form-field affordance for inline editing; read-only display
+   * surfaces (e.g. the preview editor) should disable them. Default: `true`.
+   */
+  showPlaceholderMarkers?: boolean;
 }
 
 /** Options for `enableSelectionSync()`. */
