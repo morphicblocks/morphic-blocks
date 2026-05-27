@@ -159,7 +159,14 @@ function renderBlock(
       continue;
     }
     if (token.kind === "field") {
-      appendText(state, readFieldText(block.getField(token.name)));
+      const field = block.getField(token.name);
+      if (!field) continue;
+      const fieldStart = state.output.length;
+      appendText(state, readFieldText(field));
+      const editTarget = fieldEditTarget(block, field, token.name);
+      if (editTarget) {
+        recordPlaceholder(state, fieldStart, "set", editTarget);
+      }
       continue;
     }
     if (token.kind === "image") {
@@ -194,6 +201,12 @@ function renderBlock(
     }
 
     const slotOffsetStart = state.output.length;
+    // Per-field markers recorded inside the slot's emission (e.g. var_declare's
+    // VAR text field on the dummy NAME slot, math_arithmetic's OP dropdown on
+    // the dummy OPERATOR slot). When recorded, the outer slot-level marker is
+    // skipped so the `default` italic-dim style doesn't stack on the `set`
+    // style of the inner field marker.
+    let perFieldRecorded = false;
     if (!target) {
       let fieldEmitted = false;
       // Shadows: read the shadow's own fields so codespace text matches the
@@ -207,11 +220,19 @@ function renderBlock(
           }
         }
       } else if (input) {
-        // Fields directly on the parent's input (uncommon).
+        // Fields directly on the parent's input (e.g. VAR on var_declare's
+        // NAME, OP on math_arithmetic's OPERATOR). Emit each field as its
+        // own placeholder range so it's individually inline-editable.
         for (const field of input.fieldRow) {
           if (!field.name) continue;
+          const fieldStart = state.output.length;
           appendText(state, readFieldText(field));
           fieldEmitted = true;
+          const fieldEdit = fieldEditTarget(block, field, field.name);
+          if (fieldEdit) {
+            recordPlaceholder(state, fieldStart, "set", fieldEdit);
+            perFieldRecorded = true;
+          }
         }
       }
       if (!fieldEmitted) {
@@ -225,8 +246,10 @@ function renderBlock(
           appendText(state, fallback);
         }
       }
-      const editTarget = rawTarget?.isShadow() ? detectAtomicEdit(rawTarget) ?? undefined : undefined;
-      recordPlaceholder(state, slotOffsetStart, "default", editTarget);
+      if (!perFieldRecorded) {
+        const editTarget = rawTarget?.isShadow() ? detectAtomicEdit(rawTarget) ?? undefined : undefined;
+        recordPlaceholder(state, slotOffsetStart, "default", editTarget);
+      }
       continue;
     }
 
@@ -295,6 +318,40 @@ function recordPlaceholder(
  * the only ones currently inline-editable in the codespace (math_number,
  * text, logic_boolean, and morphic blocks with the same shape).
  */
+/**
+ * Build an inline-edit target for a single named field on a morphic block —
+ * the `%FIELDNAME` token case. Returns `null` for non-editable field types
+ * (FieldLabel, FieldImage) so they render plain text without a marker.
+ */
+function fieldEditTarget(
+  block: Blockly.Block,
+  field: Blockly.Field,
+  fieldName: string,
+): MorphicPlaceholderEditTarget | null {
+  // `instanceof` not `constructor.name`: minified Blockly bundles rename
+  // classes, so a name-substring check can misclassify (e.g. FieldTextInput
+  // accidentally matching "Number" or the inverse). FieldNumber extends
+  // FieldTextInput, so the Number check must come first.
+  let fieldType: MorphicPlaceholderEditTarget["fieldType"];
+  let options: [string, string][] | undefined;
+  if (field instanceof Blockly.FieldNumber) {
+    fieldType = "number";
+  } else if (field instanceof Blockly.FieldDropdown) {
+    fieldType = "dropdown";
+    const raw: unknown = field.getOptions();
+    if (Array.isArray(raw)) {
+      options = (raw as unknown[])
+        .filter((entry): entry is [unknown, unknown] => Array.isArray(entry) && entry.length >= 2)
+        .map(([label, value]) => [String(label), String(value)] as [string, string]);
+    }
+  } else if (field instanceof Blockly.FieldTextInput) {
+    fieldType = "text";
+  } else {
+    return null;
+  }
+  return { blockId: block.id, fieldName, fieldType, options };
+}
+
 function detectAtomicEdit(block: Blockly.Block): MorphicPlaceholderEditTarget | null {
   let fieldName: string | null = null;
   let fieldRef: Blockly.Field | null = null;
