@@ -6,7 +6,9 @@ import type {
   MorphicBlockDefinition,
   MorphicCodeBlockPosition,
   MorphicCodeGenerationResult,
+  MorphicElementTypeConfig,
   MorphicElementTypeEntry,
+  MorphicInputSlotDefinition,
   MorphicModeDefinition,
   MorphicModeName,
   MorphicPlaceholderEditTarget,
@@ -200,7 +202,6 @@ function renderBlock(
       continue;
     }
 
-    const slotOffsetStart = state.output.length;
     // Per-field markers recorded inside the slot's emission (e.g. var_declare's
     // VAR text field on the dummy NAME slot, math_arithmetic's OP dropdown on
     // the dummy OPERATOR slot). When recorded, the outer slot-level marker is
@@ -208,6 +209,11 @@ function renderBlock(
     // style of the inner field marker.
     let perFieldRecorded = false;
     if (!target) {
+      // Quote framework-supplied literals (shadow/fallback) in String slots.
+      // Quotes sit outside the marker so editing targets only the inner value.
+      const stringQuote = resolveStringQuote(slot, elementEntry);
+      if (stringQuote) appendText(state, stringQuote);
+      const slotOffsetStart = state.output.length;
       let fieldEmitted = false;
       // Shadows: read the shadow's own fields so codespace text matches the
       // shadow's current values (and supports inline editing of the shadow).
@@ -250,9 +256,14 @@ function renderBlock(
         const editTarget = rawTarget?.isShadow() ? detectAtomicEdit(rawTarget) ?? undefined : undefined;
         recordPlaceholder(state, slotOffsetStart, "default", editTarget);
       }
+      if (stringQuote) appendText(state, stringQuote);
       continue;
     }
 
+    // Real attached block: render via its own template (it self-quotes if it's
+    // a string literal block; a variable/expression stays bare). No framework
+    // quoting here.
+    const slotOffsetStart = state.output.length;
     renderBlock(target, ctx, state);
     recordPlaceholder(state, slotOffsetStart, "set", detectAtomicEdit(target) ?? undefined);
   }
@@ -323,6 +334,23 @@ function recordPlaceholder(
  * the `%FIELDNAME` token case. Returns `null` for non-editable field types
  * (FieldLabel, FieldImage) so they render plain text without a marker.
  */
+/**
+ * Resolve the string-quote delimiter for a value slot: returns the active
+ * element's `stringQuote` when the slot's check is `String`, else undefined.
+ * Used to wrap framework-supplied literals (shadow values, empty fallbacks)
+ * so the codespace renders `print("hello")` rather than `print(hello)`.
+ */
+function resolveStringQuote(
+  slot: MorphicInputSlotDefinition | undefined,
+  elementEntry: MorphicElementTypeEntry | undefined,
+): string | undefined {
+  if (!slot?.check) return undefined;
+  const checkStr = Array.isArray(slot.check) ? slot.check[0] : slot.check;
+  if (checkStr !== "String") return undefined;
+  if (!elementEntry || typeof elementEntry === "string") return undefined;
+  return (elementEntry as MorphicElementTypeConfig).stringQuote;
+}
+
 function fieldEditTarget(
   block: Blockly.Block,
   field: Blockly.Field,

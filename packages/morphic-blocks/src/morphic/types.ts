@@ -59,6 +59,17 @@ export interface MorphicElementTypeConfig {
    */
   empty?: Record<string, MorphicEmptyDefaultConfig>;
   /**
+   * String delimiter used to wrap framework-supplied literals (shadow values
+   * and empty-slot fallbacks) in `String`-checked value slots, so the
+   * codespace renders e.g. `print("hello")` rather than `print(hello)`. The
+   * quotes are emitted around the value but outside the editable marker, so
+   * inline editing targets only the inner text. Only applies to literals the
+   * framework supplies; user-attached real blocks render via their own
+   * templates (a `var_get` stays bare, a `text_value` quotes itself).
+   * Language-specific (`"\""` for most languages); omit to disable quoting.
+   */
+  stringQuote?: string;
+  /**
    * Display size for `type: "image"` elements. Used when the element value is
    * a file path (e.g. `"assets/icon.svg"`) and the framework auto-wraps it as
    * an `<img>` tag. Accepted formats:
