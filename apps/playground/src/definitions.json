@@ -22,6 +22,7 @@
     },
     "python": {
       "type": "code",
+      "stringQuote": "\"",
       "empty": {
         "Number": {
           "shadow": "math_number",
@@ -45,6 +46,7 @@
     },
     "javascript": {
       "type": "code",
+      "stringQuote": "\"",
       "empty": {
         "Number": {
           "shadow": "math_number",
@@ -71,6 +73,7 @@
     },
     "go": {
       "type": "code",
+      "stringQuote": "\"",
       "empty": {
         "Number": {
           "placeholder": "math_number",
@@ -266,6 +269,7 @@
         "1": {
           "kind": "value",
           "name": "TEXT",
+          "check": "String",
           "default": {
             "shadow": "text",
             "fieldValues": {
