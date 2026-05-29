@@ -1,4 +1,5 @@
 import * as Blockly from "blockly";
+import { toCleanId } from "./block-namespace";
 import { resolveEmptyDefault } from "./element-types";
 import { parseTemplate } from "./template";
 import { resolveBlockView } from "./view-resolver";
@@ -120,7 +121,7 @@ function renderBlock(
   ctx: RenderContext,
   state: RenderState,
 ): void {
-  const definition = ctx.definitions.get(block.type);
+  const definition = ctx.definitions.get(toCleanId(block.type));
   if (!definition) {
     // Non-morphic block (Blockly stock — typically a placeholder block
     // like `math_number`, `text`, or `logic_boolean` attached via the

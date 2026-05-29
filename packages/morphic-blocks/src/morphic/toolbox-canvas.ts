@@ -1,5 +1,6 @@
 import * as Blockly from "blockly";
 import { getLifecycleBehavior } from "./behavior-runtime";
+import { resolveBlocklyType } from "./block-namespace";
 import { applyBlockView } from "./block-view";
 import { resolveElementType, resolveImageSize } from "./element-types";
 import {
@@ -223,7 +224,9 @@ export class MorphicToolboxCanvas {
   ): SVGSVGElement | null {
     try {
       const ws = this.ensurePreviewWorkspace();
-      const block = ws.newBlock(definition.identifier) as Blockly.BlockSvg;
+      const block = ws.newBlock(
+        resolveBlocklyType(definition.identifier, this.definitions),
+      ) as Blockly.BlockSvg;
 
       const color = this.blockColors.get(definition.identifier);
       if (color) block.setColour(color);
@@ -291,7 +294,9 @@ export class MorphicToolboxCanvas {
     const x = (clientX - rect.left - ws.scrollX) / ws.scale;
     const y = (clientY - rect.top - ws.scrollY) / ws.scale;
 
-    const block = ws.newBlock(blockType) as Blockly.BlockSvg;
+    const block = ws.newBlock(
+      resolveBlocklyType(blockType, this.definitions),
+    ) as Blockly.BlockSvg;
     block.initSvg();
     block.render();
     block.moveTo(new Blockly.utils.Coordinate(x, y));

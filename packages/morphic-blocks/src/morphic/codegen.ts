@@ -1,6 +1,7 @@
 import type * as Blockly from "blockly";
 import { Order, javascriptGenerator, type JavascriptGenerator } from "blockly/javascript";
 import { getCodeBehavior } from "./behavior-runtime";
+import { toBlocklyType, toCleanId } from "./block-namespace";
 import { getManagedBlockMode } from "./block-view";
 import type {
   MorphicBehaviorMap,
@@ -60,7 +61,7 @@ function configureJavascriptGenerator(
   for (const [type, definition] of state.definitions) {
     const behavior = getCodeBehavior(state.behaviors[type]);
 
-    generator.forBlock[type] = (block, activeGenerator) => {
+    generator.forBlock[toBlocklyType(type)] = (block, activeGenerator) => {
       const proxy = createBehaviorProxy(block, activeGenerator);
       const rawCode = behavior ? behavior(proxy) : fallbackCode(type, definition);
       if (isValueBlock(block, definition)) {
@@ -100,7 +101,7 @@ function createBehaviorProxy(block: Blockly.Block, generator: JavascriptGenerato
 
   return {
     blockId: block.id,
-    blockType: block.type,
+    blockType: toCleanId(block.type),
     mode: getManagedBlockMode(block) ?? "default",
     context,
     inputs,

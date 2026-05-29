@@ -10,6 +10,7 @@ import {
   restoreFieldValues,
 } from "./block-view";
 import { BLOCK_ID_DRAG_KEY, MorphicCodeEditor, getActiveGripDragSourceId } from "./code-editor";
+import { resolveBlocklyType, toBlocklyType, toCleanId } from "./block-namespace";
 import { resolveElementType } from "./element-types";
 import { generateJavaScriptFromWorkspace, generateJavaScriptWithMetadataFromWorkspace } from "./codegen";
 import { generateTextFromWorkspace } from "./template-codegen";
@@ -456,7 +457,7 @@ export class MorphicBlocks {
 
       let block: Blockly.BlockSvg | null = null;
       if (blockType) {
-        block = workspace.newBlock(blockType) as Blockly.BlockSvg;
+        block = workspace.newBlock(resolveBlocklyType(blockType, this.definitions)) as Blockly.BlockSvg;
         block.initSvg();
         block.render();
       } else if (sourceId) {
@@ -1021,7 +1022,7 @@ export class MorphicBlocks {
         continue;
       }
 
-      const definition = this.definitions.get(block.type);
+      const definition = this.definitions.get(toCleanId(block.type));
       if (!definition) {
         continue;
       }
@@ -1058,7 +1059,7 @@ export class MorphicBlocks {
         continue;
       }
 
-      const definition = this.definitions.get(block.type);
+      const definition = this.definitions.get(toCleanId(block.type));
       if (!definition) {
         continue;
       }
@@ -1077,27 +1078,18 @@ export class MorphicBlocks {
 
   private registerBlocks(): void {
     for (const definition of this.definitions.values()) {
-      if (this.registeredBlockTypes.has(definition.identifier)) {
+      // Register under the namespaced Blockly type so a developer's clean
+      // identifier can never collide with a Blockly built-in (e.g. naming a
+      // block `logic_boolean` no longer clobbers the stock block that shadows
+      // and connection checks rely on). Definitions and behaviors stay keyed
+      // by the clean identifier; see block-namespace.ts.
+      const blocklyType = toBlocklyType(definition.identifier);
+      if (this.registeredBlockTypes.has(blocklyType)) {
         continue;
       }
 
-      // Warn when a Morphic block identifier collides with a Blockly built-in
-      // block type. The Morphic definition will overwrite the built-in entry,
-      // which can break shadow blocks (used by empty-default config) and any
-      // other framework or developer code that relies on the built-in type.
-      if (Blockly.Blocks[definition.identifier]) {
-        console.warn(
-          `[morphic-blocks] Block identifier "${definition.identifier}" ` +
-            `collides with a Blockly built-in block type. The Morphic ` +
-            `definition will override it, which can break shadow blocks ` +
-            `and other Blockly machinery that relies on the built-in. ` +
-            `Consider prefixing your identifier (e.g. ` +
-            `"m_${definition.identifier}").`,
-        );
-      }
-
       const engine = this;
-      Blockly.Blocks[definition.identifier] = {
+      Blockly.Blocks[blocklyType] = {
         init(this: Blockly.BlockSvg) {
           const context: MorphicRenderContext = this.workspace.isFlyout
             ? "toolbox"
@@ -1115,7 +1107,7 @@ export class MorphicBlocks {
         },
       };
 
-      this.registeredBlockTypes.add(definition.identifier);
+      this.registeredBlockTypes.add(blocklyType);
     }
   }
 
@@ -1214,6 +1206,7 @@ export class MorphicBlocks {
       mode,
       context,
       elementTypes: isMainWorkspace ? this.elementTypes : undefined,
+      resolveBlocklyType: (ref) => resolveBlocklyType(ref, this.definitions),
     });
     applyBlockCategoryClass(block, category?.token);
 
@@ -1323,7 +1316,7 @@ export class MorphicBlocks {
 
     for (const block of this.workspace.getAllBlocks(false)) {
       const svgBlock = block as Blockly.BlockSvg;
-      const definition = this.definitions.get(svgBlock.type);
+      const definition = this.definitions.get(toCleanId(svgBlock.type));
       if (!definition) {
         continue;
       }
@@ -1343,7 +1336,7 @@ export class MorphicBlocks {
 
     for (const block of this.flyoutWorkspace.getAllBlocks(false)) {
       const svgBlock = block as Blockly.BlockSvg;
-      const definition = this.definitions.get(svgBlock.type);
+      const definition = this.definitions.get(toCleanId(svgBlock.type));
       if (!definition) {
         continue;
       }
@@ -1533,7 +1526,7 @@ export class MorphicBlocks {
         return;
       }
 
-      const definition = this.definitions.get(block.type);
+      const definition = this.definitions.get(toCleanId(block.type));
       if (!definition) {
         return;
       }

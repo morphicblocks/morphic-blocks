@@ -1,4 +1,5 @@
 import type * as Blockly from "blockly";
+import { resolveBlocklyType } from "./block-namespace";
 import { toModeClassToken } from "./template";
 import type {
   MorphicBlockDefinition,
@@ -46,7 +47,7 @@ export function buildToolboxDefinition(
         colour: category.color,
         contents: resolveCategoryBlocks(category, definitions).map((type) => ({
           kind: "block",
-          type,
+          type: resolveBlocklyType(type, definitions),
         })),
       })),
     };
@@ -70,7 +71,7 @@ export function buildToolboxDefinition(
       )) {
         contents.push({
           kind: "block",
-          type,
+          type: resolveBlocklyType(type, definitions),
         });
       }
 
@@ -102,7 +103,7 @@ export function buildToolboxDefinition(
     kind: "flyoutToolbox",
     contents: blockTypes.map((type) => ({
       kind: "block",
-      type,
+      type: resolveBlocklyType(type, definitions),
     })),
   };
 }

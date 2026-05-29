@@ -43,10 +43,16 @@ export interface MorphicApplyBlockViewParams {
    * shadows and skip this step by omitting elementTypes.
    */
   elementTypes?: Record<string, MorphicElementTypeEntry>;
+  /**
+   * Translates a developer-facing block reference (a `shadow`/`placeholder`
+   * default) to its registered Blockly type. Morphic refs are namespaced;
+   * stock Blockly types pass through. Defaults to identity when omitted.
+   */
+  resolveBlocklyType?: (ref: string) => string;
 }
 
 export function applyBlockView(params: MorphicApplyBlockViewParams): void {
-  const { block, definition, view, mode, context, elementTypes } = params;
+  const { block, definition, view, mode, context, elementTypes, resolveBlocklyType } = params;
   const connectedChildren = captureConnectedChildren(block);
 
   removeInputs(block);
@@ -68,7 +74,7 @@ export function applyBlockView(params: MorphicApplyBlockViewParams): void {
 
   restoreConnectedChildren(block, connectedChildren);
   if (elementTypes) {
-    attachEmptyDefaults(block, definition, view, elementTypes);
+    attachEmptyDefaults(block, definition, view, elementTypes, resolveBlocklyType);
   }
   decorateBlockRoot(block, mode, context);
 
@@ -335,6 +341,7 @@ function attachEmptyDefaults(
   definition: MorphicBlockDefinition,
   view: MorphicResolvedView,
   elementTypes: Record<string, MorphicElementTypeEntry>,
+  resolveBlocklyType: (ref: string) => string = (ref) => ref,
 ): void {
   const elementEntry = view.elementName ? elementTypes[view.elementName] : undefined;
 
@@ -373,7 +380,7 @@ function attachEmptyDefaults(
       if (!existingShadow) {
         try {
           connection.setShadowState({
-            type: config.shadow,
+            type: resolveBlocklyType(config.shadow),
             fields: config.fieldValues ?? {},
           });
         } catch {
@@ -391,7 +398,7 @@ function attachEmptyDefaults(
       const slotIsEffectivelyEmpty = !target || target.isShadow();
       if (slotIsEffectivelyEmpty) {
         try {
-          const placeholder = workspace.newBlock(config.placeholder) as Blockly.BlockSvg;
+          const placeholder = workspace.newBlock(resolveBlocklyType(config.placeholder)) as Blockly.BlockSvg;
           if (config.fieldValues) {
             for (const [fieldName, value] of Object.entries(config.fieldValues)) {
               const field = placeholder.getField(fieldName);
