@@ -23,6 +23,7 @@ morphic-blocks/
 
 - `src/morphic/MorphicBlocks.ts` — Main orchestration class (`mount`, `setModes`, `generateJavaScript`)
 - `src/morphic/block-view.ts` — Block rendering, mode class application, connection management
+- `src/morphic/block-namespace.ts` — Clean ↔ `morphic:` Blockly-type translation (collision isolation)
 - `src/morphic/template.ts` — Template parsing (`%1` placeholders, `<img>` tags)
 - `src/morphic/codegen.ts` — One-way code generation via behavior functions
 - `src/morphic/view-resolver.ts` — Mode fallback logic
@@ -38,6 +39,15 @@ morphic-blocks/
 5. `engine.setModes()` switches rendering mode at runtime — blocks re-render
 
 `mount()` accepts either `workspaceContainer`, `codespaceContainer`, or both. At least one is required. When only `codespaceContainer` is provided, Blockly runs headless (offscreen) so the block model stays authoritative. Modes with `presentation: "codespace"` require `codespaceContainer`.
+
+### Block identifier namespacing
+
+Definitions and behaviors use **clean, free-form identifiers** (`text_print`, `logic_if`). Internally, blocks are registered with Blockly under a namespaced type — `morphic:<identifier>` — so a developer's identifier can never collide with a Blockly built-in (naming a block `logic_boolean` would otherwise clobber the stock block that shadows and connection checks depend on). `block-namespace.ts` owns this translation:
+
+- `toBlocklyType(id)` / `toCleanId(type)` — convert between the two forms
+- `resolveBlocklyType(ref, definitions)` — resolve a developer-facing reference (a `default.shadow` / `default.placeholder`, a toolbox block list entry, or a drag payload): it is a morphic block **iff** its clean id is in the definitions map (then namespaced), otherwise it is a Blockly stock type and passes through unchanged (e.g. `math_number`)
+
+The namespace is an internal Blockly-type detail — it appears only in `Blockly.Blocks[…]` registration, `newBlock`, the toolbox `type` entries, `generator.forBlock[…]`, and serialized workspace state. Everything developer-facing (the `definitions` map, the `behaviors` map, the `behaviorProxy.blockType`) stays keyed by the clean id. When reading a live `block.type`, strip it with `toCleanId` before any definitions/behaviors lookup.
 
 ### Template syntax
 

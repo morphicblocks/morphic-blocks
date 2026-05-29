@@ -135,6 +135,12 @@ morphic-blocks/
 - `categories` — optional groupings for the toolbox
 - `blocks` — flat array of block definitions
 
+## Block Identifiers
+
+Block `identifier`s are free-form. You can name a block anything — **including names that match Blockly's built-in block types** such as `logic_boolean` or `math_number`. The framework registers each block internally as `morphic:<identifier>`, so your identifiers never clobber Blockly's stock blocks (which the framework still relies on for shadows, placeholders, and connection checks).
+
+You always work with the **clean** identifier — it keys the `behaviors` map, the per-block `default.shadow` / `default.placeholder` references, and toolbox block lists. A reference in those places resolves to *your* block when it matches one of your definitions, and to a Blockly stock type otherwise. So `"shadow": "math_number"` keeps using Blockly's number block, while `"shadow": "my_number"` uses yours if you define a block with that identifier.
+
 ## Mode Fields
 
 | Field           | Required       | Purpose                                                                      |
