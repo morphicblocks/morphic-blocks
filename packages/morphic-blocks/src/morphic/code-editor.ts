@@ -290,8 +290,9 @@ export class MorphicCodeEditor {
     };
 
     inputEl.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") { e.preventDefault(); apply(); }
-      else if (e.key === "Escape") { e.preventDefault(); cancel(); }
+      const key = (e as KeyboardEvent).key;
+      if (key === "Enter") { e.preventDefault(); apply(); }
+      else if (key === "Escape") { e.preventDefault(); cancel(); }
     });
     inputEl.addEventListener("blur", () => apply());
     // Don't let clicks on the input bubble into CodeMirror's pointer handling
