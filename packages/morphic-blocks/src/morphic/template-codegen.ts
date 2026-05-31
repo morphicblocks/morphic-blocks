@@ -266,7 +266,16 @@ function renderBlock(
     // quoting here.
     const slotOffsetStart = state.output.length;
     renderBlock(target, ctx, state);
-    recordPlaceholder(state, slotOffsetStart, "set", detectAtomicEdit(target) ?? undefined);
+    // The wrapper carries the child block's id even when it isn't atomic, so
+    // drag-from-placeholder can pull a multi-field subtree (e.g. an entire
+    // `1 + 2` expression) out of its slot.
+    recordPlaceholder(
+      state,
+      slotOffsetStart,
+      "set",
+      detectAtomicEdit(target) ?? undefined,
+      target.id,
+    );
   }
 
   if (state.output.length === before) {
@@ -281,7 +290,17 @@ function renderBlock(
     ? Math.max(startLine, rawEndLine - 1)
     : rawEndLine;
 
-  const position: MorphicCodeBlockPosition = { startLine, endLine };
+  // Trim trailing newlines so the char range covers visible content only,
+  // matching the spirit of the endLine clamp above.
+  let endChar = state.output.length;
+  while (endChar > before && state.output[endChar - 1] === "\n") endChar--;
+
+  const position: MorphicCodeBlockPosition = {
+    startLine,
+    endLine,
+    startChar: before,
+    endChar,
+  };
   if (Object.keys(statementSlots).length > 0) {
     position.statementSlots = statementSlots;
   }
@@ -315,11 +334,13 @@ function recordPlaceholder(
   start: number,
   kind: "default" | "set",
   edit?: MorphicPlaceholderEditTarget,
+  dragBlockId?: string,
 ): void {
   const end = state.output.length;
   if (end > start) {
     const range: MorphicPlaceholderRange = { start, end, kind };
     if (edit) range.edit = edit;
+    if (dragBlockId) range.dragBlockId = dragBlockId;
     state.placeholders.push(range);
   }
 }

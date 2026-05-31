@@ -370,6 +370,14 @@ export interface MorphicCodeBlockPosition {
   startLine: number;
   endLine: number;
   /**
+   * Character-offset range the block's rendered text occupies in the
+   * generated code (0-based, half-open: `[startChar, endChar)`). Provides
+   * inline precision so value children sharing a line (e.g. `1 + 2`) can
+   * still be distinguished. Used by the codespace to resolve value-slot drops.
+   */
+  startChar?: number;
+  endChar?: number;
+  /**
    * Body line range of each statement input declared on this block, keyed by
    * the input name. Includes empty bodies — the start/end line points to the
    * indented body line where children would render. Used by the codespace to
@@ -412,6 +420,13 @@ export interface MorphicPlaceholderRange {
   kind: "default" | "set";
   /** Editing target when the slot contains an atomic single-field block. */
   edit?: MorphicPlaceholderEditTarget;
+  /**
+   * Blockly block id this range visually wraps. Set for both atomic and
+   * non-atomic real-attached blocks so the codespace can offer drag-from-
+   * placeholder for the whole subtree (e.g. dragging `1 + 2` out of
+   * `print(1 + 2)` even though `math_arithmetic` itself isn't inline-editable).
+   */
+  dragBlockId?: string;
 }
 
 /** Result of `generateJavaScriptWithMetadata()`. */

@@ -38,6 +38,10 @@ let activeGripDragSourceId: string | undefined;
 export function getActiveGripDragSourceId(): string | undefined {
   return activeGripDragSourceId;
 }
+/** Mark a block id as the active grip-drag source (e.g. from a placeholder-range drag). */
+export function setActiveGripDragSourceId(id: string | undefined): void {
+  activeGripDragSourceId = id;
+}
 
 const DEFAULT_THEME: Required<MorphicCodeEditorTheme> = {
   fontSize: "14px",
@@ -159,6 +163,11 @@ export class MorphicCodeEditor {
    * (a placeholder is its own selectable target).
    */
   private placeholders: MorphicPlaceholderRange[] = [];
+
+  /** Read-only view of the latest placeholder ranges. */
+  public getPlaceholders(): readonly MorphicPlaceholderRange[] {
+    return this.placeholders;
+  }
 
   /**
    * Find the placeholder that covers `pos`. End is inclusive so a click that
@@ -348,6 +357,7 @@ export class MorphicCodeEditor {
   private metadataEffect?: StateEffectType<MorphicCodeMetadata>;
   private placeholderEffect?: StateEffectType<MorphicPlaceholderRange[]>;
   private dropIndicatorEffect?: StateEffectType<DropIndicator | null>;
+  private valueSlotHighlightEffect?: StateEffectType<{ from: number; to: number } | null>;
   private emptyClickListener?: (e: MouseEvent) => void;
 
   constructor(
@@ -386,8 +396,6 @@ export class MorphicCodeEditor {
     // ranges (placeholder or user-attached real block) keep normal style.
     const placeholderEffect = cmState.StateEffect.define<MorphicPlaceholderRange[]>();
     this.placeholderEffect = placeholderEffect;
-    const placeholderDefaultMark = cmView.Decoration.mark({ class: "morphic-placeholder-default" });
-    const placeholderSetMark = cmView.Decoration.mark({ class: "morphic-placeholder-set" });
     const placeholderField = cmState.StateField.define<import("@codemirror/view").DecorationSet>({
       create() {
         return cmView.Decoration.none;
@@ -402,8 +410,29 @@ export class MorphicCodeEditor {
               .filter((r) => r.start < r.end && r.end <= docLen)
               .sort((a, b) => a.start - b.start || a.end - b.end);
             const builder = new cmState.RangeSetBuilder<import("@codemirror/view").Decoration>();
+            // Ranges with an `edit.blockId` are made HTML5-draggable via per-
+            // range attributes — that's how the user grabs an inline value
+            // child (e.g. the math expression inside `print(...)`) and drags
+            // it out of its slot. A `dragstart` listener on the codespace
+            // container picks up the `data-morphic-drag-block-id` and seeds
+            // the BLOCK_ID_DRAG_KEY drag, so the existing drop logic handles
+            // the rest unchanged.
             for (const r of sorted) {
-              builder.add(r.start, r.end, r.kind === "default" ? placeholderDefaultMark : placeholderSetMark);
+              const cls = r.kind === "default" ? "morphic-placeholder-default" : "morphic-placeholder-set";
+              // Prefer dragBlockId (set for any real-attached block, atomic or
+              // not). Fall back to edit.blockId for shadow/fallback ranges that
+              // are only inline-editable.
+              const dragId = r.dragBlockId ?? r.edit?.blockId;
+              const attributes: Record<string, string> = {};
+              if (dragId) {
+                attributes.draggable = "true";
+                attributes["data-morphic-drag-block-id"] = dragId;
+              }
+              const mark = cmView.Decoration.mark({
+                class: cls,
+                attributes: Object.keys(attributes).length > 0 ? attributes : undefined,
+              });
+              builder.add(r.start, r.end, mark);
             }
             return builder.finish();
           }
@@ -505,6 +534,7 @@ export class MorphicCodeEditor {
       ...this.buildDeleteExtensions(cmView, cmState, metadataEffect),
       ...this.buildGripExtensions(cmView, cmState, metadataEffect),
       ...this.buildDropIndicatorExtensions(cmView, cmState),
+      ...this.buildValueSlotHighlightExtensions(cmView, cmState),
       ...(this.options.extensions ?? []) as Extension[],
     ];
 
@@ -725,17 +755,24 @@ export class MorphicCodeEditor {
           if (effect.is(metadataEffect)) {
             const meta = effect.value;
             const doc = tr.state.doc;
-            // One marker per startLine; first eligible block id wins.
-            const lineToId = new Map<number, string>();
-            for (const [id, { startLine }] of meta) {
+            // One marker per startLine, preferring the *outermost* block on
+            // that line (widest char range). Without this, an inline value
+            // child (e.g. an inner `m_math_number` in `1 + 2`) would steal
+            // the grip from its parent `math_arithmetic`, leaving the user
+            // unable to grip the whole expression.
+            const lineToBest = new Map<number, { id: string; width: number }>();
+            for (const [id, { startLine, startChar, endChar }] of meta) {
               if (startLine < 1 || startLine > doc.lines) continue;
-              if (lineToId.has(startLine)) continue;
               if (!canDragBlock(id)) continue;
-              lineToId.set(startLine, id);
+              const width = (endChar ?? 0) - (startChar ?? 0);
+              const existing = lineToBest.get(startLine);
+              if (!existing || width > existing.width) {
+                lineToBest.set(startLine, { id, width });
+              }
             }
-            const ranges = Array.from(lineToId.entries())
+            const ranges = Array.from(lineToBest.entries())
               .sort((a, b) => a[0] - b[0])
-              .map(([line, id]) => new GripMarker(id).range(doc.line(line).from));
+              .map(([line, { id }]) => new GripMarker(id).range(doc.line(line).from));
             return cmState.RangeSet.of(ranges, true);
           }
         }
@@ -803,6 +840,57 @@ export class MorphicCodeEditor {
     return [indicatorField, indicatorTheme];
   }
 
+  /**
+   * Highlight the char range of the value slot a dragged block would land in.
+   * Distinct from `dropIndicator` (a horizontal line above/below a line) so the
+   * user can tell at a glance that the drop will be value-typed, not statement.
+   */
+  private buildValueSlotHighlightExtensions(
+    cmView: typeof import("@codemirror/view"),
+    cmState: typeof import("@codemirror/state"),
+  ): Extension[] {
+    const setHighlight = cmState.StateEffect.define<{ from: number; to: number } | null>();
+    this.valueSlotHighlightEffect =
+      setHighlight as unknown as StateEffectType<{ from: number; to: number } | null>;
+
+    const mark = cmView.Decoration.mark({ class: "morphic-value-slot-target" });
+    const highlightField = cmState.StateField.define<
+      import("@codemirror/view").DecorationSet
+    >({
+      create() {
+        return cmView.Decoration.none;
+      },
+      update(decorations, tr) {
+        for (const effect of tr.effects) {
+          if (effect.is(setHighlight)) {
+            const v = effect.value;
+            if (!v) return cmView.Decoration.none;
+            const docLen = tr.state.doc.length;
+            const from = Math.max(0, Math.min(v.from, docLen));
+            const to = Math.max(from, Math.min(v.to, docLen));
+            if (from === to) return cmView.Decoration.none;
+            return cmView.Decoration.set([mark.range(from, to)]);
+          }
+        }
+        if (!tr.changes.empty) return cmView.Decoration.none;
+        return decorations;
+      },
+      provide(field) {
+        return cmView.EditorView.decorations.from(field);
+      },
+    });
+
+    const highlightTheme = cmView.EditorView.baseTheme({
+      ".morphic-value-slot-target": {
+        outline: "1px solid #5a86bc",
+        outlineOffset: "1px",
+        borderRadius: "2px",
+      },
+    });
+
+    return [highlightField, highlightTheme];
+  }
+
   show(): void {
     if (this.visible) return;
     this.visible = true;
@@ -859,12 +947,35 @@ export class MorphicCodeEditor {
     });
   }
 
+  /** Outline the char range of the value slot the drop would land in. */
+  showValueSlotHighlight(from: number, to: number): void {
+    if (!this.editorView || !this.valueSlotHighlightEffect) return;
+    this.editorView.dispatch({
+      effects: this.valueSlotHighlightEffect.of({ from, to }),
+    });
+  }
+
+  /** Clear the value-slot highlight if currently shown. */
+  hideValueSlotHighlight(): void {
+    if (!this.editorView || !this.valueSlotHighlightEffect) return;
+    this.editorView.dispatch({
+      effects: this.valueSlotHighlightEffect.of(null),
+    });
+  }
+
   /** Return the 1-based line number at the given client coordinates, or null. */
   getLineAtCoords(x: number, y: number): number | null {
     if (!this.editorView) return null;
     const pos = this.editorView.posAtCoords({ x, y });
     if (pos === null) return null;
     return this.editorView.state.doc.lineAt(pos).number;
+  }
+
+  /** Return the 0-based char offset at the given client coordinates, or null. */
+  charAtCoords(x: number, y: number): number | null {
+    if (!this.editorView) return null;
+    const pos = this.editorView.posAtCoords({ x, y });
+    return pos ?? null;
   }
 
   /** Total line count of the editor's current document. */

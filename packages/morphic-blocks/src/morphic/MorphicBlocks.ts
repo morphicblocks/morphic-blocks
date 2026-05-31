@@ -9,7 +9,7 @@ import {
   captureFieldValues,
   restoreFieldValues,
 } from "./block-view";
-import { BLOCK_ID_DRAG_KEY, MorphicCodeEditor, getActiveGripDragSourceId } from "./code-editor";
+import { BLOCK_ID_DRAG_KEY, MorphicCodeEditor, getActiveGripDragSourceId, setActiveGripDragSourceId } from "./code-editor";
 import { resolveBlocklyType, toBlocklyType, toCleanId } from "./block-namespace";
 import { resolveElementType } from "./element-types";
 import { generateJavaScriptFromWorkspace, generateJavaScriptWithMetadataFromWorkspace } from "./codegen";
@@ -398,7 +398,10 @@ export class MorphicBlocks {
         options?.canDragBlock ??
         ((blockId) => {
           const block = this.workspace?.getBlockById(blockId);
-          return !!block?.previousConnection;
+          // Allow grip-dragging both statement blocks (previousConnection)
+          // and value blocks (outputConnection) so the codespace mirrors
+          // Blockly's full set of moveable blocks.
+          return !!(block?.previousConnection || block?.outputConnection);
         }),
       highlightRules: options?.highlightRules ?? this.resolveHighlightRules("codespace"),
       onPlaceholderApply:
@@ -433,8 +436,17 @@ export class MorphicBlocks {
       if (!isCodespaceDrag(e)) return;
       e.preventDefault();
       const drop = this.computeCodespaceDrop(e.clientX, e.clientY);
-      if (drop) {
+      if (!drop) {
+        this.codespace?.hideDropIndicator();
+        this.codespace?.hideValueSlotHighlight();
+        return;
+      }
+      if (drop.indicator.kind === "line") {
         this.codespace?.showDropIndicator(drop.indicator.line, drop.indicator.position);
+        this.codespace?.hideValueSlotHighlight();
+      } else {
+        this.codespace?.showValueSlotHighlight(drop.indicator.from, drop.indicator.to);
+        this.codespace?.hideDropIndicator();
       }
     };
 
@@ -442,12 +454,14 @@ export class MorphicBlocks {
       const next = e.relatedTarget as Node | null;
       if (next && container.contains(next)) return;
       this.codespace?.hideDropIndicator();
+      this.codespace?.hideValueSlotHighlight();
     };
 
     const onDrop = (e: DragEvent) => {
       if (!isCodespaceDrag(e)) return;
       e.preventDefault();
       this.codespace?.hideDropIndicator();
+      this.codespace?.hideValueSlotHighlight();
 
       const drop = this.computeCodespaceDrop(e.clientX, e.clientY);
       if (!drop) return;
@@ -467,6 +481,7 @@ export class MorphicBlocks {
         return;
       }
 
+      let placed = false;
       Blockly.Events.setGroup(true);
       try {
         if (sourceId && block.getParent()) {
@@ -474,31 +489,81 @@ export class MorphicBlocks {
         }
         if (drop.target.kind === "top") {
           this.placeAtTopIndex(workspace, block, drop.target.index);
+          placed = true;
         } else if (drop.target.kind === "statement") {
-          if (!block.previousConnection) return;
-          const target = workspace.getBlockById(drop.target.targetBlockId) as Blockly.BlockSvg | null;
-          if (!target || target === block) return;
-          this.connectStatement(block, target, drop.target.position);
+          if (block.previousConnection) {
+            const target = workspace.getBlockById(drop.target.targetBlockId) as Blockly.BlockSvg | null;
+            if (target && target !== block) {
+              this.connectStatement(block, target, drop.target.position);
+              placed = true;
+            }
+          }
         } else if (drop.target.kind === "into-slot") {
-          if (!block.previousConnection) return;
-          const parent = workspace.getBlockById(drop.target.parentBlockId) as Blockly.BlockSvg | null;
-          if (!parent || parent === block) return;
-          this.connectIntoSlot(block, parent, drop.target.inputName);
+          if (block.previousConnection) {
+            const parent = workspace.getBlockById(drop.target.parentBlockId) as Blockly.BlockSvg | null;
+            if (parent && parent !== block) {
+              this.connectIntoSlot(block, parent, drop.target.inputName);
+              placed = true;
+            }
+          }
+        } else if (drop.target.kind === "value-slot") {
+          if (block.outputConnection) {
+            const parent = workspace.getBlockById(drop.target.parentBlockId) as Blockly.BlockSvg | null;
+            // Cycle guard: a grip-drag can't land its source inside its own subtree.
+            if (parent && parent !== block && !this.isDescendantOf(parent, block)) {
+              placed = this.connectIntoValueSlot(block, parent, drop.target.inputName);
+            }
+          }
+          // A newly-created toolbox block that couldn't connect would orphan at
+          // workspace origin; dispose it so a rejected drop leaves no trace.
+          if (!placed && blockType) {
+            block.dispose(false);
+          }
         }
       } finally {
         Blockly.Events.setGroup(false);
       }
+      // A grip-dragged block that didn't land anywhere connected still belongs
+      // on the workspace — Blockly's "moved a block somewhere invalid" lands
+      // it on the canvas. Push it below the current last top block so it
+      // shows up as a fresh row instead of overlapping its old parent slot.
+      if (!placed && block.workspace && !block.getParent()) {
+        this.placeOrphanBelowTops(block);
+      }
       Blockly.svgResize(workspace);
+    };
+
+    // Placeholder ranges with a known inner block id are stamped with
+    // `data-morphic-drag-block-id` + `draggable="true"` by the placeholder
+    // decoration. Picking up that drag here lets the user pull an inline
+    // value child (e.g. the math expression inside `print(...)`) out of its
+    // slot — release on another slot to move it, release on empty space to
+    // leave it at top level.
+    const onDragStart = (e: DragEvent) => {
+      const start = e.target as Element | null;
+      const slotEl = start?.closest?.("[data-morphic-drag-block-id]") as HTMLElement | null;
+      const blockId = slotEl?.getAttribute("data-morphic-drag-block-id");
+      if (!blockId || !e.dataTransfer) return;
+      e.dataTransfer.setData(BLOCK_ID_DRAG_KEY, blockId);
+      e.dataTransfer.effectAllowed = "move";
+      setActiveGripDragSourceId(blockId);
+    };
+    const onDragEnd = () => {
+      setActiveGripDragSourceId(undefined);
     };
 
     container.addEventListener("dragover", onDragOver);
     container.addEventListener("dragleave", onDragLeave);
     container.addEventListener("drop", onDrop);
+    container.addEventListener("dragstart", onDragStart);
+    container.addEventListener("dragend", onDragEnd);
 
     return () => {
       container.removeEventListener("dragover", onDragOver);
       container.removeEventListener("dragleave", onDragLeave);
       container.removeEventListener("drop", onDrop);
+      container.removeEventListener("dragstart", onDragStart);
+      container.removeEventListener("dragend", onDragEnd);
     };
   }
 
@@ -517,11 +582,14 @@ export class MorphicBlocks {
     clientX: number,
     clientY: number,
   ): {
-    indicator: { line: number; position: "above" | "below" };
+    indicator:
+      | { kind: "line"; line: number; position: "above" | "below" }
+      | { kind: "value-slot"; from: number; to: number };
     target:
       | { kind: "top"; index: number }
       | { kind: "statement"; targetBlockId: string; position: "before" | "after" }
-      | { kind: "into-slot"; parentBlockId: string; inputName: string };
+      | { kind: "into-slot"; parentBlockId: string; inputName: string }
+      | { kind: "value-slot"; parentBlockId: string; inputName: string };
   } | null {
     if (!this.workspace || !this.codespace) return null;
     const tops = this.workspace.getTopBlocks(true);
@@ -530,7 +598,7 @@ export class MorphicBlocks {
 
     if (tops.length === 0) {
       return {
-        indicator: { line: 1, position: "above" },
+        indicator: { kind: "line", line: 1, position: "above" },
         target: { kind: "top", index: 0 },
       };
     }
@@ -538,7 +606,7 @@ export class MorphicBlocks {
     if (this.codespace.isBelowLastLine(clientY)) {
       const lastPos = meta.get(tops[tops.length - 1]!.id);
       return {
-        indicator: { line: lastPos?.endLine ?? lineCount, position: "below" },
+        indicator: { kind: "line", line: lastPos?.endLine ?? lineCount, position: "below" },
         target: { kind: "top", index: tops.length },
       };
     }
@@ -547,9 +615,31 @@ export class MorphicBlocks {
     if (line === null) {
       const firstPos = meta.get(tops[0]!.id);
       return {
-        indicator: { line: firstPos?.startLine ?? 1, position: "above" },
+        indicator: { kind: "line", line: firstPos?.startLine ?? 1, position: "above" },
         target: { kind: "top", index: 0 },
       };
+    }
+
+    // Value-slot detection runs first: an empty slot (covered by a placeholder
+    // range) or an occupied slot (the inner value child's char range) is
+    // strictly narrower than any statement-slot match, so char-precision wins.
+    const charOffset = this.codespace.charAtCoords(clientX, clientY);
+    if (charOffset !== null) {
+      const valueSlot = this.findValueSlotDropAtChar(charOffset);
+      if (valueSlot) {
+        return {
+          indicator: {
+            kind: "value-slot",
+            from: valueSlot.highlight.from,
+            to: valueSlot.highlight.to,
+          },
+          target: {
+            kind: "value-slot",
+            parentBlockId: valueSlot.parentBlockId,
+            inputName: valueSlot.inputName,
+          },
+        };
+      }
     }
 
     // Slot-based detection: if the cursor is inside *any* statement input's
@@ -586,12 +676,12 @@ export class MorphicBlocks {
           const lowerHalf = this.codespace.isInLowerHalfOfLine(line, clientY);
           if (onLastLine && lowerHalf) {
             return {
-              indicator: { line: cpos.endLine, position: "below" },
+              indicator: { kind: "line", line: cpos.endLine, position: "below" },
               target: { kind: "statement", targetBlockId: child.id, position: "after" },
             };
           }
           return {
-            indicator: { line: cpos.startLine, position: "above" },
+            indicator: { kind: "line", line: cpos.startLine, position: "above" },
             target: { kind: "statement", targetBlockId: child.id, position: "before" },
           };
         }
@@ -602,7 +692,7 @@ export class MorphicBlocks {
           const last = children[children.length - 1]!;
           const lastPos = meta.get(last.id);
           return {
-            indicator: { line: lastPos?.endLine ?? slotMatch.range.endLine, position: "below" },
+            indicator: { kind: "line", line: lastPos?.endLine ?? slotMatch.range.endLine, position: "below" },
             target: {
               kind: "into-slot",
               parentBlockId: slotMatch.blockId,
@@ -611,7 +701,7 @@ export class MorphicBlocks {
           };
         }
         return {
-          indicator: { line: slotMatch.range.startLine, position: "above" },
+          indicator: { kind: "line", line: slotMatch.range.startLine, position: "above" },
           target: {
             kind: "into-slot",
             parentBlockId: slotMatch.blockId,
@@ -631,19 +721,19 @@ export class MorphicBlocks {
       const lowerHalf = this.codespace.isInLowerHalfOfLine(line, clientY);
       if (onLastLine && lowerHalf) {
         return {
-          indicator: { line: pos.endLine, position: "below" },
+          indicator: { kind: "line", line: pos.endLine, position: "below" },
           target: { kind: "top", index: i + 1 },
         };
       }
       return {
-        indicator: { line: pos.startLine, position: "above" },
+        indicator: { kind: "line", line: pos.startLine, position: "above" },
         target: { kind: "top", index: i },
       };
     }
 
     const lastPos = meta.get(tops[tops.length - 1]!.id);
     return {
-      indicator: { line: lastPos?.endLine ?? lineCount, position: "below" },
+      indicator: { kind: "line", line: lastPos?.endLine ?? lineCount, position: "below" },
       target: { kind: "top", index: tops.length },
     };
   }
@@ -710,6 +800,178 @@ export class MorphicBlocks {
     }
     if (tail.nextConnection) {
       tail.nextConnection.connect(source.previousConnection);
+    }
+  }
+
+  /**
+   * Resolve a char-offset in the codespace to the value slot the drop should
+   * land in. Two cases, both yielding the parent block + input name:
+   *
+   *   1. Empty slot — the offset is inside a placeholder range with a
+   *      shadow/placeholder block (`edit.blockId`). The shadow's parent
+   *      connection identifies the slot.
+   *   2. Occupied slot — the offset is inside an inner value block's char
+   *      range (innermost wins by smallest range). The block's own parent
+   *      connection identifies the slot; on drop, the child is replaced.
+   *
+   * Excludes the active grip-drag source so dragging a value block onto its
+   * own rendered range is a no-op rather than a self-replace.
+   */
+  private findValueSlotDropAtChar(charOffset: number): {
+    parentBlockId: string;
+    inputName: string;
+    highlight: { from: number; to: number };
+  } | null {
+    if (!this.workspace || !this.codespace) return null;
+    const dragSourceId = getActiveGripDragSourceId();
+
+    // 1. Empty value slots — placeholder ranges with an editable target.
+    for (const ph of this.codespace.getPlaceholders()) {
+      if (charOffset < ph.start || charOffset >= ph.end) continue;
+      const blockId = ph.edit?.blockId;
+      if (!blockId || blockId === dragSourceId) continue;
+      const child = this.workspace.getBlockById(blockId) as Blockly.BlockSvg | null;
+      if (!child) continue;
+      const parentInfo = this.resolveValueParent(child);
+      if (!parentInfo) continue;
+      return {
+        parentBlockId: parentInfo.parentBlockId,
+        inputName: parentInfo.inputName,
+        highlight: { from: ph.start, to: ph.end },
+      };
+    }
+
+    // 2. Occupied value slots — narrowest value-output block containing the
+    //    offset. metadata records inclusive `[startChar, endChar)` ranges.
+    let best: {
+      id: string;
+      size: number;
+      from: number;
+      to: number;
+    } | null = null;
+    for (const [id, pos] of this.codespace.metadata) {
+      if (pos.startChar === undefined || pos.endChar === undefined) continue;
+      if (charOffset < pos.startChar || charOffset >= pos.endChar) continue;
+      if (id === dragSourceId) continue;
+      const block = this.workspace.getBlockById(id) as Blockly.BlockSvg | null;
+      if (!block?.outputConnection) continue;
+      const size = pos.endChar - pos.startChar;
+      if (best === null || size < best.size) {
+        best = { id, size, from: pos.startChar, to: pos.endChar };
+      }
+    }
+    if (best) {
+      const child = this.workspace.getBlockById(best.id) as Blockly.BlockSvg | null;
+      if (child) {
+        const parentInfo = this.resolveValueParent(child);
+        if (parentInfo) {
+          return {
+            parentBlockId: parentInfo.parentBlockId,
+            inputName: parentInfo.inputName,
+            highlight: { from: best.from, to: best.to },
+          };
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /** Find the value-input that holds `child`, returning its parent + input name. */
+  private resolveValueParent(child: Blockly.BlockSvg): {
+    parentBlockId: string;
+    inputName: string;
+  } | null {
+    const targetConn = child.outputConnection?.targetConnection;
+    if (!targetConn) return null;
+    const parent = targetConn.getSourceBlock() as Blockly.BlockSvg | null;
+    if (!parent) return null;
+    for (const input of parent.inputList) {
+      if (input.connection === targetConn) {
+        return { parentBlockId: parent.id, inputName: input.name };
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Place a freshly-orphaned block at a clear workspace coordinate, below the
+   * current bottom-most top block. Keeps replaced value children visible in
+   * the codespace instead of overlapping the parent's slot position.
+   */
+  private placeOrphanBelowTops(orphan: Blockly.BlockSvg): void {
+    if (!this.workspace) return;
+    const tops = this.workspace
+      .getTopBlocks(true)
+      .filter((b) => b.id !== orphan.id) as Blockly.BlockSvg[];
+    if (tops.length === 0) {
+      orphan.moveTo(new Blockly.utils.Coordinate(20, 20));
+      return;
+    }
+    let maxBottomY = 0;
+    for (const top of tops) {
+      const xy = top.getRelativeToSurfaceXY();
+      const height = top.getHeightWidth?.()?.height ?? 50;
+      maxBottomY = Math.max(maxBottomY, xy.y + height);
+    }
+    orphan.moveTo(new Blockly.utils.Coordinate(20, maxBottomY + 20));
+  }
+
+  /** True when `candidate` is `ancestor` itself or anywhere in its subtree. */
+  private isDescendantOf(
+    candidate: Blockly.BlockSvg,
+    ancestor: Blockly.BlockSvg,
+  ): boolean {
+    let cur: Blockly.Block | null = candidate;
+    while (cur) {
+      if (cur === ancestor) return true;
+      cur = cur.getParent();
+    }
+    return false;
+  }
+
+  /**
+   * Connect `source`'s output into the value input named `inputName` on
+   * `parent`. A real (non-shadow) child currently in the slot is `unplug`'d
+   * to top level; a shadow disconnects implicitly when the new block
+   * connects. The Blockly connection-check (output-type vs slot `check`)
+   * runs inside `connect`; an incompatible drop throws and is rolled back
+   * by restoring the prior real child when there was one.
+   */
+  private connectIntoValueSlot(
+    source: Blockly.BlockSvg,
+    parent: Blockly.BlockSvg,
+    inputName: string,
+  ): boolean {
+    if (!source.outputConnection) return false;
+    const input = parent.getInput(inputName);
+    const conn = input?.connection;
+    if (!conn) return false;
+
+    const existing = conn.targetBlock() as Blockly.BlockSvg | null;
+    const existingWasReal = !!existing && !existing.isShadow();
+    if (existingWasReal) {
+      existing!.unplug(false);
+      // Without a manual move, the unplugged child keeps the (now-stale)
+      // coordinate it inherited from its parent's slot, so it can render
+      // above the parent's line in the codespace. Push it below the current
+      // last top block instead.
+      this.placeOrphanBelowTops(existing!);
+    }
+    try {
+      conn.connect(source.outputConnection);
+      return true;
+    } catch {
+      // Connection rejected (check mismatch, cycle, etc.). Restore the prior
+      // real child so the slot doesn't end up empty by mistake.
+      if (existingWasReal && existing?.outputConnection) {
+        try {
+          conn.connect(existing.outputConnection);
+        } catch {
+          // Give up — let the shadow re-materialise on the next render.
+        }
+      }
+      return false;
     }
   }
 
