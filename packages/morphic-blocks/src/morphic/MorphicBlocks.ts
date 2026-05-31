@@ -533,38 +533,260 @@ export class MorphicBlocks {
       Blockly.svgResize(workspace);
     };
 
-    // Placeholder ranges with a known inner block id are stamped with
-    // `data-morphic-drag-block-id` + `draggable="true"` by the placeholder
-    // decoration. Picking up that drag here lets the user pull an inline
-    // value child (e.g. the math expression inside `print(...)`) out of its
-    // slot — release on another slot to move it, release on empty space to
-    // leave it at top level.
-    const onDragStart = (e: DragEvent) => {
-      const start = e.target as Element | null;
-      const slotEl = start?.closest?.("[data-morphic-drag-block-id]") as HTMLElement | null;
-      const blockId = slotEl?.getAttribute("data-morphic-drag-block-id");
-      if (!blockId || !e.dataTransfer) return;
-      e.dataTransfer.setData(BLOCK_ID_DRAG_KEY, blockId);
-      e.dataTransfer.effectAllowed = "move";
-      setActiveGripDragSourceId(blockId);
+    // ── Right-click drag ──
+    // Left-click on a value text always opens the inline editor (Phase 1) —
+    // no drag affordance is layered onto the text itself. To MOVE a block
+    // (drag it out of its slot, move it between slots, send it to top
+    // level), the user holds the RIGHT mouse button and drags. This avoids
+    // the click-vs-drag race that otherwise steals the edit gesture, and
+    // matches the user's preference for a clean separation between "edit"
+    // and "move".
+    let rightDrag: {
+      sourceId: string;
+      startX: number;
+      startY: number;
+      dragging: boolean;
+    } | null = null;
+
+    const moveThreshold = 3;
+
+    // Right-click is `button === 2`. macOS also issues `button === 0` with
+    // `ctrlKey === true` for Ctrl+click — the canonical "secondary click"
+    // gesture there — so accept both.
+    const isSecondaryClick = (e: MouseEvent) =>
+      e.button === 2 || (e.button === 0 && e.ctrlKey);
+
+    const onRightMove = (e: MouseEvent) => {
+      if (!rightDrag) return;
+      if (!rightDrag.dragging) {
+        const dx = Math.abs(e.clientX - rightDrag.startX);
+        const dy = Math.abs(e.clientY - rightDrag.startY);
+        if (dx + dy < moveThreshold) return;
+        rightDrag.dragging = true;
+      }
+      const drop = this.computeCodespaceDrop(e.clientX, e.clientY);
+      if (!drop) {
+        this.codespace?.hideDropIndicator();
+        this.codespace?.hideValueSlotHighlight();
+        return;
+      }
+      if (drop.indicator.kind === "line") {
+        this.codespace?.showDropIndicator(drop.indicator.line, drop.indicator.position);
+        this.codespace?.hideValueSlotHighlight();
+      } else {
+        this.codespace?.showValueSlotHighlight(drop.indicator.from, drop.indicator.to);
+        this.codespace?.hideDropIndicator();
+      }
     };
-    const onDragEnd = () => {
+
+    const onRightUp = (e: MouseEvent) => {
+      window.removeEventListener("mousemove", onRightMove);
+      window.removeEventListener("mouseup", onRightUp);
+      this.codespace?.hideDropIndicator();
+      this.codespace?.hideValueSlotHighlight();
+      const state = rightDrag;
+      rightDrag = null;
       setActiveGripDragSourceId(undefined);
+      if (!state?.dragging) return;
+      const drop = this.computeCodespaceDrop(e.clientX, e.clientY);
+      if (!drop) return;
+      const block = workspace.getBlockById(state.sourceId) as Blockly.BlockSvg | null;
+      if (!block) return;
+      this.applyRightDragMove(workspace, block, drop);
+    };
+
+    const onMouseDown = (e: MouseEvent) => {
+      if (!isSecondaryClick(e)) return;
+      const charOffset = this.codespace?.charAtCoords(e.clientX, e.clientY);
+      if (charOffset === null || charOffset === undefined) return;
+      const block = this.findInnermostBlockAtChar(charOffset);
+      if (!block) return;
+      // Stop CodeMirror from processing the mousedown too — otherwise CM
+      // starts its own text selection (especially for Ctrl+left-click on
+      // macOS, which CM reads as `button=0`) and the user sees lines below
+      // the cursor get highlighted during the drag.
+      e.preventDefault();
+      e.stopPropagation();
+      rightDrag = {
+        sourceId: block.id,
+        startX: e.clientX,
+        startY: e.clientY,
+        dragging: false,
+      };
+      setActiveGripDragSourceId(block.id);
+      window.addEventListener("mousemove", onRightMove);
+      window.addEventListener("mouseup", onRightUp);
+    };
+
+    // Suppress the browser context menu inside the codespace — right-click is
+    // reserved for block movement here.
+    const onContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+    };
+
+    // Hover hint, two layers:
+    //   1. Editable outline — single outline around the innermost editable
+    //      placeholder under the cursor (so a single value gets a single
+    //      outline, never the stack of every wrapping placeholder).
+    //   2. Block background — grey tint over the surrounding non-atomic
+    //      block (so hovering on `3` highlights the whole `3 + 5` expression
+    //      or the whole `for` loop, not just the digit). Falls back to the
+    //      innermost block when no non-atomic ancestor contains the cursor
+    //      (e.g. a top-level orphan number).
+    // Both are suppressed while a right-click drag is in flight — the drop
+    // indicators take over then.
+    const onHoverMove = (e: MouseEvent) => {
+      if (rightDrag) return;
+      const charOffset = this.codespace?.charAtCoords(e.clientX, e.clientY);
+      if (charOffset === null || charOffset === undefined) {
+        this.codespace?.setHoverHighlight(null);
+        this.codespace?.setEditableHoverHighlight(null);
+        return;
+      }
+      const ph = this.findInnermostEditablePlaceholderAtChar(charOffset);
+      this.codespace?.setEditableHoverHighlight(
+        ph ? { from: ph.start, to: ph.end } : null,
+      );
+      const block = this.findHoverBlockAtChar(charOffset);
+      if (!block) {
+        this.codespace?.setHoverHighlight(null);
+        return;
+      }
+      const pos = this.codespace?.metadata.get(block.id);
+      if (!pos || pos.startChar === undefined || pos.endChar === undefined) {
+        this.codespace?.setHoverHighlight(null);
+        return;
+      }
+      this.codespace?.setHoverHighlight({ from: pos.startChar, to: pos.endChar });
+    };
+    const onHoverLeave = () => {
+      this.codespace?.setHoverHighlight(null);
+      this.codespace?.setEditableHoverHighlight(null);
     };
 
     container.addEventListener("dragover", onDragOver);
     container.addEventListener("dragleave", onDragLeave);
     container.addEventListener("drop", onDrop);
-    container.addEventListener("dragstart", onDragStart);
-    container.addEventListener("dragend", onDragEnd);
+    container.addEventListener("mousedown", onMouseDown, true);
+    container.addEventListener("contextmenu", onContextMenu);
+    container.addEventListener("mousemove", onHoverMove);
+    container.addEventListener("mouseleave", onHoverLeave);
 
     return () => {
       container.removeEventListener("dragover", onDragOver);
       container.removeEventListener("dragleave", onDragLeave);
       container.removeEventListener("drop", onDrop);
-      container.removeEventListener("dragstart", onDragStart);
-      container.removeEventListener("dragend", onDragEnd);
+      container.removeEventListener("mousedown", onMouseDown, true);
+      container.removeEventListener("contextmenu", onContextMenu);
+      container.removeEventListener("mousemove", onHoverMove);
+      container.removeEventListener("mouseleave", onHoverLeave);
+      window.removeEventListener("mousemove", onRightMove);
+      window.removeEventListener("mouseup", onRightUp);
     };
+  }
+
+  /** Innermost (smallest-range) block in metadata whose char range contains `charOffset`. */
+  private findInnermostBlockAtChar(charOffset: number): Blockly.BlockSvg | null {
+    if (!this.workspace || !this.codespace) return null;
+    let best: { id: string; size: number } | null = null;
+    for (const [id, pos] of this.codespace.metadata) {
+      if (pos.startChar === undefined || pos.endChar === undefined) continue;
+      if (charOffset < pos.startChar || charOffset >= pos.endChar) continue;
+      const size = pos.endChar - pos.startChar;
+      if (best === null || size < best.size) best = { id, size };
+    }
+    return best ? (this.workspace.getBlockById(best.id) as Blockly.BlockSvg) : null;
+  }
+
+  /**
+   * Hover-background target: the smallest *non-atomic* block whose range
+   * contains the cursor. Atomic single-field blocks (numbers, strings,
+   * booleans) are skipped so hovering on `3` highlights the surrounding
+   * `1 + 2` expression instead of just the digit. Falls back to the smallest
+   * block found when only atomic blocks contain the cursor (e.g. a top-level
+   * orphan number on its own line).
+   */
+  private findHoverBlockAtChar(charOffset: number): Blockly.BlockSvg | null {
+    if (!this.workspace || !this.codespace) return null;
+    let bestNonAtomic: { id: string; size: number } | null = null;
+    let bestAny: { id: string; size: number } | null = null;
+    for (const [id, pos] of this.codespace.metadata) {
+      if (pos.startChar === undefined || pos.endChar === undefined) continue;
+      if (charOffset < pos.startChar || charOffset >= pos.endChar) continue;
+      const size = pos.endChar - pos.startChar;
+      if (bestAny === null || size < bestAny.size) bestAny = { id, size };
+      if (!pos.atomic && (bestNonAtomic === null || size < bestNonAtomic.size)) {
+        bestNonAtomic = { id, size };
+      }
+    }
+    const winner = bestNonAtomic ?? bestAny;
+    return winner ? (this.workspace.getBlockById(winner.id) as Blockly.BlockSvg) : null;
+  }
+
+  /** Innermost placeholder with an editable `edit` target whose range contains `charOffset`. */
+  private findInnermostEditablePlaceholderAtChar(charOffset: number) {
+    if (!this.codespace) return null;
+    let best: { ph: { start: number; end: number; edit?: unknown }; size: number } | null = null;
+    for (const ph of this.codespace.getPlaceholders()) {
+      if (!ph.edit) continue;
+      if (charOffset < ph.start || charOffset >= ph.end) continue;
+      const size = ph.end - ph.start;
+      if (best === null || size < best.size) best = { ph, size };
+    }
+    return best ? { start: best.ph.start, end: best.ph.end } : null;
+  }
+
+  /**
+   * Reusable drop-result applicator for the right-click drag path: same set
+   * of target kinds as the HTML5 drop handler, but the source is always an
+   * existing workspace block (no toolbox-spawn case).
+   */
+  private applyRightDragMove(
+    workspace: Blockly.WorkspaceSvg,
+    block: Blockly.BlockSvg,
+    drop: ReturnType<MorphicBlocks["computeCodespaceDrop"]>,
+  ): void {
+    if (!drop) return;
+    let placed = false;
+    Blockly.Events.setGroup(true);
+    try {
+      if (block.getParent()) {
+        block.unplug(true);
+      }
+      if (drop.target.kind === "top") {
+        this.placeAtTopIndex(workspace, block, drop.target.index);
+        placed = true;
+      } else if (drop.target.kind === "statement") {
+        if (block.previousConnection) {
+          const target = workspace.getBlockById(drop.target.targetBlockId) as Blockly.BlockSvg | null;
+          if (target && target !== block) {
+            this.connectStatement(block, target, drop.target.position);
+            placed = true;
+          }
+        }
+      } else if (drop.target.kind === "into-slot") {
+        if (block.previousConnection) {
+          const parent = workspace.getBlockById(drop.target.parentBlockId) as Blockly.BlockSvg | null;
+          if (parent && parent !== block) {
+            this.connectIntoSlot(block, parent, drop.target.inputName);
+            placed = true;
+          }
+        }
+      } else if (drop.target.kind === "value-slot") {
+        if (block.outputConnection) {
+          const parent = workspace.getBlockById(drop.target.parentBlockId) as Blockly.BlockSvg | null;
+          if (parent && parent !== block && !this.isDescendantOf(parent, block)) {
+            placed = this.connectIntoValueSlot(block, parent, drop.target.inputName);
+          }
+        }
+      }
+    } finally {
+      Blockly.Events.setGroup(false);
+    }
+    if (!placed && block.workspace && !block.getParent()) {
+      this.placeOrphanBelowTops(block);
+    }
+    Blockly.svgResize(workspace);
   }
 
   /**
@@ -958,12 +1180,19 @@ export class MorphicBlocks {
       // last top block instead.
       this.placeOrphanBelowTops(existing!);
     }
+    // The codespace is a text surface: types aren't visually distinguished and
+    // the user expects "any value goes anywhere" semantics (a Number into a
+    // String slot still produces valid Python/JS at runtime). Temporarily
+    // clear the slot's check so any output type connects; restore it after
+    // the connect so Blockly's workspace-side connection logic isn't
+    // permanently weakened.
+    const checkRef = conn as unknown as { check_: string[] | null };
+    const savedCheck = checkRef.check_;
+    conn.setCheck(null);
     try {
       conn.connect(source.outputConnection);
       return true;
     } catch {
-      // Connection rejected (check mismatch, cycle, etc.). Restore the prior
-      // real child so the slot doesn't end up empty by mistake.
       if (existingWasReal && existing?.outputConnection) {
         try {
           conn.connect(existing.outputConnection);
@@ -972,6 +1201,8 @@ export class MorphicBlocks {
         }
       }
       return false;
+    } finally {
+      conn.setCheck(savedCheck);
     }
   }
 

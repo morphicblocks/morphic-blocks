@@ -129,7 +129,33 @@ function renderBlock(
     // current field values directly. This is a best-effort one-presentation
     // rendering: placeholders show their typed value but have no per-mode
     // template (e.g. no automatic string quoting).
+    //
+    // Metadata still needs recording so the codespace's delete/grip gutters
+    // and per-block drag layer can treat a non-morphic top-level block (e.g.
+    // a displaced `math_number` orphan after a value-slot replacement) as
+    // moveable just like any morphic block. Also record a placeholder range
+    // — with an edit target when the stock block is single-field atomic —
+    // so the user can still inline-edit a displaced number, string, or
+    // boolean by clicking its rendered text.
+    const before = state.output.length;
+    const startLine = currentLine(state.output);
     emitNonMorphicBlockText(block, state);
+    if (state.output.length === before) return;
+    const rawEndLine = currentLine(state.output);
+    const endLine = state.output.endsWith("\n")
+      ? Math.max(startLine, rawEndLine - 1)
+      : rawEndLine;
+    let endChar = state.output.length;
+    while (endChar > before && state.output[endChar - 1] === "\n") endChar--;
+    const atomicEdit = detectAtomicEdit(block);
+    state.metadata.set(block.id, {
+      startLine,
+      endLine,
+      startChar: before,
+      endChar,
+      atomic: !!atomicEdit,
+    });
+    recordPlaceholder(state, before, "set", atomicEdit ?? undefined);
     return;
   }
 
@@ -263,19 +289,11 @@ function renderBlock(
 
     // Real attached block: render via its own template (it self-quotes if it's
     // a string literal block; a variable/expression stays bare). No framework
-    // quoting here.
+    // quoting here. Drag affordance is provided by the per-block drag layer
+    // in code-editor.ts; the placeholder mark is visual-only.
     const slotOffsetStart = state.output.length;
     renderBlock(target, ctx, state);
-    // The wrapper carries the child block's id even when it isn't atomic, so
-    // drag-from-placeholder can pull a multi-field subtree (e.g. an entire
-    // `1 + 2` expression) out of its slot.
-    recordPlaceholder(
-      state,
-      slotOffsetStart,
-      "set",
-      detectAtomicEdit(target) ?? undefined,
-      target.id,
-    );
+    recordPlaceholder(state, slotOffsetStart, "set", detectAtomicEdit(target) ?? undefined);
   }
 
   if (state.output.length === before) {
@@ -304,6 +322,7 @@ function renderBlock(
   if (Object.keys(statementSlots).length > 0) {
     position.statementSlots = statementSlots;
   }
+  if (detectAtomicEdit(block)) position.atomic = true;
   state.metadata.set(block.id, position);
 }
 
@@ -334,13 +353,11 @@ function recordPlaceholder(
   start: number,
   kind: "default" | "set",
   edit?: MorphicPlaceholderEditTarget,
-  dragBlockId?: string,
 ): void {
   const end = state.output.length;
   if (end > start) {
     const range: MorphicPlaceholderRange = { start, end, kind };
     if (edit) range.edit = edit;
-    if (dragBlockId) range.dragBlockId = dragBlockId;
     state.placeholders.push(range);
   }
 }

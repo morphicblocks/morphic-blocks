@@ -6,7 +6,6 @@ import type {
   MorphicCodeGenerationResult,
   MorphicCodeMetadata,
   MorphicHighlightDefinition,
-  MorphicPlaceholderEditTarget,
   MorphicPlaceholderRange,
 } from "./types";
 
@@ -113,12 +112,10 @@ function buildThemeExtension(
       backgroundColor: `${t.selectionBackground} !important`,
     },
     ".morphic-placeholder-default, .morphic-placeholder-set": {
-      textDecoration: "underline",
-      textDecorationColor: mix(t.foreground, 30),
-      textDecorationThickness: "1px",
-      textUnderlineOffset: "3px",
-      // Pad the mark visually so short placeholders (e.g. a single digit) have
-      // a wider underline and a bigger click target.
+      borderRadius: "2px",
+      // Pad the mark so the click target stays large; the editable-hover
+      // outline (managed as a separate decoration layer) only appears on the
+      // single innermost editable placeholder under the cursor.
       padding: "0 0.25em",
     },
     ".morphic-placeholder-default": {
@@ -358,6 +355,8 @@ export class MorphicCodeEditor {
   private placeholderEffect?: StateEffectType<MorphicPlaceholderRange[]>;
   private dropIndicatorEffect?: StateEffectType<DropIndicator | null>;
   private valueSlotHighlightEffect?: StateEffectType<{ from: number; to: number } | null>;
+  private hoverHighlightEffect?: StateEffectType<{ from: number; to: number } | null>;
+  private editableHoverHighlightEffect?: StateEffectType<{ from: number; to: number } | null>;
   private emptyClickListener?: (e: MouseEvent) => void;
 
   constructor(
@@ -386,16 +385,17 @@ export class MorphicCodeEditor {
       this.options.highlightRules,
     );
 
-    // Shared metadata effect — dispatched in syncNow, consumed by gutter fields.
+    // Shared effects — dispatched together in syncNow. Declared up front so
+    // both fields below can close over the same handles.
     const metadataEffect = cmState.StateEffect.define<MorphicCodeMetadata>();
     this.metadataEffect = metadataEffect;
+    const placeholderEffect = cmState.StateEffect.define<MorphicPlaceholderRange[]>();
+    this.placeholderEffect = placeholderEffect;
 
     // ── Placeholder marker state field ──
     // Codespace overlays an always-on underline on every value position.
     // Ranges with kind: "default" get an additional dim-italic style; "set"
     // ranges (placeholder or user-attached real block) keep normal style.
-    const placeholderEffect = cmState.StateEffect.define<MorphicPlaceholderRange[]>();
-    this.placeholderEffect = placeholderEffect;
     const placeholderField = cmState.StateField.define<import("@codemirror/view").DecorationSet>({
       create() {
         return cmView.Decoration.none;
@@ -410,29 +410,13 @@ export class MorphicCodeEditor {
               .filter((r) => r.start < r.end && r.end <= docLen)
               .sort((a, b) => a.start - b.start || a.end - b.end);
             const builder = new cmState.RangeSetBuilder<import("@codemirror/view").Decoration>();
-            // Ranges with an `edit.blockId` are made HTML5-draggable via per-
-            // range attributes — that's how the user grabs an inline value
-            // child (e.g. the math expression inside `print(...)`) and drags
-            // it out of its slot. A `dragstart` listener on the codespace
-            // container picks up the `data-morphic-drag-block-id` and seeds
-            // the BLOCK_ID_DRAG_KEY drag, so the existing drop logic handles
-            // the rest unchanged.
+            // Placeholder marks are visual-only now — drag affordance lives
+            // on the per-block drag layer above, which wraps every block in
+            // metadata regardless of whether it's inline-editable.
+            const defaultMark = cmView.Decoration.mark({ class: "morphic-placeholder-default" });
+            const setMark = cmView.Decoration.mark({ class: "morphic-placeholder-set" });
             for (const r of sorted) {
-              const cls = r.kind === "default" ? "morphic-placeholder-default" : "morphic-placeholder-set";
-              // Prefer dragBlockId (set for any real-attached block, atomic or
-              // not). Fall back to edit.blockId for shadow/fallback ranges that
-              // are only inline-editable.
-              const dragId = r.dragBlockId ?? r.edit?.blockId;
-              const attributes: Record<string, string> = {};
-              if (dragId) {
-                attributes.draggable = "true";
-                attributes["data-morphic-drag-block-id"] = dragId;
-              }
-              const mark = cmView.Decoration.mark({
-                class: cls,
-                attributes: Object.keys(attributes).length > 0 ? attributes : undefined,
-              });
-              builder.add(r.start, r.end, mark);
+              builder.add(r.start, r.end, r.kind === "default" ? defaultMark : setMark);
             }
             return builder.finish();
           }
@@ -535,6 +519,8 @@ export class MorphicCodeEditor {
       ...this.buildGripExtensions(cmView, cmState, metadataEffect),
       ...this.buildDropIndicatorExtensions(cmView, cmState),
       ...this.buildValueSlotHighlightExtensions(cmView, cmState),
+      ...this.buildHoverHighlightExtensions(cmView, cmState),
+      ...this.buildEditableHoverHighlightExtensions(cmView, cmState),
       ...(this.options.extensions ?? []) as Extension[],
     ];
 
@@ -595,7 +581,10 @@ export class MorphicCodeEditor {
         }
       }
     };
-    this.editorView.scrollDOM.addEventListener("mousedown", this.emptyClickListener);
+    // Use `click` rather than `mousedown` so a mousedown-then-drag never opens
+    // the inline editor. The browser fires `click` only after mouseup without
+    // a preceding drag — exactly the gesture we want for "edit this value".
+    this.editorView.scrollDOM.addEventListener("click", this.emptyClickListener);
 
     this.attachSyncListener();
   }
@@ -891,6 +880,126 @@ export class MorphicCodeEditor {
     return [highlightField, highlightTheme];
   }
 
+  /**
+   * Hover-time hint: when the mouse moves over a block in the codespace, the
+   * innermost block under the cursor gets a subtle background tint so the
+   * user can see what "click to edit" or "right-click drag" will target
+   * before they act. Driven from `setHoverHighlight` (called by MorphicBlocks
+   * on the codespace container's `mousemove`/`mouseleave`).
+   */
+  private buildHoverHighlightExtensions(
+    cmView: typeof import("@codemirror/view"),
+    cmState: typeof import("@codemirror/state"),
+  ): Extension[] {
+    const setHover = cmState.StateEffect.define<{ from: number; to: number } | null>();
+    this.hoverHighlightEffect =
+      setHover as unknown as StateEffectType<{ from: number; to: number } | null>;
+
+    const mark = cmView.Decoration.mark({ class: "morphic-hover-target" });
+    const hoverField = cmState.StateField.define<
+      import("@codemirror/view").DecorationSet
+    >({
+      create() {
+        return cmView.Decoration.none;
+      },
+      update(decorations, tr) {
+        for (const effect of tr.effects) {
+          if (effect.is(setHover)) {
+            const v = effect.value;
+            if (!v) return cmView.Decoration.none;
+            const docLen = tr.state.doc.length;
+            const from = Math.max(0, Math.min(v.from, docLen));
+            const to = Math.max(from, Math.min(v.to, docLen));
+            if (from === to) return cmView.Decoration.none;
+            return cmView.Decoration.set([mark.range(from, to)]);
+          }
+        }
+        if (!tr.changes.empty) return cmView.Decoration.none;
+        return decorations;
+      },
+      provide(field) {
+        return cmView.EditorView.decorations.from(field);
+      },
+    });
+
+    const hoverTheme = cmView.EditorView.baseTheme({
+      ".morphic-hover-target": {
+        backgroundColor: "rgba(127, 127, 127, 0.10)",
+        borderRadius: "2px",
+      },
+    });
+
+    return [hoverField, hoverTheme];
+  }
+
+  /** Highlight the char range of the block currently under the mouse cursor. */
+  setHoverHighlight(range: { from: number; to: number } | null): void {
+    if (!this.editorView || !this.hoverHighlightEffect) return;
+    this.editorView.dispatch({
+      effects: this.hoverHighlightEffect.of(range),
+    });
+  }
+
+  /**
+   * Editable-hover layer: a single outline around the innermost editable
+   * placeholder under the cursor. Mirrors the structure of the value-slot /
+   * hover layers above — separate from the placeholder marks themselves so
+   * we don't double-render outlines for nested wrappers.
+   */
+  private buildEditableHoverHighlightExtensions(
+    cmView: typeof import("@codemirror/view"),
+    cmState: typeof import("@codemirror/state"),
+  ): Extension[] {
+    const setEditableHover = cmState.StateEffect.define<{ from: number; to: number } | null>();
+    this.editableHoverHighlightEffect =
+      setEditableHover as unknown as StateEffectType<{ from: number; to: number } | null>;
+
+    const mark = cmView.Decoration.mark({ class: "morphic-editable-hover" });
+    const editableHoverField = cmState.StateField.define<
+      import("@codemirror/view").DecorationSet
+    >({
+      create() {
+        return cmView.Decoration.none;
+      },
+      update(decorations, tr) {
+        for (const effect of tr.effects) {
+          if (effect.is(setEditableHover)) {
+            const v = effect.value;
+            if (!v) return cmView.Decoration.none;
+            const docLen = tr.state.doc.length;
+            const from = Math.max(0, Math.min(v.from, docLen));
+            const to = Math.max(from, Math.min(v.to, docLen));
+            if (from === to) return cmView.Decoration.none;
+            return cmView.Decoration.set([mark.range(from, to)]);
+          }
+        }
+        if (!tr.changes.empty) return cmView.Decoration.none;
+        return decorations;
+      },
+      provide(field) {
+        return cmView.EditorView.decorations.from(field);
+      },
+    });
+
+    const editableHoverTheme = cmView.EditorView.baseTheme({
+      ".morphic-editable-hover": {
+        outline: "1px solid #5a86bc",
+        outlineOffset: "1px",
+        borderRadius: "2px",
+      },
+    });
+
+    return [editableHoverField, editableHoverTheme];
+  }
+
+  /** Outline the innermost editable placeholder under the cursor (one only). */
+  setEditableHoverHighlight(range: { from: number; to: number } | null): void {
+    if (!this.editorView || !this.editableHoverHighlightEffect) return;
+    this.editorView.dispatch({
+      effects: this.editableHoverHighlightEffect.of(range),
+    });
+  }
+
   show(): void {
     if (this.visible) return;
     this.visible = true;
@@ -1033,7 +1142,7 @@ export class MorphicCodeEditor {
       this.syncTimer = undefined;
     }
     if (this.emptyClickListener && this.editorView) {
-      this.editorView.scrollDOM.removeEventListener("mousedown", this.emptyClickListener);
+      this.editorView.scrollDOM.removeEventListener("click", this.emptyClickListener);
       this.emptyClickListener = undefined;
     }
     this.editorView?.destroy();
