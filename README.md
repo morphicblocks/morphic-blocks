@@ -270,13 +270,16 @@ Block colours can be driven from CSS via a custom property:
 - ✅ Indent compounding — nested templates stack indents automatically
 - ✅ Multi-editor selection sync — block ↔ code editor ↔ codespace ↔ preview, with click-clears-on-empty-area
 - ✅ Block→line metadata in template codegen, plus statement-input body ranges
+- ✅ Definition-driven syntax highlighting — per-element `highlighting` rules (keywords, strings, comments, numbers + colors), element-name keyed (mode's `primarySource` / `preview` already names the language); CodeMirror `ViewPlugin` + `Decoration.mark`, runtime swap on `setModes()`
+- ✅ Drag value blocks (numbers, strings, variables) into value slots — both toolbox tiles and grip-drag inside the codespace; type-check is bypassed on drop so the rendered text behaves as text
+- ✅ Right-click (or Ctrl-click) drag inside the codespace, hover affordances (blue outline on editable values, grey background on enclosing block)
+- ✅ Inline field edits for atomic placeholders — text, number, dropdown fields editable through an overlay input; shadow auto-materialises to a real block on first edit
 
 ### Upcoming
 
-- Definition-driven syntax highlighting — per-element `highlighting` rules (keywords, strings, comments, numbers + colors), element-name keyed (mode's `primarySource` / `preview` already names the language); CodeMirror `ViewPlugin` + `Decoration.mark`, runtime swap on `setModes()`
-- Drag value blocks (numbers, strings, variables) into value slots
-- Field edits in codespace (replace placeholders, insert variables)
+- Editor toolbar for codespace/preview
 - Use empty defaults in the Blockly block view as well
+- Inline-edit coverage for the remaining Blockly core fields (`FieldVariable`, `FieldCheckbox`) and a customisation protocol for plugin / developer fields — deferred; option menu and rationale recorded separately
 - Bidirectional sync — AST parsing converts text back to blocks (future)
 - Schema simplification — split tiles/modes, move mode composition into definitions (future refactor)
 - Package architecture refactor — split framework into plugin/feature modules (ports-and-adapters or similar); planned as the final cleanup once feature surface stabilises

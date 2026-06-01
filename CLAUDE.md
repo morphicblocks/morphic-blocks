@@ -217,12 +217,14 @@ These are *potential* applications, not currently deployed. They are worth keepi
 - ~~**Indent compounding**~~ in template-codegen across nesting depth
 - ~~**Per-element empty-slot defaults**~~ via `elementTypes` config (`{ type, empty: { Number, String, Boolean, default } }`)
 - ~~**Empty-area click clears highlight**~~ in codespace/preview
+- ~~**Definition-driven syntax highlighting**~~ — top-level `highlighting` map in definitions, keyed by element name (matches `mode.primarySource` / `mode.preview`); each entry: `{ keywords, strings, comment, numbers, colors }`. Implementation: CodeMirror 6 `ViewPlugin` + `Decoration.mark` (no `StreamLanguage` — keeps highlighting decoupled from language behavior); runtime swap via `Compartment` on `setModes()`. Type: `MorphicHighlightDefinition`.
+- ~~**Drag value blocks into value slots**~~ (numbers, strings, variables) — toolbox tile drop + grip-drag inside codespace; type-check bypassed on drop because codespace is text.
+- ~~**Right-click drag inside codespace**~~ — secondary-button (or Ctrl-click on macOS) drag with capture-phase mousedown; hover affordances: blue outline on innermost editable placeholder, grey background on innermost non-atomic block.
+- ~~**Inline field edits for atomic placeholders**~~ — text / number / dropdown editors overlaid on the placeholder range; shadows materialise to real blocks on first edit. Atomic = exactly one named field, no value inputs. `FieldVariable` and `FieldCheckbox`, plus plugin / developer custom fields, are deferred (option menu and rationale recorded outside the repo).
 
 ### Upcoming
 
-- **Definition-driven syntax highlighting** — top-level `highlighting` map in definitions, keyed by element name (matches `mode.primarySource` / `mode.preview`); each entry: `{ keywords, strings, comment, numbers, colors }`. Implementation: CodeMirror 6 `ViewPlugin` + `Decoration.mark` (no `StreamLanguage` — keeps highlighting decoupled from language behavior); runtime swap via `Compartment` on `setModes()`. Type: `MorphicHighlightDefinition`.
-- **Drag value blocks into value slots** (numbers, strings, variables)
-- **Field edits in codespace** — replace placeholders, insert variables
+- **Codespace / preview editor toolbar** (Task 16)
 - **Use empty defaults in the Blockly block view** as well (cosmetic)
 - **Bidirectional sync** — AST parsing converts text back to blocks (future, separate paper)
 - **Error recovery / draft blocks** — handles incomplete/invalid code gracefully
