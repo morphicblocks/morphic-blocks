@@ -21,6 +21,7 @@ import { toModeClassToken } from "./template";
 import { DRAG_DATA_KEY, MorphicToolboxCanvas } from "./toolbox-canvas";
 import { buildToolboxDefinition } from "./toolbox";
 import { resolveBlockView } from "./view-resolver";
+import { renderToolbar, type MorphicToolbarHandle } from "./toolbar";
 import type {
   MorphicBehaviorContext,
   MorphicBehaviorMap,
@@ -38,6 +39,7 @@ import type {
   MorphicPlaceholderEditTarget,
   MorphicRenderContext,
   MorphicSelectionSyncOptions,
+  MorphicToolbarConfig,
   MorphicToolboxCanvasOptions,
 } from "./types";
 
@@ -76,12 +78,17 @@ type MorphicResolvedMountConfig = Omit<
   workspaceHost: HTMLElement;
 };
 
-export class MorphicBlocks {
+export class MorphicBlocks extends EventTarget {
   private readonly definitions: Map<string, MorphicBlockDefinition>;
   private readonly behaviors: MorphicBehaviorMap;
   private readonly elementTypes: Record<string, MorphicElementTypeEntry>;
   private readonly styles = new MorphicStyleManager();
   private readonly registeredBlockTypes = new Set<string>();
+  private readonly toolbars = new Set<MorphicToolbarHandle>();
+  /** Blockly events listener installed when the first toolbar mounts. */
+  private toolbarsBlocklyListener?: (e: Blockly.Events.Abstract) => void;
+  /** Latest internal clipboard contents — set by `copyActiveBlock`, used by `pasteActiveBlock`. */
+  private lastCopyData?: ReturnType<Blockly.BlockSvg["toCopyData"]>;
 
   private mountConfig?: MorphicResolvedMountConfig;
   private workspace?: Blockly.WorkspaceSvg;
@@ -106,6 +113,7 @@ export class MorphicBlocks {
     behaviors: MorphicBehaviorMap = {},
     elementTypes: Record<string, MorphicElementTypeEntry> = {},
   ) {
+    super();
     this.definitions = createDefinitionMap(definitions);
     this.behaviors = behaviors;
     this.elementTypes = elementTypes;
@@ -267,6 +275,238 @@ export class MorphicBlocks {
     return collectAvailableModes(this.definitions.values());
   }
 
+  /** Current workspace mode name, or `undefined` if not mounted. */
+  public getWorkspaceMode(): MorphicModeName | undefined {
+    return this.mountConfig?.workspaceMode;
+  }
+
+  /** Active mode's `primarySource` element name (codespace label source). */
+  public getActivePrimarySourceElement(): string | undefined {
+    const mode = (this.mountConfig?.modes ?? []).find(
+      (m) => m.name === this.mountConfig?.workspaceMode,
+    );
+    return mode?.primarySource;
+  }
+
+  /** Active mode's `preview` element name (preview-pane label source). */
+  public getActivePreviewElement(): string | undefined {
+    const mode = (this.mountConfig?.modes ?? []).find(
+      (m) => m.name === this.mountConfig?.workspaceMode,
+    );
+    return mode?.preview;
+  }
+
+  /**
+   * Mount a toolbar into the developer-provided container, bound to one of the
+   * three editor surfaces. When `items` is omitted, the default set for the
+   * pane is rendered. Returns a handle for `refresh()` / `dispose()`.
+   *
+   * The toolbar's stateful items (undo/redo enabled-state, language label)
+   * refresh automatically when:
+   *   - any Blockly event fires on the workspace (covers undo/redo,
+   *     drops, edits — both workspace- and codespace-originated)
+   *   - `setModes` is called (covers language label changes)
+   */
+  public mountToolbar(
+    container: HTMLElement,
+    config: MorphicToolbarConfig,
+  ): MorphicToolbarHandle {
+    if (!this.workspace) {
+      throw new Error(
+        "MorphicBlocks must be mounted before mountToolbar can be used.",
+      );
+    }
+    void this.styles.ensureToolbarStyles();
+    const handle = renderToolbar(container, config, {
+      engine: this,
+      pane: config.pane,
+      getText: () => this.toolbarTextFor(config.pane),
+      refresh: () => this.toolbarRefreshFor(config.pane),
+    });
+
+    this.toolbars.add(handle);
+    this.ensureToolbarBlocklyListener();
+
+    const originalDispose = handle.dispose;
+    handle.dispose = (): void => {
+      this.toolbars.delete(handle);
+      if (this.toolbars.size === 0) this.teardownToolbarBlocklyListener();
+      originalDispose();
+    };
+
+    return handle;
+  }
+
+  private toolbarTextFor(pane: "workspace" | "codespace" | "preview"): string {
+    if (pane === "codespace") {
+      return this.codespace?.getValue() ?? this.generateCodespaceText().code;
+    }
+    if (pane === "preview") {
+      return this.previewEditor?.getValue() ?? "";
+    }
+    // Workspace: derive text from the codespace if mounted, else generate via JS codegen.
+    if (this.codespace) return this.codespace.getValue();
+    try {
+      return this.generateJavaScript();
+    } catch {
+      return "";
+    }
+  }
+
+  private toolbarRefreshFor(pane: "workspace" | "codespace" | "preview"): void {
+    if (pane === "codespace") this.codespace?.refresh();
+    else if (pane === "preview") this.previewEditor?.refresh();
+    // Workspace has no separate refresh — Blockly redraws on its own events.
+  }
+
+  /**
+   * Generate JavaScript from the current workspace and execute it.
+   * Pass an optional `console` to capture `console.log` / `.warn` / `.error`
+   * calls — useful when routing output to a panel rather than the browser
+   * devtools. Dispatches a `morphic-run` CustomEvent with the result so
+   * additional listeners can react.
+   */
+  public runJavaScript(options?: {
+    console?: { log: (...a: unknown[]) => void; warn?: (...a: unknown[]) => void; error?: (...a: unknown[]) => void };
+  }): { code: string; result: unknown; error: Error | null } {
+    let code = "";
+    let result: unknown = undefined;
+    let error: Error | null = null;
+    try {
+      code = this.generateJavaScript();
+      const consoleArg = options?.console ?? console;
+      // eslint-disable-next-line @typescript-eslint/no-implied-eval
+      result = new Function("console", code)(consoleArg);
+    } catch (e) {
+      error = e instanceof Error ? e : new Error(String(e));
+    }
+    const detail = { code, result, error };
+    this.dispatchEvent(new CustomEvent("morphic-run", { detail }));
+    return detail;
+  }
+
+  /** Whether the framework's internal clipboard has a copyable to paste. */
+  public hasClipboardContents(): boolean {
+    return !!this.lastCopyData;
+  }
+
+  /**
+   * Copy the currently active block to the framework's internal clipboard and
+   * mirror its generated code text to the system clipboard. Resolution order:
+   * (1) Blockly's selected block, (2) for codespace/preview, the deepest block
+   * enclosing the active line. Returns true when something was copied.
+   */
+  public copyActiveBlock(pane: "workspace" | "codespace" | "preview"): boolean {
+    const block = this.resolveActiveBlock(pane);
+    if (!block) return false;
+    const data = block.toCopyData();
+    if (!data) return false;
+    this.lastCopyData = data;
+    // Mirror to system clipboard as code text — best-effort, fire-and-forget.
+    try {
+      const text = this.toolbarTextFor(pane === "workspace" ? "codespace" : pane);
+      if (text) void navigator.clipboard?.writeText(text);
+    } catch {
+      // ignored
+    }
+    for (const h of this.toolbars) h.refresh();
+    return true;
+  }
+
+  /**
+   * Paste the last copied block at the active pane's natural location.
+   * Workspace: Blockly's default (workspace centre, slightly offset).
+   * Codespace/preview: the block lands at the workspace level too — the text
+   * view re-renders to include it. (Cursor-position-aware paste into a
+   * specific slot is deferred; the current behaviour matches Ctrl+V in
+   * standard Blockly.) Returns true if something was pasted.
+   */
+  public pasteActiveBlock(_pane: "workspace" | "codespace" | "preview"): boolean {
+    if (!this.lastCopyData || !this.workspace) return false;
+    const pasted = Blockly.clipboard.paste(this.lastCopyData, this.workspace);
+    return pasted !== null;
+  }
+
+  private resolveActiveBlock(
+    pane: "workspace" | "codespace" | "preview",
+  ): Blockly.BlockSvg | null {
+    // 1. Whatever Blockly currently has selected — selection-sync keeps this
+    //    in lockstep with codespace/preview cursor clicks.
+    const selected = Blockly.common.getSelected();
+    if (selected && "id" in selected && this.workspace?.getBlockById((selected as { id: string }).id)) {
+      return selected as Blockly.BlockSvg;
+    }
+    // 2. For codespace/preview, fall back to the block at the cursor line.
+    if (pane === "codespace" || pane === "preview") {
+      const editor = pane === "codespace" ? this.codespace : this.previewEditor;
+      if (editor) {
+        const meta = editor.metadata;
+        const cursorLine = editor.getCursorLine();
+        // Find the deepest (smallest range) block whose lines contain the cursor.
+        let best: { id: string; size: number } | null = null;
+        for (const [id, pos] of meta) {
+          if (pos.startLine <= cursorLine && pos.endLine >= cursorLine) {
+            const size = pos.endLine - pos.startLine;
+            if (!best || size < best.size) best = { id, size };
+          }
+        }
+        if (best) {
+          const block = this.workspace?.getBlockById(best.id);
+          if (block) return block as Blockly.BlockSvg;
+        }
+      }
+    }
+    return null;
+  }
+
+  /** Serialize the workspace to a plain object (Blockly's native format). */
+  public serializeWorkspace(): unknown {
+    if (!this.workspace) return null;
+    return Blockly.serialization.workspaces.save(this.workspace);
+  }
+
+  /** Restore the workspace from a previously serialized state. */
+  public loadWorkspace(state: unknown): void {
+    if (!this.workspace) return;
+    this.workspace.clear();
+    Blockly.serialization.workspaces.load(state as object, this.workspace);
+  }
+
+  /**
+   * Adjust the pane's zoom level. Direction is `"in" | "out" | "fit"`. For
+   * the workspace pane this maps to `workspace.zoomCenter(±1)` /
+   * `zoomToFit()`. For codespace/preview it scales the editor's font-size.
+   */
+  public zoomPane(
+    pane: "workspace" | "codespace" | "preview",
+    direction: "in" | "out" | "fit",
+  ): void {
+    if (pane === "workspace") {
+      if (!this.workspace) return;
+      if (direction === "in") this.workspace.zoomCenter(1);
+      else if (direction === "out") this.workspace.zoomCenter(-1);
+      else this.workspace.zoomToFit();
+      return;
+    }
+    const editor = pane === "codespace" ? this.codespace : this.previewEditor;
+    editor?.adjustZoom(direction);
+  }
+
+  private ensureToolbarBlocklyListener(): void {
+    if (this.toolbarsBlocklyListener || !this.workspace) return;
+    const listener = (_e: Blockly.Events.Abstract): void => {
+      for (const h of this.toolbars) h.refresh();
+    };
+    this.toolbarsBlocklyListener = listener;
+    this.workspace.addChangeListener(listener);
+  }
+
+  private teardownToolbarBlocklyListener(): void {
+    if (!this.toolbarsBlocklyListener || !this.workspace) return;
+    this.workspace.removeChangeListener(this.toolbarsBlocklyListener);
+    this.toolbarsBlocklyListener = undefined;
+  }
+
   public setModes(modes: {
     workspaceMode?: MorphicModeName;
     toolboxMode?: MorphicModeName;
@@ -294,6 +534,7 @@ export class MorphicBlocks {
     this.previewEditor?.setHighlightRules(this.resolveHighlightRules("preview"));
     this.codespace?.refresh();
     this.previewEditor?.refresh();
+    for (const h of this.toolbars) h.refresh();
     // Clear selection + line highlights on mode switch — the previous selection
     // can refer to a presentation that's no longer visible, leaving stale
     // highlights in views the user can no longer reach.

@@ -1157,6 +1157,45 @@ export class MorphicCodeEditor {
     this.syncNow();
   }
 
+  /** Current editor text. Empty string when the editor is not mounted yet. */
+  public getValue(): string {
+    return this.editorView?.state.doc.toString() ?? this.lastCode ?? "";
+  }
+
+  /** 1-based line number under the cursor. Returns 1 when no cursor / not mounted. */
+  public getCursorLine(): number {
+    if (!this.editorView) return 1;
+    const head = this.editorView.state.selection.main.head;
+    return this.editorView.state.doc.lineAt(head).number;
+  }
+
+  /**
+   * Adjust the editor's zoom by reconfiguring the theme compartment with a
+   * scaled font-size. `"fit"` resets to the theme's configured default.
+   * One step = 1.2× / 0.83× — matches CodeMirror's natural rhythm.
+   */
+  public adjustZoom(direction: "in" | "out" | "fit"): void {
+    if (!this.editorView || !this.cm || !this.themeCompartment) return;
+    const theme = this.options.theme ?? {};
+    const baseSize = parseFloat(theme.fontSize ?? DEFAULT_THEME.fontSize);
+    if (direction === "fit") {
+      this.zoomFactor = 1;
+    } else if (direction === "in") {
+      this.zoomFactor = Math.min(4, this.zoomFactor * 1.2);
+    } else {
+      this.zoomFactor = Math.max(0.25, this.zoomFactor / 1.2);
+    }
+    const scaledTheme: MorphicCodeEditorTheme = {
+      ...theme,
+      fontSize: `${(baseSize * this.zoomFactor).toFixed(2)}px`,
+    };
+    const themeExt = buildThemeExtension(this.cm.view, scaledTheme);
+    this.editorView.dispatch({
+      effects: this.themeCompartment.reconfigure(themeExt),
+    });
+  }
+  private zoomFactor = 1;
+
   private syncNow(): void {
     if (!this.editorView || !this.cm) return;
     const result = this.generateWithMetadata();

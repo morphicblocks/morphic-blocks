@@ -1,0 +1,74 @@
+/**
+ * Toolbar layout — minimal, theme-inheriting.
+ *
+ * Visual properties default to `inherit` or framework-supplied CSS variables.
+ * Hosts can theme by overriding the variables, or restyle by targeting
+ * `.morphic-toolbar` / `.morphic-toolbar-item` / `[data-toolbar-id="…"]`.
+ */
+
+.morphic-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--morphic-toolbar-gap, 0.5em);
+  padding: var(--morphic-toolbar-padding, 4px 8px);
+  background: var(--morphic-toolbar-bg, inherit);
+  color: var(--morphic-toolbar-fg, inherit);
+  font: var(--morphic-toolbar-font, inherit);
+  border-bottom: var(--morphic-toolbar-border, 1px solid rgba(127, 127, 127, 0.2));
+  box-sizing: border-box;
+}
+
+.morphic-toolbar-left,
+.morphic-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--morphic-toolbar-gap, 0.5em);
+}
+
+.morphic-toolbar-right {
+  margin-left: auto;
+}
+
+.morphic-toolbar-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--morphic-toolbar-item-bg, transparent);
+  color: inherit;
+  border: var(--morphic-toolbar-item-border, none);
+  padding: var(--morphic-toolbar-item-padding, 2px 6px);
+  border-radius: var(--morphic-toolbar-item-radius, 3px);
+  cursor: pointer;
+  font: inherit;
+  line-height: 1;
+}
+
+.morphic-toolbar-item:hover:not(:disabled) {
+  background: var(--morphic-toolbar-item-hover-bg, rgba(127, 127, 127, 0.15));
+}
+
+.morphic-toolbar-item:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.morphic-toolbar-icon {
+  display: inline-flex;
+}
+
+.morphic-toolbar-label {
+  opacity: 0.7;
+  font-size: 0.9em;
+}
+
+.morphic-toolbar-badge {
+  font-size: 0.85em;
+  opacity: 0.6;
+  padding: 1px 6px;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+}
+
+.morphic-toolbar-spacer {
+  flex: 1;
+}

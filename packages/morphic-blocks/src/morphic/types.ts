@@ -507,3 +507,63 @@ export interface MorphicSelectionSyncOptions {
   /** Enable code → block direction. Defaults to true. */
   codeToBlock?: boolean;
 }
+
+/** Surface a toolbar binds to. Drives stateful items (undo enabled-state,
+ * language label source, what "clear" affects). */
+export type MorphicToolbarPane = "workspace" | "codespace" | "preview";
+
+/** How items render their built-in icon + label pair. */
+export type MorphicToolbarDisplay = "icon" | "label" | "both";
+
+/**
+ * Runtime context passed to every toolbar item callback. Items use this to
+ * read pane state and request a re-render.
+ */
+export interface MorphicToolbarCtx {
+  engine: import("./MorphicBlocks").MorphicBlocks;
+  pane: MorphicToolbarPane;
+  /** Current rendered text for the bound pane. Empty for workspace pane unless
+   * the engine has a codespace/preview mounted to derive text from. */
+  getText: () => string;
+  /** Triggers the bound pane's re-render (codegen + redraw). */
+  refresh: () => void;
+}
+
+/** Output of an item's render — string is treated as text content. */
+export type MorphicToolbarRender = HTMLElement | string;
+
+/**
+ * One toolbar entry. Buttons supply `label` and/or `icon` plus `onClick`;
+ * custom widgets supply `render`. `visible` is evaluated on every refresh.
+ */
+export interface MorphicToolbarItem {
+  /** Stable id; reflected as `data-toolbar-id` for CSS targeting. */
+  id: string;
+  /** Lays out left of the spacer or right of it. Defaults to "left". */
+  align?: "left" | "right";
+  /** Plain-text label used in `label` / `both` display modes. */
+  label?: string;
+  /** Inline SVG string used in `icon` / `both` display modes. */
+  icon?: string;
+  /** Native `title` attribute / tooltip. */
+  title?: string;
+  /** Button click handler. Omit for non-interactive items (badges, labels). */
+  onClick?: (ctx: MorphicToolbarCtx) => void;
+  /** Optional predicate; item is omitted when this returns false on refresh. */
+  visible?: (ctx: MorphicToolbarCtx) => boolean;
+  /** Disable predicate; rendered with `disabled` and reduced opacity. */
+  disabled?: (ctx: MorphicToolbarCtx) => boolean;
+  /** Escape hatch — fully custom DOM. When set, label/icon/onClick are ignored. */
+  render?: (ctx: MorphicToolbarCtx) => MorphicToolbarRender;
+}
+
+/** Configuration for `engine.mountToolbar(container, config)`. */
+export interface MorphicToolbarConfig {
+  /** Which pane this toolbar reflects. */
+  pane: MorphicToolbarPane;
+  /** Items to render. When omitted, the framework uses
+   * `toolbarItems.defaultsFor(pane)`. To render no items, pass `[]`. */
+  items?: MorphicToolbarItem[];
+  /** Display mode for items that have both icon and label. Defaults to "icon". */
+  display?: MorphicToolbarDisplay;
+}

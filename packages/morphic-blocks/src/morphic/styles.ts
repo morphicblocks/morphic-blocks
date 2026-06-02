@@ -45,6 +45,25 @@ export class MorphicStyleManager {
     }
   }
 
+  /**
+   * Inject the framework-shipped toolbar layout CSS once per document. The
+   * stylesheet itself lives at `toolbar.css`; we import it as a string via
+   * Vite's `?inline` query so consumers don't need to add a CSS import.
+   * Everything visual inherits from the parent by default; CSS variables let
+   * the host theme without overriding class selectors.
+   */
+  public async ensureToolbarStyles(): Promise<void> {
+    const key = "toolbar";
+    if (this.loadedStyleKeys.has(key)) return;
+    const mod = await import("./toolbar.css?inline");
+    const css = (mod as { default: string }).default;
+    const styleEl = document.createElement("style");
+    styleEl.dataset.morphicSource = "toolbar";
+    styleEl.textContent = css;
+    document.head.appendChild(styleEl);
+    this.loadedStyleKeys.add(key);
+  }
+
   public ensureCategoryStyles(categories: MorphicToolboxCategory[]): void {
     for (const category of categories) {
       if (!category.color) {

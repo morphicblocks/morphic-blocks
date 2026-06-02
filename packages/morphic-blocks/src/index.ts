@@ -2,6 +2,11 @@ import "blockly/blocks";
 
 export { MorphicBlocks } from "./morphic/MorphicBlocks";
 export { MorphicToolboxCanvas } from "./morphic/toolbox-canvas";
+export { toolbarItems, renderToolbar } from "./morphic/toolbar";
+export type {
+  MorphicRunEventDetail,
+  MorphicToolbarHandle,
+} from "./morphic/toolbar";
 export type {
   MorphicElementType,
   MorphicElementTypeConfig,
@@ -34,6 +39,12 @@ export type {
   MorphicRenderContext,
   MorphicResolvedView,
   MorphicStyleBundle,
+  MorphicToolbarConfig,
+  MorphicToolbarCtx,
+  MorphicToolbarDisplay,
+  MorphicToolbarItem,
+  MorphicToolbarPane,
+  MorphicToolbarRender,
   MorphicToolboxCanvasOptions,
   MorphicToolboxCategory,
   MorphicToolboxConfig,
