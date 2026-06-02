@@ -276,10 +276,32 @@ body {
   overflow: hidden;
 }
 
-#workspace-container {
-  flex: 1;
-  position: relative;
+.editor-pane {
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
+  border-left: 1px solid var(--border);
+}
+
+.editor-pane:first-child {
+  border-left: none;
+}
+
+.editor-pane > .pane-toolbar {
+  flex: 0 0 auto;
+}
+
+.editor-pane > [id$="-container"] {
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+#workspace-pane {
+  flex: 1;
+}
+
+#workspace-container {
+  position: relative;
 }
 
 #code-editor {
@@ -290,11 +312,12 @@ body {
   display: none;
 }
 
-#codespace-container {
+#codespace-pane {
   flex: 0 0 30%;
   min-width: 200px;
-  border-left: 1px solid var(--border);
-  overflow: hidden;
+}
+
+#codespace-container {
   background: var(--bg-deep);
 }
 
@@ -302,11 +325,12 @@ body {
   height: 100%;
 }
 
-#preview-container {
+#preview-pane {
   flex: 0 0 25%;
   min-width: 180px;
-  border-left: 1px solid var(--border);
-  overflow: hidden;
+}
+
+#preview-container {
   background: var(--bg-preview);
 }
 

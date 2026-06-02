@@ -33,6 +33,12 @@ const toolboxPanel = document.getElementById("toolbox-panel")!;
 const codeEditorContainer = document.getElementById("code-editor")!;
 const codespaceContainer = document.getElementById("codespace-container")!;
 const previewContainer = document.getElementById("preview-container")!;
+const workspacePane = document.getElementById("workspace-pane")!;
+const codespacePane = document.getElementById("codespace-pane")!;
+const previewPane = document.getElementById("preview-pane")!;
+const workspaceToolbarEl = document.getElementById("workspace-toolbar")!;
+const codespaceToolbarEl = document.getElementById("codespace-toolbar")!;
+const previewToolbarEl = document.getElementById("preview-toolbar")!;
 const outputEl = document.getElementById("output")!;
 const modeButtonsContainer = document.getElementById("mode-buttons")!;
 const runBtn = document.getElementById("run-btn")!;
@@ -182,7 +188,11 @@ Promise.all([
 ]).then(() => {
   engine.hideCodeEditor();
   engine.enableSelectionSync({ highlightColor: "rgba(139, 172, 221, 0.48)" });
+  engine.mountToolbar(workspaceToolbarEl, { pane: "workspace" });
+  engine.mountToolbar(codespaceToolbarEl, { pane: "codespace" });
+  engine.mountToolbar(previewToolbarEl, { pane: "preview" });
 });
+
 
 // ── Level Buttons ──────────────────────────────────────
 
@@ -207,10 +217,10 @@ function updateLayout(workspaceModeName: string): void {
   const isCodespacePresentation = mode?.presentation === "codespace";
   const hasPreview = !!mode?.preview;
 
-  workspaceContainer.style.display = isCodespacePresentation ? "none" : "";
-  codespaceContainer.style.display = isCodespacePresentation ? "" : "none";
-  codespaceContainer.style.flex = isCodespacePresentation ? "1 1 auto" : "";
-  previewContainer.style.display = hasPreview ? "" : "none";
+  workspacePane.style.display = isCodespacePresentation ? "none" : "";
+  codespacePane.style.display = isCodespacePresentation ? "" : "none";
+  codespacePane.style.flex = isCodespacePresentation ? "1 1 auto" : "";
+  previewPane.style.display = hasPreview ? "" : "none";
   Blockly.svgResize(workspace);
 }
 
@@ -255,28 +265,21 @@ codeBtn.addEventListener("click", () => {
 // ── Code Execution ─────────────────────────────────────
 
 runBtn.addEventListener("click", () => {
-  const code = engine.generateJavaScript();
   const logs: string[] = [];
-
-  const customConsole = {
-    log: (...args: unknown[]) => logs.push(args.map(String).join(" ")),
-    warn: (...args: unknown[]) =>
-      logs.push("[warn] " + args.map(String).join(" ")),
-    error: (...args: unknown[]) =>
-      logs.push("[error] " + args.map(String).join(" ")),
-  };
-
-  try {
-    const fn = new Function("console", code);
-    fn(customConsole);
+  const { error } = engine.runJavaScript({
+    console: {
+      log: (...args) => logs.push(args.map(String).join(" ")),
+      warn: (...args) => logs.push("[warn] " + args.map(String).join(" ")),
+      error: (...args) => logs.push("[error] " + args.map(String).join(" ")),
+    },
+  });
+  if (error) {
+    outputEl.textContent =
+      logs.join("\n") + (logs.length ? "\n" : "") + `Error: ${error.message}`;
+    outputEl.style.color = "#e74c3c";
+  } else {
     outputEl.textContent = logs.length > 0 ? logs.join("\n") : "(no output)";
     outputEl.style.color = "";
-  } catch (err) {
-    outputEl.textContent =
-      logs.join("\n") +
-      (logs.length > 0 ? "\n" : "") +
-      `Error: ${err instanceof Error ? err.message : String(err)}`;
-    outputEl.style.color = "#e74c3c";
   }
 });
 

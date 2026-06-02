@@ -24,9 +24,18 @@
         <aside id="toolbox-panel"></aside>
         <div id="workspace-area">
           <div id="editor-split">
-            <div id="workspace-container"></div>
-            <div id="codespace-container"></div>
-            <div id="preview-container"></div>
+            <div class="editor-pane" id="workspace-pane">
+              <div class="pane-toolbar" id="workspace-toolbar"></div>
+              <div id="workspace-container"></div>
+            </div>
+            <div class="editor-pane" id="codespace-pane">
+              <div class="pane-toolbar" id="codespace-toolbar"></div>
+              <div id="codespace-container"></div>
+            </div>
+            <div class="editor-pane" id="preview-pane">
+              <div class="pane-toolbar" id="preview-toolbar"></div>
+              <div id="preview-container"></div>
+            </div>
             <div id="code-editor"></div>
           </div>
           <div id="output-panel">
