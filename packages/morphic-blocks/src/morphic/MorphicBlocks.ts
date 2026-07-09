@@ -246,6 +246,8 @@ export class MorphicBlocks extends EventTarget {
     }
 
     this.toolboxCanvas?.dispose();
+    // Header label reuses the toolbar stylesheet.
+    void this.styles.ensureToolbarStyles();
 
     // Empty Blockly's built-in flyout so it doesn't compete with the custom canvas.
     // Skip when canvasToolbox is true — Blockly was injected without any toolbox.
@@ -288,9 +290,16 @@ export class MorphicBlocks extends EventTarget {
     return this.mountConfig?.codespaceMode ?? this.mountConfig?.workspaceMode;
   }
 
-  /** Preview mode name, or `undefined` when no preview mode is set. */
+  /**
+   * Preview mode name. Falls back to the workspace mode while the preview is
+   * driven by a legacy `preview` element on the workspace mode; `undefined`
+   * when no preview source exists at all.
+   */
   public getPreviewMode(): MorphicModeName | undefined {
-    return this.mountConfig?.previewMode;
+    if (this.mountConfig?.previewMode) return this.mountConfig.previewMode;
+    return this.getActivePreviewElement()
+      ? this.mountConfig?.workspaceMode
+      : undefined;
   }
 
   /** Mode definition by name, or `undefined`. */

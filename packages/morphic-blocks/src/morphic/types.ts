@@ -286,6 +286,8 @@ export interface MorphicToolboxConfig {
 
 /** Options for the custom HTML toolbox canvas (mountToolbox). */
 export interface MorphicToolboxCanvasOptions {
+  /** Render a "Mode: <name>" header at the top of the toolbox. Defaults to true. */
+  modeLabel?: boolean;
   /** Show only a subset of blocks. Defaults to all blocks in definitions. */
   blocks?: string[];
   /**

@@ -61,6 +61,12 @@
   font-size: 0.9em;
 }
 
+.morphic-toolbox-header {
+  display: flex;
+  align-items: center;
+  padding: 4px 6px 8px;
+}
+
 .morphic-toolbar-badge {
   font-size: 0.85em;
   opacity: 0.6;

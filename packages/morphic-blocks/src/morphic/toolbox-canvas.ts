@@ -104,6 +104,16 @@ export class MorphicToolboxCanvas {
   private render(): void {
     this.container.innerHTML = "";
 
+    if (this.options.modeLabel !== false) {
+      const header = document.createElement("div");
+      header.className = "morphic-toolbox-header";
+      const label = document.createElement("span");
+      label.className = "morphic-toolbar-label";
+      label.textContent = `Mode: ${this.currentMode}`;
+      header.appendChild(label);
+      this.container.appendChild(header);
+    }
+
     const blockIds = this.resolveBlockIds();
     const categories = this.options.categories ?? [];
 

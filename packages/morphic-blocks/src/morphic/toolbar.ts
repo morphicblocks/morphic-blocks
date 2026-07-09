@@ -33,13 +33,14 @@ export interface MorphicToolbarHandle {
 }
 
 export const toolbarItems = {
-  languageLabel(): MorphicToolbarItem {
+  /** "Mode: <name>" label for the pane's active mode. */
+  modeLabel(): MorphicToolbarItem {
     return {
-      id: "language-label",
+      id: "mode-label",
       render: (ctx) => {
         const span = document.createElement("span");
         span.className = "morphic-toolbar-label";
-        span.textContent = readLanguageLabel(ctx);
+        span.textContent = readModeLabel(ctx);
         return span;
       },
     };
@@ -273,7 +274,7 @@ export const toolbarItems = {
       case "workspace":
       case "codespace":
         return [
-          toolbarItems.languageLabel(),
+          toolbarItems.modeLabel(),
           toolbarItems.spacer(),
           toolbarItems.undo(),
           toolbarItems.redo(),
@@ -286,7 +287,7 @@ export const toolbarItems = {
         ];
       case "preview":
         return [
-          toolbarItems.languageLabel(),
+          toolbarItems.modeLabel(),
           toolbarItems.spacer(),
           toolbarItems.copy(),
           toolbarItems.zoomIn(),
@@ -298,16 +299,15 @@ export const toolbarItems = {
   },
 };
 
-function readLanguageLabel(ctx: MorphicToolbarCtx): string {
+function readModeLabel(ctx: MorphicToolbarCtx): string {
   const engine = ctx.engine;
-  if (ctx.pane === "workspace") {
-    return engine.getWorkspaceMode() ?? "";
-  }
-  const sourceElement =
-    ctx.pane === "codespace"
-      ? engine.getActivePrimarySourceElement()
-      : engine.getActivePreviewElement();
-  return sourceElement ?? "";
+  const name =
+    ctx.pane === "workspace"
+      ? engine.getWorkspaceMode()
+      : ctx.pane === "codespace"
+        ? engine.getCodespaceMode()
+        : engine.getPreviewMode();
+  return name ? `Mode: ${name}` : "";
 }
 
 export function renderToolbar(
