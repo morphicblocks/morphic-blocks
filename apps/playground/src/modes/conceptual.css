@@ -2,17 +2,17 @@
    Mode: Concept — natural language labels
    ============================================= */
 
-.morphic-block.morphic-mode-concept {
+.morphic-block.morphic-mode-conceptual {
   padding: 14px 16px;
 }
 
-.morphic-mode-concept > .morphic-element-title {
+.morphic-mode-conceptual > .morphic-element-title {
   font-size: 14px;
   font-weight: 600;
   margin-bottom: 6px;
 }
 
-.morphic-mode-concept > .morphic-element-concept {
+.morphic-mode-conceptual > .morphic-element-concept {
   font-size: 13px;
   color: var(--tile-muted-strong);
 }

@@ -96,42 +96,42 @@
       "elements": ["icon", "title", "description"]
     },
     {
-      "name": "concept",
+      "name": "conceptual",
       "elements": ["title", "concept"]
     },
     {
-      "name": "python",
+      "name": "syntactic-python",
       "elements": ["title", "python"],
       "preview": "python"
     },
     {
-      "name": "python-text",
+      "name": "textual-python",
       "elements": ["title", "python"],
       "tileRender": {
         "python": "text"
       }
     },
     {
-      "name": "javascript",
+      "name": "syntactic-javascript",
       "elements": ["title", "javascript"],
       "preview": "javascript"
     },
     {
-      "name": "javascript-text",
+      "name": "textual-javascript",
       "elements": ["title", "javascript"],
       "tileRender": {
         "javascript": "text"
       }
     },
     {
-      "name": "code-python",
+      "name": "codespace-python",
       "elements": ["title", "icon"],
       "presentation": "codespace",
       "primarySource": "python",
       "preview": "javascript"
     },
     {
-      "name": "code-javascript",
+      "name": "codespace-javascript",
       "elements": ["title", "icon"],
       "presentation": "codespace",
       "primarySource": "javascript",

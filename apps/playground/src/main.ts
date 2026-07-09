@@ -12,13 +12,13 @@ import config from "./config.json";
 import { behaviors } from "./behaviors";
 import "./style.css";
 
-interface Level {
+interface Preset {
   label: string;
   toolboxMode: string;
   workspaceMode: string;
 }
 
-const levels = (config as { levels: Level[] }).levels;
+const presets = (config as { presets: Preset[] }).presets;
 
 // Auto-discover mode CSS files by filename
 const modeStyles = import.meta.glob("./modes/*.css", {
@@ -142,14 +142,14 @@ const engine = new MorphicBlocks(
   definitions.elementTypes as Record<string, MorphicElementTypeEntry>,
 );
 
-let currentLevelIndex = 0;
-const initialLevel = levels[currentLevelIndex]!;
+let currentPresetIndex = 0;
+const initialPreset = presets[currentPresetIndex]!;
 
 const workspace = engine.mount({
   workspaceContainer,
   codespaceContainer,
-  workspaceMode: initialLevel.workspaceMode,
-  toolboxMode: initialLevel.toolboxMode,
+  workspaceMode: initialPreset.workspaceMode,
+  toolboxMode: initialPreset.toolboxMode,
   modesFolder: modeStyles,
   canvasToolbox: true,
   modes: definitions.modes as MorphicModeDefinition[],
@@ -194,21 +194,21 @@ Promise.all([
 });
 
 
-// ── Level Buttons ──────────────────────────────────────
+// ── Preset Buttons ─────────────────────────────────────
 
 function modeByName(name: string): MorphicModeDefinition | undefined {
   return (definitions.modes as MorphicModeDefinition[]).find((m) => m.name === name);
 }
 
-function applyLevel(index: number): void {
-  const level = levels[index];
-  if (!level) return;
-  currentLevelIndex = index;
+function applyPreset(index: number): void {
+  const preset = presets[index];
+  if (!preset) return;
+  currentPresetIndex = index;
   engine.setModes({
-    workspaceMode: level.workspaceMode,
-    toolboxMode: level.toolboxMode,
+    workspaceMode: preset.workspaceMode,
+    toolboxMode: preset.toolboxMode,
   });
-  updateLayout(level.workspaceMode);
+  updateLayout(preset.workspaceMode);
   updateActiveButton();
 }
 
@@ -226,18 +226,18 @@ function updateLayout(workspaceModeName: string): void {
 
 function updateActiveButton(): void {
   const buttons = modeButtonsContainer.querySelectorAll<HTMLButtonElement>("button");
-  buttons.forEach((b, i) => b.classList.toggle("active", i === currentLevelIndex));
+  buttons.forEach((b, i) => b.classList.toggle("active", i === currentPresetIndex));
 }
 
 modeButtonsContainer.innerHTML = "";
-levels.forEach((level, i) => {
+presets.forEach((preset, i) => {
   const btn = document.createElement("button");
-  btn.textContent = level.label;
-  btn.addEventListener("click", () => applyLevel(i));
+  btn.textContent = preset.label;
+  btn.addEventListener("click", () => applyPreset(i));
   modeButtonsContainer.appendChild(btn);
 });
 
-updateLayout(initialLevel.workspaceMode);
+updateLayout(initialPreset.workspaceMode);
 updateActiveButton();
 
 // ── Resize Handling ────────────────────────────────────

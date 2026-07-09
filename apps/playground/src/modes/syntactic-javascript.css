@@ -2,23 +2,23 @@
    Mode: JavaScript — code-style tile and workspace blocks
    ============================================= */
 
-.morphic-block.morphic-mode-javascript {
+.morphic-block.morphic-mode-syntactic-javascript {
   padding: 12px 16px;
 }
 
-.morphic-mode-javascript > .morphic-element-title {
+.morphic-mode-syntactic-javascript > .morphic-element-title {
   font-size: 14px;
   font-weight: 600;
   margin-bottom: 6px;
   font-family: system-ui, sans-serif;
 }
 
-.morphic-mode-javascript > .morphic-element-javascript {
+.morphic-mode-syntactic-javascript > .morphic-element-javascript {
   font-size: 13px;
   font-family: "Consolas", "Fira Code", monospace;
   color: var(--tile-muted-strong);
 }
 
-.morphic-workspace-root.morphic-mode-javascript .blocklyText {
+.morphic-workspace-root.morphic-mode-syntactic-javascript .blocklyText {
   font-family: "Consolas", "Fira Code", monospace;
 }
