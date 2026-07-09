@@ -20,7 +20,7 @@ import { MorphicStyleManager } from "./styles";
 import { toModeClassToken } from "./template";
 import { DRAG_DATA_KEY, MorphicToolboxCanvas } from "./toolbox-canvas";
 import { buildToolboxDefinition } from "./toolbox";
-import { resolveBlockView } from "./view-resolver";
+import { resolveBlockView, resolveModeSourceElement } from "./view-resolver";
 import { renderToolbar, type MorphicToolbarHandle } from "./toolbar";
 import type {
   MorphicBehaviorContext,
@@ -280,20 +280,42 @@ export class MorphicBlocks extends EventTarget {
     return this.mountConfig?.workspaceMode;
   }
 
-  /** Active mode's `primarySource` element name (codespace label source). */
-  public getActivePrimarySourceElement(): string | undefined {
-    const mode = (this.mountConfig?.modes ?? []).find(
-      (m) => m.name === this.mountConfig?.workspaceMode,
-    );
-    return mode?.primarySource;
+  /**
+   * Effective codespace mode name: the independent `codespaceMode` when set,
+   * else the workspace mode. `undefined` if not mounted.
+   */
+  public getCodespaceMode(): MorphicModeName | undefined {
+    return this.mountConfig?.codespaceMode ?? this.mountConfig?.workspaceMode;
   }
 
-  /** Active mode's `preview` element name (preview-pane label source). */
+  /** Preview mode name, or `undefined` when no preview mode is set. */
+  public getPreviewMode(): MorphicModeName | undefined {
+    return this.mountConfig?.previewMode;
+  }
+
+  /** Mode definition by name, or `undefined`. */
+  private modeDef(name: MorphicModeName | undefined): MorphicModeDefinition | undefined {
+    if (!name) return undefined;
+    return (this.mountConfig?.modes ?? []).find((m) => m.name === name);
+  }
+
+  /** Source element rendered by the codespace (label + highlighting source). */
+  public getActivePrimarySourceElement(): string | undefined {
+    const mode = this.modeDef(this.getCodespaceMode());
+    if (!mode) return undefined;
+    if (this.mountConfig?.codespaceMode) {
+      return resolveModeSourceElement(mode, this.elementTypes);
+    }
+    return mode.primarySource;
+  }
+
+  /** Source element rendered by the preview (label + highlighting source). */
   public getActivePreviewElement(): string | undefined {
-    const mode = (this.mountConfig?.modes ?? []).find(
-      (m) => m.name === this.mountConfig?.workspaceMode,
-    );
-    return mode?.preview;
+    const previewMode = this.modeDef(this.mountConfig?.previewMode);
+    if (previewMode) {
+      return resolveModeSourceElement(previewMode, this.elementTypes);
+    }
+    return this.modeDef(this.mountConfig?.workspaceMode)?.preview;
   }
 
   /**
@@ -510,6 +532,10 @@ export class MorphicBlocks extends EventTarget {
   public setModes(modes: {
     workspaceMode?: MorphicModeName;
     toolboxMode?: MorphicModeName;
+    /** Independent codespace mode. `null` clears the override (falls back to workspaceMode). */
+    codespaceMode?: MorphicModeName | null;
+    /** Preview mode. `null` clears it (preview renders nothing unless the workspace mode declares a legacy `preview`). */
+    previewMode?: MorphicModeName | null;
   }): void {
     if (!this.mountConfig || !this.workspace) {
       throw new Error(
@@ -517,8 +543,30 @@ export class MorphicBlocks extends EventTarget {
       );
     }
 
+    for (const [field, name] of [
+      ["workspaceMode", modes.workspaceMode],
+      ["toolboxMode", modes.toolboxMode],
+      ["codespaceMode", modes.codespaceMode],
+      ["previewMode", modes.previewMode],
+    ] as const) {
+      if (typeof name === "string" && !this.modeDef(name)) {
+        throw new Error(`setModes: unknown mode "${name}" for ${field}.`);
+      }
+    }
+    if (typeof modes.codespaceMode === "string" && !this.mountConfig.codespaceContainer) {
+      throw new Error(
+        "setModes: codespaceMode requires a codespaceContainer at mount.",
+      );
+    }
+
     if (modes.workspaceMode) {
       this.mountConfig.workspaceMode = modes.workspaceMode;
+    }
+    if (modes.codespaceMode !== undefined) {
+      this.mountConfig.codespaceMode = modes.codespaceMode ?? undefined;
+    }
+    if (modes.previewMode !== undefined) {
+      this.mountConfig.previewMode = modes.previewMode ?? undefined;
     }
     if (modes.toolboxMode) {
       this.mountConfig.toolboxMode = modes.toolboxMode;
@@ -543,19 +591,18 @@ export class MorphicBlocks extends EventTarget {
 
   /**
    * Resolve the highlight rules for the codespace or preview editor by
-   * looking up the active mode's `primarySource` / `preview` element name in
-   * the `mountConfig.highlighting` registry. Returns `undefined` when no
+   * looking up that pane's source element name in the
+   * `mountConfig.highlighting` registry. Returns `undefined` when no
    * matching entry is configured.
    */
   private resolveHighlightRules(
     kind: "codespace" | "preview",
   ): MorphicHighlightDefinition | undefined {
     if (!this.mountConfig) return undefined;
-    const mode = (this.mountConfig.modes ?? []).find(
-      (m) => m.name === this.mountConfig?.workspaceMode,
-    );
-    if (!mode) return undefined;
-    const elementName = kind === "codespace" ? mode.primarySource : mode.preview;
+    const elementName =
+      kind === "codespace"
+        ? this.getActivePrimarySourceElement()
+        : this.getActivePreviewElement();
     if (!elementName) return undefined;
     return this.mountConfig.highlighting?.[elementName];
   }
@@ -1569,16 +1616,14 @@ export class MorphicBlocks extends EventTarget {
     if (!this.workspace || !this.mountConfig) {
       return { code: "", metadata: new Map(), placeholders: [] };
     }
-    const mode = (this.mountConfig.modes ?? []).find(
-      (m) => m.name === this.mountConfig?.workspaceMode,
-    );
-    const elementName = mode?.preview;
+    const previewMode = this.mountConfig.previewMode;
+    const elementName = this.getActivePreviewElement();
     if (!elementName) {
       return { code: "", metadata: new Map(), placeholders: [] };
     }
     return generateTextFromWorkspace(
       this.workspace,
-      this.mountConfig.workspaceMode,
+      previewMode ?? this.mountConfig.workspaceMode,
       this.definitions,
       this.elementTypes,
       this.mountConfig.modes ?? [],
@@ -1665,6 +1710,21 @@ export class MorphicBlocks extends EventTarget {
   private generateCodespaceText(): MorphicCodeGenerationResult {
     if (!this.workspace || !this.mountConfig) {
       return { code: "", metadata: new Map(), placeholders: [] };
+    }
+    const codespaceMode = this.mountConfig.codespaceMode;
+    if (codespaceMode) {
+      const modeDef = this.modeDef(codespaceMode);
+      const elementOverride = modeDef
+        ? resolveModeSourceElement(modeDef, this.elementTypes)
+        : undefined;
+      return generateTextFromWorkspace(
+        this.workspace,
+        codespaceMode,
+        this.definitions,
+        this.elementTypes,
+        this.mountConfig.modes ?? [],
+        elementOverride,
+      );
     }
     return generateTextFromWorkspace(
       this.workspace,
@@ -1859,6 +1919,12 @@ export class MorphicBlocks extends EventTarget {
     if (activeMode?.presentation === "codespace" && !config.codespaceContainer) {
       throw new Error(
         `Mode "${activeMode.name}" has presentation "codespace" but no codespaceContainer was provided.`,
+      );
+    }
+
+    if (config.codespaceMode && !config.codespaceContainer) {
+      throw new Error(
+        "MorphicBlocks.mount: codespaceMode requires a codespaceContainer.",
       );
     }
   }

@@ -8,6 +8,22 @@ import type {
 } from "./types";
 
 /**
+ * Source element of a mode: the mode's explicit `primarySource` when set,
+ * else the first element in `mode.elements` whose type is "code". This is the
+ * element a codespace or preview renders when the mode is assigned to it.
+ */
+export function resolveModeSourceElement(
+  mode: MorphicModeDefinition,
+  elementTypes: Record<string, MorphicElementTypeEntry> = {},
+): string | undefined {
+  if (mode.primarySource) return mode.primarySource;
+  for (const name of mode.elements) {
+    if (resolveElementType(elementTypes[name]) === "code") return name;
+  }
+  return undefined;
+}
+
+/**
  * Resolves the workspace template for a block in a given mode.
  *
  * Resolution order:
