@@ -7,6 +7,11 @@ export type {
   MorphicRunEventDetail,
   MorphicToolbarHandle,
 } from "./morphic/toolbar";
+export { makeResizable } from "./morphic/resize";
+export type {
+  MorphicResizeOptions,
+  MorphicResizeHandle,
+} from "./morphic/resize";
 export type {
   MorphicElementType,
   MorphicElementTypeConfig,
