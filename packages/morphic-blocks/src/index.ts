@@ -51,5 +51,6 @@ export type {
   MorphicToolboxLayout,
   MorphicBlockElements,
   MorphicModeDefinition,
+  MorphicPresetDefinition,
   MorphicSelectionSyncOptions,
 } from "./morphic/types";

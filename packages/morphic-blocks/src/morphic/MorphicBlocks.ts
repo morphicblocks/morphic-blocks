@@ -36,6 +36,7 @@ import type {
   MorphicModeStyle,
   MorphicMountConfig,
   MorphicPlaceholderEditTarget,
+  MorphicPresetDefinition,
   MorphicRenderContext,
   MorphicSelectionSyncOptions,
   MorphicToolbarConfig,
@@ -132,14 +133,31 @@ export class MorphicBlocks extends EventTarget {
       ),
     ];
 
+    // Presets: validate and resolve the initial one (drives the initial modes).
+    this.validatePresets(config);
+    const initialPreset = config.presets?.length
+      ? (config.presets.find((p) => p.name === config.preset) ?? config.presets[0])
+      : undefined;
+    if (config.preset && !initialPreset) {
+      throw new Error(`MorphicBlocks.mount: unknown preset "${config.preset}".`);
+    }
+
     // Resolve default modes: fallback to first discovered mode or "default"
     const availableModeNames = mergedModeStyles.map((s) => s.mode);
     const defaultMode =
       availableModeNames[0] ?? this.getAvailableModes()[0] ?? "default";
-    const workspaceMode = config.workspaceMode ?? defaultMode;
-    const toolboxMode = config.toolboxMode ?? defaultMode;
+    const workspaceMode = initialPreset
+      ? (initialPreset.workspace ?? initialPreset.codespace ?? defaultMode)
+      : (config.workspaceMode ?? defaultMode);
+    const toolboxMode = initialPreset
+      ? initialPreset.toolbox
+      : (config.toolboxMode ?? defaultMode);
+    const codespaceMode = initialPreset
+      ? initialPreset.codespace
+      : config.codespaceMode;
+    const previewMode = initialPreset ? initialPreset.preview : config.previewMode;
 
-    this.validateContainers(config);
+    this.validateContainers({ ...config, codespaceMode });
 
     const workspaceHost = config.workspaceContainer ?? this.createHeadlessHost();
 
@@ -148,6 +166,8 @@ export class MorphicBlocks extends EventTarget {
       modeStyles: mergedModeStyles,
       workspaceMode,
       toolboxMode,
+      codespaceMode,
+      previewMode,
       workspaceHost,
     };
 
@@ -184,7 +204,94 @@ export class MorphicBlocks extends EventTarget {
     this.renderWorkspaceBlocks();
     this.renderFlyoutBlocks();
 
+    if (initialPreset) resolvedConfig.onPresetApplied?.(initialPreset);
+
     return this.workspace;
+  }
+
+  /** Presets declared at mount (empty when none were provided). */
+  public getPresets(): MorphicPresetDefinition[] {
+    return [...(this.mountConfig?.presets ?? [])];
+  }
+
+  /**
+   * Apply a preset by name or index: sets the per-view modes derived from the
+   * preset and notifies `onPresetApplied` so the host can update pane
+   * visibility. Returns the applied preset.
+   */
+  public applyPreset(nameOrIndex: string | number): MorphicPresetDefinition {
+    if (!this.mountConfig || !this.workspace) {
+      throw new Error(
+        "MorphicBlocks must be mounted before applyPreset can be used.",
+      );
+    }
+    const presets = this.mountConfig.presets ?? [];
+    const preset =
+      typeof nameOrIndex === "number"
+        ? presets[nameOrIndex]
+        : presets.find((p) => p.name === nameOrIndex);
+    if (!preset) {
+      throw new Error(`applyPreset: unknown preset "${nameOrIndex}".`);
+    }
+    this.setModes({
+      toolboxMode: preset.toolbox,
+      workspaceMode: preset.workspace ?? preset.codespace,
+      codespaceMode: preset.codespace ?? null,
+      previewMode: preset.preview ?? null,
+    });
+    this.mountConfig.onPresetApplied?.(preset);
+    return preset;
+  }
+
+  /** Validate preset definitions against modes, element types, and containers. */
+  private validatePresets(config: MorphicMountConfig): void {
+    const presets = config.presets ?? [];
+    if (presets.length === 0) return;
+    const modes = config.modes ?? [];
+    const modeByName = new Map(modes.map((m) => [m.name, m]));
+    const seen = new Set<string>();
+
+    for (const preset of presets) {
+      if (seen.has(preset.name)) {
+        throw new Error(`Preset "${preset.name}" is defined more than once.`);
+      }
+      seen.add(preset.name);
+
+      if (!preset.workspace && !preset.codespace) {
+        throw new Error(
+          `Preset "${preset.name}": at least one of workspace or codespace must be set.`,
+        );
+      }
+      if (preset.codespace && !config.codespaceContainer) {
+        throw new Error(
+          `Preset "${preset.name}" uses a codespace but no codespaceContainer was provided.`,
+        );
+      }
+
+      const refs: Array<[view: string, name: MorphicModeName | undefined]> = [
+        ["toolbox", preset.toolbox],
+        ["workspace", preset.workspace],
+        ["codespace", preset.codespace],
+        ["preview", preset.preview],
+      ];
+      for (const [view, name] of refs) {
+        if (name === undefined) continue;
+        const mode = modeByName.get(name);
+        if (!mode) {
+          throw new Error(
+            `Preset "${preset.name}": unknown mode "${name}" for ${view}.`,
+          );
+        }
+        if (
+          (view === "codespace" || view === "preview") &&
+          resolveModeSourceElement(mode, this.elementTypes) === undefined
+        ) {
+          throw new Error(
+            `Preset "${preset.name}": mode "${name}" has no code element to render in the ${view}.`,
+          );
+        }
+      }
+    }
   }
 
   public dispose(): void {

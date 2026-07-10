@@ -112,6 +112,21 @@ export interface MorphicInputSlotDefinition {
 export type MorphicBlockElements = Record<string, string>;
 
 /**
+ * A named per-view mode configuration. Presence of a view key means that view
+ * is part of the preset: `toolbox` is required, and at least one editing
+ * space (`workspace` or `codespace`) must be set; `preview` is optional.
+ */
+export interface MorphicPresetDefinition {
+  name: string;
+  /** Display label (e.g. for buttons). Falls back to `name`. */
+  label?: string;
+  toolbox: MorphicModeName;
+  workspace?: MorphicModeName;
+  codespace?: MorphicModeName;
+  preview?: MorphicModeName;
+}
+
+/**
  * Declares which elements are visible for a given mode.
  * CSS (one file per mode) controls how those elements look.
  * A mode's source element (rendered in editing spaces and previews) is the
@@ -300,6 +315,19 @@ export interface MorphicMountConfig {
   codespaceContainer?: HTMLElement;
   /** Mode definitions — drives automatic element visibility CSS. */
   modes?: MorphicModeDefinition[];
+  /**
+   * Named per-view mode configurations. Validated at mount. When provided,
+   * the initial modes are derived from `preset` (or the first preset).
+   */
+  presets?: MorphicPresetDefinition[];
+  /** Name of the preset applied at mount. Defaults to the first preset. */
+  preset?: string;
+  /**
+   * Called after a preset is applied — at mount and on every `applyPreset` —
+   * so the host can lay out pane visibility (a view is shown iff its key is
+   * present on the preset).
+   */
+  onPresetApplied?: (preset: MorphicPresetDefinition) => void;
   toolbox?: MorphicToolboxConfig;
   toolboxLayout?: MorphicToolboxLayout;
   /**
