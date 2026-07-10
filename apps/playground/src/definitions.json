@@ -100,40 +100,24 @@
       "elements": ["title", "concept"]
     },
     {
-      "name": "syntactic-python",
+      "name": "python",
       "elements": ["title", "python"]
     },
     {
-      "name": "textual-python",
-      "elements": ["title", "python"],
-      "tileRender": {
-        "python": "text"
-      }
-    },
-    {
-      "name": "syntactic-javascript",
+      "name": "javascript",
       "elements": ["title", "javascript"]
     },
     {
-      "name": "textual-javascript",
-      "elements": ["title", "javascript"],
-      "tileRender": {
-        "javascript": "text"
-      }
-    },
-    {
-      "name": "syntactic-go",
-      "elements": ["title", "go"]
+      "name": "hybrid",
+      "elements": ["title", "concept", "python"]
     }
   ],
   "presets": [
     { "name": "iconic", "label": "Iconic", "toolbox": "iconic", "workspace": "conceptual" },
-    { "name": "conceptual", "label": "Conceptual", "toolbox": "conceptual", "workspace": "conceptual" },
-    { "name": "python-blocks", "label": "Python Blocks", "toolbox": "conceptual", "workspace": "syntactic-python", "preview": "syntactic-python" },
-    { "name": "javascript-blocks", "label": "JavaScript Blocks", "toolbox": "syntactic-python", "workspace": "syntactic-javascript", "preview": "syntactic-javascript" },
-    { "name": "python-code", "label": "Python Code", "toolbox": "textual-python", "codespace": "syntactic-python", "preview": "syntactic-javascript" },
-    { "name": "javascript-code", "label": "JavaScript Code", "toolbox": "textual-javascript", "codespace": "syntactic-javascript", "preview": "syntactic-go" },
-    { "name": "hybrid", "label": "Hybrid", "toolbox": "conceptual", "workspace": "conceptual", "codespace": "syntactic-python", "preview": "syntactic-javascript" }
+    { "name": "conceptual", "label": "Conceptual", "toolbox": "conceptual", "workspace": "conceptual", "preview": "python" },
+    { "name": "syntactic", "label": "Syntactic", "toolbox": "conceptual", "workspace": "python", "preview": "python" },
+    { "name": "textual", "label": "Textual", "toolbox": { "mode": "python", "render": { "python": "text" } }, "codespace": "python", "preview": "javascript" },
+    { "name": "hybrid", "label": "Hybrid", "toolbox": { "mode": "hybrid", "render": { "concept": "block", "python": "text" } }, "workspace": "conceptual", "codespace": "python", "preview": "javascript" }
   ],
   "highlighting": {
     "concept": {

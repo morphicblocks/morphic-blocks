@@ -1,24 +1,29 @@
 /* =============================================
-   Mode: JavaScript — code-style tile and workspace blocks
+   Mode: Hybrid — two code elements in one tile
+   (concept rendered as block, python as text)
    ============================================= */
 
-.morphic-block.morphic-mode-syntactic-javascript {
+.morphic-block.morphic-mode-hybrid {
   padding: 12px 16px;
 }
 
-.morphic-mode-syntactic-javascript > .morphic-element-title {
+.morphic-mode-hybrid > .morphic-element-title {
   font-size: 14px;
   font-weight: 600;
   margin-bottom: 6px;
   font-family: system-ui, sans-serif;
 }
 
-.morphic-mode-syntactic-javascript > .morphic-element-javascript {
+.morphic-mode-hybrid > .morphic-element-concept {
+  margin-bottom: 6px;
+}
+
+.morphic-mode-hybrid > .morphic-element-python {
   font-size: 13px;
   font-family: "Consolas", "Fira Code", monospace;
   color: var(--tile-muted-strong);
 }
 
-.morphic-workspace-root.morphic-mode-syntactic-javascript .blocklyText {
+.morphic-workspace-root.morphic-mode-hybrid .blocklyText {
   font-family: "Consolas", "Fira Code", monospace;
 }

@@ -2,23 +2,23 @@
    Mode: Python — code-style tile and workspace blocks
    ============================================= */
 
-.morphic-block.morphic-mode-syntactic-python {
+.morphic-block.morphic-mode-python {
   padding: 12px 16px;
 }
 
-.morphic-mode-syntactic-python > .morphic-element-title {
+.morphic-mode-python > .morphic-element-title {
   font-size: 14px;
   font-weight: 600;
   margin-bottom: 6px;
   font-family: system-ui, sans-serif;
 }
 
-.morphic-mode-syntactic-python > .morphic-element-python {
+.morphic-mode-python > .morphic-element-python {
   font-size: 13px;
   font-family: "Consolas", "Fira Code", monospace;
   color: var(--tile-muted-strong);
 }
 
-.morphic-workspace-root.morphic-mode-syntactic-python .blocklyText {
+.morphic-workspace-root.morphic-mode-python .blocklyText {
   font-family: "Consolas", "Fira Code", monospace;
 }
