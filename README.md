@@ -103,13 +103,13 @@ morphic-blocks/
   "modes": [
     { "name": "iconic",     "elements": ["icon", "title", "description"] },
     { "name": "conceptual", "elements": ["title", "concept"] },
-    { "name": "syntactic-python",     "elements": ["title", "python"] },
-    { "name": "syntactic-javascript", "elements": ["title", "javascript"] }
+    { "name": "python",     "elements": ["title", "python"] },
+    { "name": "javascript", "elements": ["title", "javascript"] }
   ],
   "presets": [
     { "name": "iconic", "label": "Iconic", "toolbox": "iconic", "workspace": "conceptual" },
     { "name": "hybrid", "label": "Hybrid", "toolbox": "conceptual",
-      "workspace": "conceptual", "codespace": "syntactic-python", "preview": "syntactic-javascript" }
+      "workspace": "conceptual", "codespace": "python", "preview": "javascript" }
   ],
   "categories": [
     { "name": "Output", "color": "#5C81A6" }
@@ -134,7 +134,7 @@ morphic-blocks/
 ```
 
 - `elementTypes` — global registry mapping element names either to a bare type string (`"text" | "code" | "image"`) or to a config object `{ type, empty }`. The `empty` map provides per-language defaults for empty value slots, keyed by the slot's `check` (`"Number"`, `"String"`, `"Boolean"`, plus `"default"` for unchecked slots). With defaults set, a `print` with no value attached renders as `print("text")` instead of `print()` — keeping generated code syntactically valid.
-- `modes` — list of mode definitions with optional `tileRender`
+- `modes` — list of mode definitions (`{ name, elements }`)
 - `presets` — named per-view mode configurations (toolbox / workspace / codespace / preview)
 - `categories` — optional groupings for the toolbox
 - `blocks` — flat array of block definitions
@@ -147,13 +147,12 @@ You always work with the **clean** identifier — it keys the `behaviors` map, t
 
 ## Mode Fields
 
-| Field        | Required | Purpose                                                                    |
-|--------------|----------|----------------------------------------------------------------------------|
-| `name`       | yes      | Mode identifier                                                            |
-| `elements`   | yes      | Element names rendered on the toolbox tile                                 |
-| `tileRender` | no       | Per-element map `{ name: "block" \| "text" }` for tile rendering override  |
+| Field      | Required | Purpose                                    |
+|------------|----------|--------------------------------------------|
+| `name`     | yes      | Mode identifier                            |
+| `elements` | yes      | Element names rendered on the toolbox tile |
 
-A mode's **source element** — what a codespace or preview renders when the mode is assigned to it — is the first `type: "code"` element in its `elements` array.
+A mode is purely presentational. Its **source element** — what a codespace or preview renders when the mode is assigned to it — is the first `type: "code"` element in its `elements` array. How a code element renders on a toolbox tile (block vs text) is set by the preset's `toolbox` entry, so one mode is reusable across presets.
 
 ## Presets
 
@@ -163,12 +162,14 @@ A **preset** assigns a mode to each view and drives which views are visible:
 |-------------|----------|----------------------------------------------------------|
 | `name`      | yes      | Preset identifier                                        |
 | `label`     | no       | Display label (falls back to `name`)                     |
-| `toolbox`   | yes      | Mode rendered on the toolbox tiles                       |
+| `toolbox`   | yes      | Toolbox mode (see below)                                 |
 | `workspace` | no*      | Mode for the block workspace                             |
 | `codespace` | no*      | Mode whose source element the codespace renders          |
 | `preview`   | no       | Mode whose source element the read-only preview renders  |
 
-\* at least one of `workspace` / `codespace` must be set. Presence of a view key means the view is shown; workspace and codespace can be visible at the same time with different modes. Pass presets via the mount config (`presets`, initial `preset`, `onPresetApplied` for pane layout) and switch at runtime with `engine.applyPreset(name)`. The lower-level `engine.setModes({ workspaceMode?, toolboxMode?, codespaceMode?, previewMode? })` remains available.
+`toolbox` is either a **mode name** (all code elements render as blocks) or an object `{ mode, render }` where `render` is a per-element map `{ name: "block" | "text" }` controlling how each `code` element renders in the tile (e.g. `{ "mode": "python", "render": { "python": "text" } }` shows the code as source text).
+
+\* at least one of `workspace` / `codespace` must be set. Presence of a view key means the view is shown; workspace and codespace can be visible at the same time with different modes. Pass presets via the mount config (`presets`, initial `preset`, `onPresetApplied` for pane layout) and switch at runtime with `engine.applyPreset(name)`. The lower-level `engine.setModes({ workspaceMode?, toolboxMode?, toolboxRender?, codespaceMode?, previewMode? })` remains available.
 
 ## Template Syntax
 
@@ -229,7 +230,7 @@ Switch presets or modes at runtime:
 
 ```ts
 engine.applyPreset("hybrid");
-engine.setModes({ workspaceMode: "conceptual", codespaceMode: "syntactic-python" });
+engine.setModes({ workspaceMode: "conceptual", codespaceMode: "python" });
 ```
 
 Generate JavaScript from the workspace (via behaviors):

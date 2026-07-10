@@ -37,6 +37,7 @@ import type {
   MorphicMountConfig,
   MorphicPlaceholderEditTarget,
   MorphicPresetDefinition,
+  MorphicPresetToolbox,
   MorphicRenderContext,
   MorphicSelectionSyncOptions,
   MorphicToolbarConfig,
@@ -74,9 +75,21 @@ type MorphicResolvedMountConfig = Omit<
 > & {
   workspaceMode: MorphicModeName;
   toolboxMode: MorphicModeName;
+  /** Per-element block/text override for toolbox tiles (from the active preset's toolbox entry). */
+  toolboxRender?: Record<string, "block" | "text">;
   /** The element Blockly was injected into — either the user's workspaceContainer or an internal headless host. */
   workspaceHost: HTMLElement;
 };
+
+/** Normalize a preset's toolbox (string or object) to a mode + optional render map. */
+function normalizePresetToolbox(toolbox: MorphicPresetToolbox): {
+  mode: MorphicModeName;
+  render?: Record<string, "block" | "text">;
+} {
+  return typeof toolbox === "string"
+    ? { mode: toolbox }
+    : { mode: toolbox.mode, render: toolbox.render };
+}
 
 export class MorphicBlocks extends EventTarget {
   private readonly definitions: Map<string, MorphicBlockDefinition>;
@@ -146,12 +159,16 @@ export class MorphicBlocks extends EventTarget {
     const availableModeNames = mergedModeStyles.map((s) => s.mode);
     const defaultMode =
       availableModeNames[0] ?? this.getAvailableModes()[0] ?? "default";
+    const initialToolbox = initialPreset
+      ? normalizePresetToolbox(initialPreset.toolbox)
+      : undefined;
     const workspaceMode = initialPreset
       ? (initialPreset.workspace ?? initialPreset.codespace ?? defaultMode)
       : (config.workspaceMode ?? defaultMode);
-    const toolboxMode = initialPreset
-      ? initialPreset.toolbox
+    const toolboxMode = initialToolbox
+      ? initialToolbox.mode
       : (config.toolboxMode ?? defaultMode);
+    const toolboxRender = initialToolbox?.render;
     const codespaceMode = initialPreset
       ? initialPreset.codespace
       : config.codespaceMode;
@@ -166,6 +183,7 @@ export class MorphicBlocks extends EventTarget {
       modeStyles: mergedModeStyles,
       workspaceMode,
       toolboxMode,
+      toolboxRender,
       codespaceMode,
       previewMode,
       workspaceHost,
@@ -233,8 +251,10 @@ export class MorphicBlocks extends EventTarget {
     if (!preset) {
       throw new Error(`applyPreset: unknown preset "${nameOrIndex}".`);
     }
+    const toolbox = normalizePresetToolbox(preset.toolbox);
     this.setModes({
-      toolboxMode: preset.toolbox,
+      toolboxMode: toolbox.mode,
+      toolboxRender: toolbox.render ?? null,
       workspaceMode: preset.workspace ?? preset.codespace,
       codespaceMode: preset.codespace ?? null,
       previewMode: preset.preview ?? null,
@@ -268,8 +288,9 @@ export class MorphicBlocks extends EventTarget {
         );
       }
 
+      const toolbox = normalizePresetToolbox(preset.toolbox);
       const refs: Array<[view: string, name: MorphicModeName | undefined]> = [
-        ["toolbox", preset.toolbox],
+        ["toolbox", toolbox.mode],
         ["workspace", preset.workspace],
         ["codespace", preset.codespace],
         ["preview", preset.preview],
@@ -288,6 +309,14 @@ export class MorphicBlocks extends EventTarget {
         ) {
           throw new Error(
             `Preset "${preset.name}": mode "${name}" has no code element to render in the ${view}.`,
+          );
+        }
+      }
+
+      for (const value of Object.values(toolbox.render ?? {})) {
+        if (value !== "block" && value !== "text") {
+          throw new Error(
+            `Preset "${preset.name}": toolbox render values must be "block" or "text".`,
           );
         }
       }
@@ -366,6 +395,7 @@ export class MorphicBlocks extends EventTarget {
       behaviors: this.behaviors,
       elementTypes: this.elementTypes,
       mode: this.mountConfig.toolboxMode,
+      render: this.mountConfig.toolboxRender,
       modes: this.mountConfig.modes,
       options,
     });
@@ -631,6 +661,8 @@ export class MorphicBlocks extends EventTarget {
   public setModes(modes: {
     workspaceMode?: MorphicModeName;
     toolboxMode?: MorphicModeName;
+    /** Per-element block/text override for toolbox tiles. `null` clears it (all code elements render as blocks). */
+    toolboxRender?: Record<string, "block" | "text"> | null;
     /** Independent codespace mode. `null` clears the override (falls back to workspaceMode). */
     codespaceMode?: MorphicModeName | null;
     /** Preview mode. `null` clears it (preview renders nothing unless the workspace mode declares a legacy `preview`). */
@@ -667,9 +699,15 @@ export class MorphicBlocks extends EventTarget {
     if (modes.previewMode !== undefined) {
       this.mountConfig.previewMode = modes.previewMode ?? undefined;
     }
-    if (modes.toolboxMode) {
-      this.mountConfig.toolboxMode = modes.toolboxMode;
-      this.toolboxCanvas?.rerender(this.mountConfig.toolboxMode);
+    if (modes.toolboxRender !== undefined) {
+      this.mountConfig.toolboxRender = modes.toolboxRender ?? undefined;
+    }
+    if (modes.toolboxMode || modes.toolboxRender !== undefined) {
+      if (modes.toolboxMode) this.mountConfig.toolboxMode = modes.toolboxMode;
+      this.toolboxCanvas?.rerender(
+        this.mountConfig.toolboxMode,
+        this.mountConfig.toolboxRender,
+      );
     }
 
     this.applyWorkspaceContainerClass();

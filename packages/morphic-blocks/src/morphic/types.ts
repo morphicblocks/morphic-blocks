@@ -116,11 +116,20 @@ export type MorphicBlockElements = Record<string, string>;
  * is part of the preset: `toolbox` is required, and at least one editing
  * space (`workspace` or `codespace`) must be set; `preview` is optional.
  */
+/**
+ * A preset's toolbox: either a bare mode name (all code elements render as
+ * blocks) or an object that additionally overrides, per element, whether a
+ * `code` element renders as a draggable block or as source text in the tile.
+ */
+export type MorphicPresetToolbox =
+  | MorphicModeName
+  | { mode: MorphicModeName; render?: Record<string, "block" | "text"> };
+
 export interface MorphicPresetDefinition {
   name: string;
   /** Display label (e.g. for buttons). Falls back to `name`. */
   label?: string;
-  toolbox: MorphicModeName;
+  toolbox: MorphicPresetToolbox;
   workspace?: MorphicModeName;
   codespace?: MorphicModeName;
   preview?: MorphicModeName;
@@ -136,12 +145,6 @@ export interface MorphicModeDefinition {
   name: string;
   /** Element names that are visible in this mode (e.g. ["icon", "text"]). */
   elements: string[];
-  /**
-   * Optional per-element override for how tile elements render in the toolbox.
-   * Keys are element names; values are "block" (Blockly SVG preview) or "text"
-   * (HTML text). Applies only to elements of type "code". Defaults to "block".
-   */
-  tileRender?: Record<string, "block" | "text">;
 }
 
 export interface MorphicBlockDefinition {

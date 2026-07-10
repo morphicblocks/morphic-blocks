@@ -33,6 +33,8 @@ export class MorphicToolboxCanvas {
   private readonly options: MorphicToolboxCanvasOptions;
   private readonly modes: MorphicModeDefinition[];
   private currentMode: MorphicModeName;
+  /** Per-element block/text override for code elements in tiles (from the active preset). */
+  private renderOverride?: Record<string, "block" | "text">;
 
   private previewWorkspace?: Blockly.WorkspaceSvg;
   private previewContainer?: HTMLDivElement;
@@ -49,6 +51,7 @@ export class MorphicToolboxCanvas {
     behaviors: MorphicBehaviorMap;
     elementTypes?: Record<string, MorphicElementTypeEntry>;
     mode: MorphicModeName;
+    render?: Record<string, "block" | "text">;
     modes?: MorphicModeDefinition[];
     options?: MorphicToolboxCanvasOptions;
   }) {
@@ -60,6 +63,7 @@ export class MorphicToolboxCanvas {
     this.behaviors = params.behaviors;
     this.elementTypes = params.elementTypes ?? {};
     this.currentMode = params.mode;
+    this.renderOverride = params.render;
     this.modes = params.modes ?? [];
     this.options = params.options ?? {};
 
@@ -82,8 +86,9 @@ export class MorphicToolboxCanvas {
     this.render();
   }
 
-  rerender(mode: MorphicModeName): void {
+  rerender(mode: MorphicModeName, render?: Record<string, "block" | "text">): void {
     this.currentMode = mode;
+    this.renderOverride = render;
     this.render();
   }
 
@@ -172,7 +177,6 @@ export class MorphicToolboxCanvas {
 
     const activeMode = this.modes.find((m) => m.name === this.currentMode);
     const modeOrder = activeMode?.elements ?? [];
-    const tileRender = activeMode?.tileRender ?? {};
     const allEntries = Object.entries(definition.elements);
     const sortedEntries = [
       ...modeOrder.map((name) => allEntries.find(([key]) => key === name)).filter((e): e is [string, string] => e !== undefined),
@@ -187,7 +191,7 @@ export class MorphicToolboxCanvas {
       const elementType = resolveElementType(elementEntry);
       const isCodeElement = elementType === "code";
       const isImageElement = elementType === "image";
-      const render = tileRender[elementName] ?? (isCodeElement ? "block" : "text");
+      const render = this.renderOverride?.[elementName] ?? (isCodeElement ? "block" : "text");
 
       // For type "image", auto-wrap file paths into <img> tags using the
       // per-element `size` config (or 16×16 default).
