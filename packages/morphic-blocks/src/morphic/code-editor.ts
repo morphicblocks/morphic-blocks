@@ -1125,7 +1125,7 @@ export class MorphicCodeEditor {
   /**
    * Swap the active token-highlight rules. Pass `undefined` to clear. Used by
    * MorphicBlocks on `setModes()` so the codespace and preview re-tokenize for
-   * the new mode's `primarySource` / `preview` element.
+   * the new mode's source element.
    */
   setHighlightRules(rules: MorphicHighlightDefinition | undefined): void {
     if (!this.editorView || !this.cm || !this.syntaxHighlightCompartment) return;

@@ -111,34 +111,16 @@ export interface MorphicInputSlotDefinition {
  */
 export type MorphicBlockElements = Record<string, string>;
 
-/** How a mode is presented on screen. Defaults to "workspace" when omitted. */
-export type MorphicPresentation = "workspace" | "codespace";
-
 /**
  * Declares which elements are visible for a given mode.
  * CSS (one file per mode) controls how those elements look.
+ * A mode's source element (rendered in editing spaces and previews) is the
+ * first element in `elements` whose type is "code".
  */
 export interface MorphicModeDefinition {
   name: string;
   /** Element names that are visible in this mode (e.g. ["icon", "text"]). */
   elements: string[];
-  /**
-   * How this mode is presented:
-   * - "workspace" (default): Blockly block workspace
-   * - "codespace": text editor that replaces the workspace
-   */
-  presentation?: MorphicPresentation;
-  /**
-   * Name of the element (must be type "code") used as the primary source.
-   * - In workspace modes: used as the Blockly template; wins over auto-detection when set.
-   * - In codespace modes: used as the text rendered in the codespace. Required.
-   */
-  primarySource?: string;
-  /**
-   * Name of the element (must be type "code") used as the preview editor source
-   * (read-only). Optional; applies to both workspace and codespace modes.
-   */
-  preview?: string;
   /**
    * Optional per-element override for how tile elements render in the toolbox.
    * Keys are element names; values are "block" (Blockly SVG preview) or "text"
@@ -173,9 +155,8 @@ export interface MorphicBlockDefinition {
 
 /**
  * Token-level highlighting rules for a code element. Keyed by element name
- * (e.g. "python", "javascript", "concept") so a mode's `primarySource` /
- * `preview` already names the language — no separate `language` field is
- * needed on modes.
+ * (e.g. "python", "javascript", "concept") so a mode's source element already
+ * names the language — no separate `language` field is needed on modes.
  *
  * The framework applies these as `Decoration.mark` ranges via a CodeMirror
  * `ViewPlugin`. Highlighting deliberately does NOT install a CodeMirror
@@ -212,9 +193,8 @@ export interface MorphicBlocksFormat {
   /** Explicit mode definitions — which elements are visible per mode. */
   modes?: MorphicModeDefinition[];
   /**
-   * Per-element highlight rules, keyed by element name. The active mode's
-   * `primarySource` and `preview` element names look up entries here for the
-   * codespace and preview editors respectively.
+   * Per-element highlight rules, keyed by element name. The codespace and
+   * preview modes' source elements look up entries here for their editors.
    */
   highlighting?: Record<string, MorphicHighlightDefinition>;
   /** Optional category metadata. Blocks reference categories by name. */
@@ -314,8 +294,8 @@ export interface MorphicMountConfig {
    */
   workspaceContainer?: HTMLElement;
   /**
-   * Container for the primary text editor (codespace). Optional — required when
-   * the initial `workspaceMode` uses `presentation: "codespace"`.
+   * Container for the primary text editor (codespace). Optional — required
+   * when a `codespaceMode` is used.
    */
   codespaceContainer?: HTMLElement;
   /** Mode definitions — drives automatic element visibility CSS. */
@@ -357,10 +337,9 @@ export interface MorphicMountConfig {
   blocklyOptions?: Blockly.BlocklyOptions;
   javascript?: MorphicJavaScriptConfig;
   /**
-   * Per-element highlight rules, keyed by element name. The active mode's
-   * `primarySource` and `preview` element names are used to look up entries
-   * here for the codespace and preview editors. Optional — when absent,
-   * editors render plain text.
+   * Per-element highlight rules, keyed by element name. The codespace and
+   * preview modes' source elements are used to look up entries here for
+   * their editors. Optional — when absent, editors render plain text.
    */
   highlighting?: Record<string, MorphicHighlightDefinition>;
 }

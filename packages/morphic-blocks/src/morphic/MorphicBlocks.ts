@@ -11,7 +11,6 @@ import {
 } from "./block-view";
 import { BLOCK_ID_DRAG_KEY, MorphicCodeEditor, getActiveGripDragSourceId, setActiveGripDragSourceId } from "./code-editor";
 import { resolveBlocklyType, toBlocklyType, toCleanId } from "./block-namespace";
-import { resolveElementType } from "./element-types";
 import { generateJavaScriptFromWorkspace, generateJavaScriptWithMetadataFromWorkspace } from "./codegen";
 import { generateTextFromWorkspace } from "./template-codegen";
 import { MorphicSelectionSync } from "./selection-sync";
@@ -140,7 +139,7 @@ export class MorphicBlocks extends EventTarget {
     const workspaceMode = config.workspaceMode ?? defaultMode;
     const toolboxMode = config.toolboxMode ?? defaultMode;
 
-    this.validateContainers(config, workspaceMode);
+    this.validateContainers(config);
 
     const workspaceHost = config.workspaceContainer ?? this.createHeadlessHost();
 
@@ -153,10 +152,6 @@ export class MorphicBlocks extends EventTarget {
     };
 
     this.mountConfig = resolvedConfig;
-
-    if (resolvedConfig.modes?.length) {
-      this.validateModeDefinitions(resolvedConfig.modes);
-    }
 
     this.styles.validateModeCoverage(
       mergedModeStyles,
@@ -290,16 +285,9 @@ export class MorphicBlocks extends EventTarget {
     return this.mountConfig?.codespaceMode ?? this.mountConfig?.workspaceMode;
   }
 
-  /**
-   * Preview mode name. Falls back to the workspace mode while the preview is
-   * driven by a legacy `preview` element on the workspace mode; `undefined`
-   * when no preview source exists at all.
-   */
+  /** Preview mode name, or `undefined` when no preview mode is set. */
   public getPreviewMode(): MorphicModeName | undefined {
-    if (this.mountConfig?.previewMode) return this.mountConfig.previewMode;
-    return this.getActivePreviewElement()
-      ? this.mountConfig?.workspaceMode
-      : undefined;
+    return this.mountConfig?.previewMode;
   }
 
   /** Mode definition by name, or `undefined`. */
@@ -312,19 +300,14 @@ export class MorphicBlocks extends EventTarget {
   public getActivePrimarySourceElement(): string | undefined {
     const mode = this.modeDef(this.getCodespaceMode());
     if (!mode) return undefined;
-    if (this.mountConfig?.codespaceMode) {
-      return resolveModeSourceElement(mode, this.elementTypes);
-    }
-    return mode.primarySource;
+    return resolveModeSourceElement(mode, this.elementTypes);
   }
 
   /** Source element rendered by the preview (label + highlighting source). */
   public getActivePreviewElement(): string | undefined {
     const previewMode = this.modeDef(this.mountConfig?.previewMode);
-    if (previewMode) {
-      return resolveModeSourceElement(previewMode, this.elementTypes);
-    }
-    return this.modeDef(this.mountConfig?.workspaceMode)?.preview;
+    if (!previewMode) return undefined;
+    return resolveModeSourceElement(previewMode, this.elementTypes);
   }
 
   /**
@@ -668,8 +651,8 @@ export class MorphicBlocks extends EventTarget {
 
   /**
    * Mounts the primary text editor (codespace) into the `codespaceContainer`
-   * declared at `mount()`. Renders the workspace as text using the active
-   * mode's `primarySource` element. Read-only for now; Task 4 adds drops.
+   * declared at `mount()`. Renders the workspace as text using the codespace
+   * mode's source element. Read-only for now; Task 4 adds drops.
    */
   public async mountCodespace(
     options?: MorphicCodeEditorOptions,
@@ -1627,12 +1610,12 @@ export class MorphicBlocks extends EventTarget {
     }
     const previewMode = this.mountConfig.previewMode;
     const elementName = this.getActivePreviewElement();
-    if (!elementName) {
+    if (!previewMode || !elementName) {
       return { code: "", metadata: new Map(), placeholders: [] };
     }
     return generateTextFromWorkspace(
       this.workspace,
-      previewMode ?? this.mountConfig.workspaceMode,
+      previewMode,
       this.definitions,
       this.elementTypes,
       this.mountConfig.modes ?? [],
@@ -1914,20 +1897,10 @@ export class MorphicBlocks extends EventTarget {
     }
   }
 
-  private validateContainers(
-    config: MorphicMountConfig,
-    workspaceMode: MorphicModeName,
-  ): void {
+  private validateContainers(config: MorphicMountConfig): void {
     if (!config.workspaceContainer && !config.codespaceContainer) {
       throw new Error(
         "MorphicBlocks.mount requires at least one of workspaceContainer or codespaceContainer.",
-      );
-    }
-
-    const activeMode = (config.modes ?? []).find((m) => m.name === workspaceMode);
-    if (activeMode?.presentation === "codespace" && !config.codespaceContainer) {
-      throw new Error(
-        `Mode "${activeMode.name}" has presentation "codespace" but no codespaceContainer was provided.`,
       );
     }
 
@@ -1945,35 +1918,6 @@ export class MorphicBlocks extends EventTarget {
     document.body.appendChild(host);
     this.headlessWorkspaceHost = host;
     return host;
-  }
-
-  private validateModeDefinitions(modes: MorphicModeDefinition[]): void {
-    for (const mode of modes) {
-      if (mode.presentation === "codespace" && !mode.primarySource) {
-        throw new Error(
-          `Mode "${mode.name}": presentation "codespace" requires a primarySource.`,
-        );
-      }
-
-      const refs: Array<[field: string, name: string]> = [];
-      if (mode.primarySource) refs.push(["primarySource", mode.primarySource]);
-      if (mode.preview) refs.push(["preview", mode.preview]);
-
-      for (const [field, name] of refs) {
-        const entry = this.elementTypes[name];
-        if (entry === undefined) {
-          throw new Error(
-            `Mode "${mode.name}": ${field} "${name}" is not declared in elementTypes.`,
-          );
-        }
-        const type = resolveElementType(entry);
-        if (type !== "code") {
-          throw new Error(
-            `Mode "${mode.name}": ${field} "${name}" must be of type "code" (got "${type}").`,
-          );
-        }
-      }
-    }
   }
 
   private resolveMode(context: MorphicRenderContext): MorphicModeName {

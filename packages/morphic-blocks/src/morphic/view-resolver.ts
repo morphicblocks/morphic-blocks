@@ -8,15 +8,14 @@ import type {
 } from "./types";
 
 /**
- * Source element of a mode: the mode's explicit `primarySource` when set,
- * else the first element in `mode.elements` whose type is "code". This is the
- * element a codespace or preview renders when the mode is assigned to it.
+ * Source element of a mode: the first element in `mode.elements` whose type
+ * is "code". This is the element a codespace or preview renders when the mode
+ * is assigned to it.
  */
 export function resolveModeSourceElement(
   mode: MorphicModeDefinition,
   elementTypes: Record<string, MorphicElementTypeEntry> = {},
 ): string | undefined {
-  if (mode.primarySource) return mode.primarySource;
   for (const name of mode.elements) {
     if (resolveElementType(elementTypes[name]) === "code") return name;
   }
@@ -27,7 +26,6 @@ export function resolveModeSourceElement(
  * Resolves the workspace template for a block in a given mode.
  *
  * Resolution order:
- * 0. Mode's explicit `primarySource` element (when set)
  * 1. First element in the mode's `elements` array whose type is "code"
  * 2. First element in the block definition whose type is "code"
  * 3. Element literally named "block" (backward-compat fallback)
@@ -41,14 +39,6 @@ export function resolveBlockView(
 ): MorphicResolvedView {
   const elements = definition.elements;
   const modeDef = modeDefs.find((m) => m.name === mode);
-
-  // Strategy 0: explicit primarySource declared on the mode
-  if (modeDef?.primarySource) {
-    const explicit = elements[modeDef.primarySource];
-    if (explicit !== undefined) {
-      return { mode, template: explicit, elementName: modeDef.primarySource, inputSlots: definition.inputSlots };
-    }
-  }
 
   // Strategy 1: first type:code element listed in this mode's elements array
   if (modeDef) {
