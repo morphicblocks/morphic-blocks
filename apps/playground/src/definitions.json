@@ -101,8 +101,7 @@
     },
     {
       "name": "syntactic-python",
-      "elements": ["title", "python"],
-      "preview": "python"
+      "elements": ["title", "python"]
     },
     {
       "name": "textual-python",
@@ -113,8 +112,7 @@
     },
     {
       "name": "syntactic-javascript",
-      "elements": ["title", "javascript"],
-      "preview": "javascript"
+      "elements": ["title", "javascript"]
     },
     {
       "name": "textual-javascript",
@@ -124,19 +122,18 @@
       }
     },
     {
-      "name": "codespace-python",
-      "elements": ["title", "icon"],
-      "presentation": "codespace",
-      "primarySource": "python",
-      "preview": "javascript"
-    },
-    {
-      "name": "codespace-javascript",
-      "elements": ["title", "icon"],
-      "presentation": "codespace",
-      "primarySource": "javascript",
-      "preview": "go"
+      "name": "syntactic-go",
+      "elements": ["title", "go"]
     }
+  ],
+  "presets": [
+    { "name": "iconic", "label": "Iconic", "toolbox": "iconic", "workspace": "conceptual" },
+    { "name": "conceptual", "label": "Conceptual", "toolbox": "conceptual", "workspace": "conceptual" },
+    { "name": "python-blocks", "label": "Python Blocks", "toolbox": "conceptual", "workspace": "syntactic-python", "preview": "syntactic-python" },
+    { "name": "javascript-blocks", "label": "JavaScript Blocks", "toolbox": "syntactic-python", "workspace": "syntactic-javascript", "preview": "syntactic-javascript" },
+    { "name": "python-code", "label": "Python Code", "toolbox": "textual-python", "codespace": "syntactic-python", "preview": "syntactic-javascript" },
+    { "name": "javascript-code", "label": "JavaScript Code", "toolbox": "textual-javascript", "codespace": "syntactic-javascript", "preview": "syntactic-go" },
+    { "name": "hybrid", "label": "Hybrid", "toolbox": "conceptual", "workspace": "conceptual", "codespace": "syntactic-python", "preview": "syntactic-javascript" }
   ],
   "highlighting": {
     "concept": {

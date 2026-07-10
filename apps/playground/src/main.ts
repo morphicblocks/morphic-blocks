@@ -5,20 +5,14 @@ import {
   type MorphicElementTypeEntry,
   type MorphicHighlightDefinition,
   type MorphicModeDefinition,
+  type MorphicPresetDefinition,
   type MorphicToolboxCategory,
 } from "morphic-blocks";
 import definitions from "./definitions.json";
-import config from "./config.json";
 import { behaviors } from "./behaviors";
 import "./style.css";
 
-interface Preset {
-  label: string;
-  toolboxMode: string;
-  workspaceMode: string;
-}
-
-const presets = (config as { presets: Preset[] }).presets;
+const presets = definitions.presets as MorphicPresetDefinition[];
 
 // Auto-discover mode CSS files by filename
 const modeStyles = import.meta.glob("./modes/*.css", {
@@ -142,14 +136,14 @@ const engine = new MorphicBlocks(
   definitions.elementTypes as Record<string, MorphicElementTypeEntry>,
 );
 
-let currentPresetIndex = 0;
-const initialPreset = presets[currentPresetIndex]!;
+let currentPresetName = presets[0]?.name ?? "";
 
 const workspace = engine.mount({
   workspaceContainer,
   codespaceContainer,
-  workspaceMode: initialPreset.workspaceMode,
-  toolboxMode: initialPreset.toolboxMode,
+  presets,
+  preset: currentPresetName,
+  onPresetApplied: handlePresetApplied,
   modesFolder: modeStyles,
   canvasToolbox: true,
   modes: definitions.modes as MorphicModeDefinition[],
@@ -196,48 +190,35 @@ Promise.all([
 
 // ── Preset Buttons ─────────────────────────────────────
 
-function modeByName(name: string): MorphicModeDefinition | undefined {
-  return (definitions.modes as MorphicModeDefinition[]).find((m) => m.name === name);
-}
-
-function applyPreset(index: number): void {
-  const preset = presets[index];
-  if (!preset) return;
-  currentPresetIndex = index;
-  engine.setModes({
-    workspaceMode: preset.workspaceMode,
-    toolboxMode: preset.toolboxMode,
-  });
-  updateLayout(preset.workspaceMode);
+function handlePresetApplied(preset: MorphicPresetDefinition): void {
+  currentPresetName = preset.name;
+  const showWorkspace = !!preset.workspace;
+  const showCodespace = !!preset.codespace;
+  workspacePane.style.display = showWorkspace ? "" : "none";
+  codespacePane.style.display = showCodespace ? "" : "none";
+  codespacePane.style.flex = showCodespace && !showWorkspace ? "1 1 auto" : "";
+  previewPane.style.display = preset.preview ? "" : "none";
+  const ws = engine.getWorkspace();
+  if (ws) Blockly.svgResize(ws);
   updateActiveButton();
-}
-
-function updateLayout(workspaceModeName: string): void {
-  const mode = modeByName(workspaceModeName);
-  const isCodespacePresentation = mode?.presentation === "codespace";
-  const hasPreview = !!mode?.preview;
-
-  workspacePane.style.display = isCodespacePresentation ? "none" : "";
-  codespacePane.style.display = isCodespacePresentation ? "" : "none";
-  codespacePane.style.flex = isCodespacePresentation ? "1 1 auto" : "";
-  previewPane.style.display = hasPreview ? "" : "none";
-  Blockly.svgResize(workspace);
 }
 
 function updateActiveButton(): void {
   const buttons = modeButtonsContainer.querySelectorAll<HTMLButtonElement>("button");
-  buttons.forEach((b, i) => b.classList.toggle("active", i === currentPresetIndex));
+  buttons.forEach((b) =>
+    b.classList.toggle("active", b.dataset.preset === currentPresetName),
+  );
 }
 
 modeButtonsContainer.innerHTML = "";
-presets.forEach((preset, i) => {
+presets.forEach((preset) => {
   const btn = document.createElement("button");
-  btn.textContent = preset.label;
-  btn.addEventListener("click", () => applyPreset(i));
+  btn.textContent = preset.label ?? preset.name;
+  btn.dataset.preset = preset.name;
+  btn.addEventListener("click", () => engine.applyPreset(preset.name));
   modeButtonsContainer.appendChild(btn);
 });
 
-updateLayout(initialPreset.workspaceMode);
 updateActiveButton();
 
 // ── Resize Handling ────────────────────────────────────
