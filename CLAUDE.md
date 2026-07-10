@@ -21,7 +21,7 @@ morphic-blocks/
 
 ### Key files
 
-- `src/morphic/MorphicBlocks.ts` — Main orchestration class (`mount`, `setModes`, `generateJavaScript`)
+- `src/morphic/MorphicBlocks.ts` — Main orchestration class (`mount`, `setModes`, `applyPreset`, `generateJavaScript`)
 - `src/morphic/block-view.ts` — Block rendering, mode class application, connection management
 - `src/morphic/block-namespace.ts` — Clean ↔ `morphic:` Blockly-type translation (collision isolation)
 - `src/morphic/template.ts` — Template parsing (`%1` placeholders, `<img>` tags)
@@ -36,9 +36,9 @@ morphic-blocks/
 2. User provides **behaviors** (JS/TS): functions that generate code for each block type
 3. User provides **CSS files**: one per mode, using `.morphic-mode-{name}` classes
 4. `MorphicBlocks.mount()` initializes Blockly + morphic features
-5. `engine.setModes()` switches rendering mode at runtime — blocks re-render
+5. `engine.applyPreset()` / `engine.setModes()` switch the per-view modes at runtime — blocks re-render
 
-`mount()` accepts either `workspaceContainer`, `codespaceContainer`, or both. At least one is required. When only `codespaceContainer` is provided, Blockly runs headless (offscreen) so the block model stays authoritative. Modes with `presentation: "codespace"` require `codespaceContainer`.
+`mount()` accepts either `workspaceContainer`, `codespaceContainer`, or both. At least one is required. When only `codespaceContainer` is provided, Blockly runs headless (offscreen) so the block model stays authoritative. Using a codespace (via `codespaceMode` or a preset with `codespace`) requires `codespaceContainer`.
 
 ### Block identifier namespacing
 
@@ -112,6 +112,10 @@ A **mode** declares which elements are visible and, by scanning for the first `t
     { "name": "lexical",   "elements": ["title", "block"] },
     { "name": "syntactic", "elements": ["title", "syntax", "text"] }
   ],
+  "presets": [
+    { "name": "starter", "label": "Starter", "toolbox": "iconic",  "workspace": "lexical" },
+    { "name": "hybrid",  "label": "Hybrid",  "toolbox": "lexical", "workspace": "lexical", "codespace": "syntactic", "preview": "syntactic" }
+  ],
   "categories": [
     { "name": "Output", "color": "#5C81A6" }
   ],
@@ -134,29 +138,30 @@ A **mode** declares which elements are visible and, by scanning for the first `t
 
 - `elementTypes` — global registry mapping element names to their type (`text`, `code`, `image`)
 - `modes` — explicit mode definitions; mode names are arbitrary (no coupling to element names)
+- `presets` — named per-view mode configurations (see below)
 - `categories` — optional metadata (name, colour); blocks reference them by name
 - `blocks` — flat array; per-block `elements` are plain `name: content` strings
 
 ### Mode fields
 
-| Field           | Required       | Purpose                                                                                 |
-|-----------------|----------------|-----------------------------------------------------------------------------------------|
-| `name`          | yes            | Mode identifier                                                                         |
-| `elements`      | yes            | Element names rendered on the toolbox tile                                              |
-| `presentation`  | no             | `"workspace"` (default) or `"codespace"`                                                |
-| `primarySource` | when codespace | Element name used as the primary view source (must be type `code`)                      |
-| `preview`       | no             | Element name used by the preview editor (must be type `code`)                           |
-| `tileRender`    | no             | Map of element name → `"block"` or `"text"`. Overrides tile rendering for code elements |
+| Field        | Required | Purpose                                                                                 |
+|--------------|----------|-----------------------------------------------------------------------------------------|
+| `name`       | yes      | Mode identifier                                                                         |
+| `elements`   | yes      | Element names rendered on the toolbox tile                                              |
+| `tileRender` | no       | Map of element name → `"block"` or `"text"`. Overrides tile rendering for code elements |
 
-Validation at mount: `presentation: "codespace"` requires `primarySource`; `primarySource` and `preview` must reference elements declared as `code` in `elementTypes`.
+A mode's **source element** — what a codespace or preview renders when the mode is assigned to it — is the first `type: "code"` element in its `elements` array.
+
+### Presets
+
+A **preset** assigns a mode to each view: `{ name, label?, toolbox, workspace?, codespace?, preview? }`. `toolbox` is required, at least one editing space (`workspace` / `codespace`) must be set, and presence of a view key means that view is shown. Presets are passed via the mount config (`presets`, initial `preset`), validated at mount (unknown modes, missing code elements, codespace without `codespaceContainer`, duplicate names), applied at runtime with `engine.applyPreset(nameOrIndex)`, and reported to the host via `onPresetApplied(preset)` for pane-visibility layout. Workspace and codespace can be visible simultaneously with different modes; `setModes({ workspaceMode?, toolboxMode?, codespaceMode?, previewMode? })` remains the lower-level API (`null` clears the codespace/preview modes).
 
 ### Workspace template resolution
 
-1. Mode's explicit `primarySource` (when set)
-2. First `type: "code"` element listed in the mode's `elements` array
-3. Fallback: first `type: "code"` element in the block definition
-4. Fallback: element literally named `"block"` (backward compat)
-5. Fallback: first element in the definition
+1. First `type: "code"` element listed in the mode's `elements` array
+2. Fallback: first `type: "code"` element in the block definition
+3. Fallback: element literally named `"block"` (backward compat)
+4. Fallback: first element in the definition
 
 ## Rendered HTML (Morphic Block tile)
 
@@ -210,14 +215,14 @@ These are *potential* applications, not currently deployed. They are worth keepi
 - ~~**Block metadata mapping**~~ — maps block IDs to generated code positions
 - ~~**Block ↔ code selection sync**~~ — multi-editor (code editor, codespace, preview)
 - ~~**Codespace** — editable-by-structure text view of the workspace
-- ~~**Preview editor** — read-only view of `mode.preview`
+- ~~**Preview editor** — read-only view of the preview mode's source element
 - ~~**Drag from toolbox / grip into codespace**~~ with drop-position indicator
 - ~~**Slot-based drop resolution**~~ — drops into empty `for`/`if` bodies and statement chains, not just before/after the parent
 - ~~**Same-chain reorder via grip**~~ — active-source exclusion makes drop-on-self a real move
 - ~~**Indent compounding**~~ in template-codegen across nesting depth
 - ~~**Per-element empty-slot defaults**~~ via `elementTypes` config (`{ type, empty: { Number, String, Boolean, default } }`)
 - ~~**Empty-area click clears highlight**~~ in codespace/preview
-- ~~**Definition-driven syntax highlighting**~~ — top-level `highlighting` map in definitions, keyed by element name (matches `mode.primarySource` / `mode.preview`); each entry: `{ keywords, strings, comment, numbers, colors }`. Implementation: CodeMirror 6 `ViewPlugin` + `Decoration.mark` (no `StreamLanguage` — keeps highlighting decoupled from language behavior); runtime swap via `Compartment` on `setModes()`. Type: `MorphicHighlightDefinition`.
+- ~~**Definition-driven syntax highlighting**~~ — top-level `highlighting` map in definitions, keyed by element name (matches the codespace/preview modes' source elements); each entry: `{ keywords, strings, comment, numbers, colors }`. Implementation: CodeMirror 6 `ViewPlugin` + `Decoration.mark` (no `StreamLanguage` — keeps highlighting decoupled from language behavior); runtime swap via `Compartment` on `setModes()`. Type: `MorphicHighlightDefinition`.
 - ~~**Drag value blocks into value slots**~~ (numbers, strings, variables) — toolbox tile drop + grip-drag inside codespace; type-check bypassed on drop because codespace is text.
 - ~~**Right-click drag inside codespace**~~ — secondary-button (or Ctrl-click on macOS) drag with capture-phase mousedown; hover affordances: blue outline on innermost editable placeholder, grey background on innermost non-atomic block.
 - ~~**Inline field edits for atomic placeholders**~~ — text / number / dropdown editors overlaid on the placeholder range; shadows materialise to real blocks on first edit. Atomic = exactly one named field, no value inputs. `FieldVariable` and `FieldCheckbox`, plus plugin / developer custom fields, are deferred (option menu and rationale recorded outside the repo).

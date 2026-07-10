@@ -4,7 +4,7 @@ A TypeScript framework built on Google Blockly for rendering blocks in multiple 
 
 ## Core Idea
 
-Each block has named **elements** (visual parts). A global `elementTypes` registry declares what each element name represents. **Modes** declare which elements are visible on the toolbox tile and which element feeds each view (workspace block, codespace text, preview text). CSS defines how they look.
+Each block has named **elements** (visual parts). A global `elementTypes` registry declares what each element name represents. **Modes** declare which elements are visible; **presets** assign a mode to each view (toolbox, workspace, codespace, preview). CSS defines how modes look.
 
 ```text
 iconic mode    → icon + title  (compact visual)
@@ -64,7 +64,7 @@ Library output is emitted to `packages/morphic-blocks/dist/`.
 ```text
 morphic-blocks/
 ├── apps/
-│   └── playground/            # Demo app: 5 transition levels
+│   └── playground/            # Demo app: preset-driven view configurations
 │       └── src/
 │           ├── definitions.json  # elements, modes, blocks
 │           ├── config.json       # playground-only level wiring
@@ -101,12 +101,15 @@ morphic-blocks/
     "javascript": { "type": "code", "empty": { "Number": "0", "String": "\"text\"", "Boolean": "true",  "default": "null" } }
   },
   "modes": [
-    { "name": "iconic",    "elements": ["icon", "title", "description"] },
-    { "name": "concept",   "elements": ["title", "concept"] },
-    { "name": "python",    "elements": ["title", "python"],     "preview": "python" },
-    { "name": "javascript","elements": ["title", "javascript"], "preview": "javascript" },
-    { "name": "code-python", "elements": ["title", "icon"],
-      "presentation": "codespace", "primarySource": "python", "preview": "javascript" }
+    { "name": "iconic",     "elements": ["icon", "title", "description"] },
+    { "name": "conceptual", "elements": ["title", "concept"] },
+    { "name": "syntactic-python",     "elements": ["title", "python"] },
+    { "name": "syntactic-javascript", "elements": ["title", "javascript"] }
+  ],
+  "presets": [
+    { "name": "iconic", "label": "Iconic", "toolbox": "iconic", "workspace": "conceptual" },
+    { "name": "hybrid", "label": "Hybrid", "toolbox": "conceptual",
+      "workspace": "conceptual", "codespace": "syntactic-python", "preview": "syntactic-javascript" }
   ],
   "categories": [
     { "name": "Output", "color": "#5C81A6" }
@@ -131,7 +134,8 @@ morphic-blocks/
 ```
 
 - `elementTypes` — global registry mapping element names either to a bare type string (`"text" | "code" | "image"`) or to a config object `{ type, empty }`. The `empty` map provides per-language defaults for empty value slots, keyed by the slot's `check` (`"Number"`, `"String"`, `"Boolean"`, plus `"default"` for unchecked slots). With defaults set, a `print` with no value attached renders as `print("text")` instead of `print()` — keeping generated code syntactically valid.
-- `modes` — list of mode definitions with optional `presentation`, `primarySource`, `preview`, `tileRender`
+- `modes` — list of mode definitions with optional `tileRender`
+- `presets` — named per-view mode configurations (toolbox / workspace / codespace / preview)
 - `categories` — optional groupings for the toolbox
 - `blocks` — flat array of block definitions
 
@@ -143,16 +147,28 @@ You always work with the **clean** identifier — it keys the `behaviors` map, t
 
 ## Mode Fields
 
-| Field           | Required       | Purpose                                                                      |
-|-----------------|----------------|------------------------------------------------------------------------------|
-| `name`          | yes            | Mode identifier                                                              |
-| `elements`      | yes            | Element names rendered on the toolbox tile                                   |
-| `presentation`  | no             | `"workspace"` (default) or `"codespace"`                                     |
-| `primarySource` | when codespace | Element name used as the primary view source (must be type `code`)           |
-| `preview`       | no             | Element name used by the preview editor (must be type `code`)                |
-| `tileRender`    | no             | Per-element map `{ name: "block" \| "text" }` for tile rendering override    |
+| Field        | Required | Purpose                                                                    |
+|--------------|----------|----------------------------------------------------------------------------|
+| `name`       | yes      | Mode identifier                                                            |
+| `elements`   | yes      | Element names rendered on the toolbox tile                                 |
+| `tileRender` | no       | Per-element map `{ name: "block" \| "text" }` for tile rendering override  |
 
-Validation at mount: `presentation: "codespace"` requires `primarySource`.
+A mode's **source element** — what a codespace or preview renders when the mode is assigned to it — is the first `type: "code"` element in its `elements` array.
+
+## Presets
+
+A **preset** assigns a mode to each view and drives which views are visible:
+
+| Field       | Required | Purpose                                                  |
+|-------------|----------|----------------------------------------------------------|
+| `name`      | yes      | Preset identifier                                        |
+| `label`     | no       | Display label (falls back to `name`)                     |
+| `toolbox`   | yes      | Mode rendered on the toolbox tiles                       |
+| `workspace` | no*      | Mode for the block workspace                             |
+| `codespace` | no*      | Mode whose source element the codespace renders          |
+| `preview`   | no       | Mode whose source element the read-only preview renders  |
+
+\* at least one of `workspace` / `codespace` must be set. Presence of a view key means the view is shown; workspace and codespace can be visible at the same time with different modes. Pass presets via the mount config (`presets`, initial `preset`, `onPresetApplied` for pane layout) and switch at runtime with `engine.applyPreset(name)`. The lower-level `engine.setModes({ workspaceMode?, toolboxMode?, codespaceMode?, previewMode? })` remains available.
 
 ## Template Syntax
 
@@ -209,10 +225,11 @@ await engine.mountCodespace();
 await engine.mountPreview(document.getElementById("preview")!);
 ```
 
-Switch modes at runtime:
+Switch presets or modes at runtime:
 
 ```ts
-engine.setModes({ workspaceMode: "code-python", toolboxMode: "python" });
+engine.applyPreset("hybrid");
+engine.setModes({ workspaceMode: "conceptual", codespaceMode: "syntactic-python" });
 ```
 
 Generate JavaScript from the workspace (via behaviors):
@@ -270,7 +287,7 @@ Block colours can be driven from CSS via a custom property:
 - ✅ Indent compounding — nested templates stack indents automatically
 - ✅ Multi-editor selection sync — block ↔ code editor ↔ codespace ↔ preview, with click-clears-on-empty-area
 - ✅ Block→line metadata in template codegen, plus statement-input body ranges
-- ✅ Definition-driven syntax highlighting — per-element `highlighting` rules (keywords, strings, comments, numbers + colors), element-name keyed (mode's `primarySource` / `preview` already names the language); CodeMirror `ViewPlugin` + `Decoration.mark`, runtime swap on `setModes()`
+- ✅ Definition-driven syntax highlighting — per-element `highlighting` rules (keywords, strings, comments, numbers + colors), element-name keyed (a mode's source element already names the language); CodeMirror `ViewPlugin` + `Decoration.mark`, runtime swap on `setModes()`
 - ✅ Drag value blocks (numbers, strings, variables) into value slots — both toolbox tiles and grip-drag inside the codespace; type-check is bypassed on drop so the rendered text behaves as text
 - ✅ Right-click (or Ctrl-click) drag inside the codespace, hover affordances (blue outline on editable values, grey background on enclosing block)
 - ✅ Inline field edits for atomic placeholders — text, number, dropdown fields editable through an overlay input; shadow auto-materialises to a real block on first edit
