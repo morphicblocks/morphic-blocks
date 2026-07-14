@@ -64,10 +64,10 @@ Library output is emitted to `packages/morphic-blocks/dist/`.
 ```text
 morphic-blocks/
 ├── apps/
-│   └── playground/            # Demo app: preset-driven view configurations
+│   └── sandbox/               # Dev app: preset-driven view configurations
 │       └── src/
 │           ├── definitions.json  # elements, modes, blocks
-│           ├── config.json       # playground-only level wiring
+│           ├── config.json       # sandbox-only level wiring
 │           ├── behaviors.ts      # executable code generators
 │           ├── main.ts
 │           └── modes/            # One CSS file per mode

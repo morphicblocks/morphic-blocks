@@ -14,7 +14,7 @@
           <select id="theme-select" aria-label="Select theme">
             <option value="dark">Dark</option>
             <option value="light">Light</option>
-            <option value="luh">LUH</option>
+            <option value="creme">Creme</option>
           </select>
           <button id="code-btn">Code</button>
           <button id="run-btn">Run Code</button>
@@ -22,22 +22,26 @@
       </header>
       <main id="main">
         <aside id="toolbox-panel"></aside>
+        <div class="gutter gutter-col" id="gutter-toolbox" hidden></div>
         <div id="workspace-area">
           <div id="editor-split">
             <div class="editor-pane" id="workspace-pane">
               <div class="pane-toolbar" id="workspace-toolbar"></div>
               <div id="workspace-container"></div>
             </div>
+            <div class="gutter gutter-col" id="gutter-codespace" hidden></div>
             <div class="editor-pane" id="codespace-pane">
               <div class="pane-toolbar" id="codespace-toolbar"></div>
               <div id="codespace-container"></div>
             </div>
+            <div class="gutter gutter-col" id="gutter-preview" hidden></div>
             <div class="editor-pane" id="preview-pane">
               <div class="pane-toolbar" id="preview-toolbar"></div>
               <div id="preview-container"></div>
             </div>
             <div id="code-editor"></div>
           </div>
+          <div class="gutter gutter-row" id="gutter-output" hidden></div>
           <div id="output-panel">
             <div id="output-header">
               <span>Output</span>

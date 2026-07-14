@@ -26,7 +26,7 @@
   --run-btn-text: #0f1117;
 }
 
-[data-theme="light"] {
+[data-theme="creme"] {
   --bg-dark: #fdf6e3;
   --bg-panel: #f0eada;
   --bg-deep: #f5efdc;
@@ -50,7 +50,7 @@
   --run-btn-text: #ffffff;
 }
 
-[data-theme="luh"] {
+[data-theme="light"] {
   --bg-dark: #ffffff;
   --bg-panel: #e5e5e5;
   --bg-deep: #ffffff;
@@ -74,43 +74,43 @@
   --run-btn-text: #ffffff;
 }
 
-[data-theme="luh"] #mode-buttons {
+[data-theme="light"] #mode-buttons {
   background: #00509B;
 }
 
-[data-theme="luh"] #mode-buttons button {
+[data-theme="light"] #mode-buttons button {
   color: #ffffff;
 }
 
-[data-theme="luh"] #mode-buttons button.active {
+[data-theme="light"] #mode-buttons button.active {
   background: #55bdcb;
   color: #ffffff;
 }
 
-[data-theme="luh"] #mode-buttons button:hover:not(.active) {
+[data-theme="light"] #mode-buttons button:hover:not(.active) {
   color: #ffffff;
   opacity: 0.8;
 }
 
-[data-theme="luh"] #code-btn {
+[data-theme="light"] #code-btn {
   background: #55bdcb;
   color: #ffffff;
   border-color: #55bdcb;
 }
 
-[data-theme="luh"] #code-btn:hover {
+[data-theme="light"] #code-btn:hover {
   background: #00509B;
   color: #ffffff;
   border-color: #00509B;
 }
 
-[data-theme="luh"] #code-btn.active {
+[data-theme="light"] #code-btn.active {
   background: #00509B;
   color: #ffffff;
   border-color: #00509B;
 }
 
-[data-theme="luh"] .morphic-element-icon img {
+[data-theme="light"] .morphic-element-icon img {
   filter: brightness(0) saturate(100%) invert(22%) sepia(95%) saturate(2168%) hue-rotate(198deg) brightness(94%) contrast(101%);
 }
 
@@ -274,6 +274,33 @@ body {
   display: flex;
   flex: 1;
   overflow: hidden;
+}
+
+/* ── Resizable gutters ──────────────────────── */
+
+.gutter {
+  flex: 0 0 auto;
+  background: transparent;
+  transition: background 0.12s ease;
+}
+
+.gutter[hidden] {
+  display: none;
+}
+
+.gutter-col {
+  width: 6px;
+  cursor: col-resize;
+}
+
+.gutter-row {
+  height: 6px;
+  cursor: row-resize;
+}
+
+.gutter:hover,
+.gutter:active {
+  background: var(--accent);
 }
 
 .editor-pane {
@@ -477,6 +504,6 @@ body {
 }
 
 /* Icons in toolbox tiles bake `color: white` into their SVGs; invert in light mode. */
-[data-theme="light"] .morphic-element-icon img {
+[data-theme="creme"] .morphic-element-icon img {
   filter: invert(1);
 }

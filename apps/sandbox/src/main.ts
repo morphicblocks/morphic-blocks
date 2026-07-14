@@ -1,5 +1,6 @@
 import * as Blockly from "blockly";
 import {
+  makeResizable,
   MorphicBlocks,
   type MorphicBlockDefinition,
   type MorphicElementTypeEntry,
@@ -13,6 +14,9 @@ import { behaviors } from "./behaviors";
 import "./style.css";
 
 const presets = definitions.presets as MorphicPresetDefinition[];
+
+// Enable drag-to-resize dividers between the panes.
+const RESIZABLE_PANES = true;
 
 // Auto-discover mode CSS files by filename
 const modeStyles = import.meta.glob("./modes/*.css", {
@@ -30,6 +34,11 @@ const previewContainer = document.getElementById("preview-container")!;
 const workspacePane = document.getElementById("workspace-pane")!;
 const codespacePane = document.getElementById("codespace-pane")!;
 const previewPane = document.getElementById("preview-pane")!;
+const outputPanel = document.getElementById("output-panel")!;
+const gutterToolbox = document.getElementById("gutter-toolbox")!;
+const gutterCodespace = document.getElementById("gutter-codespace")!;
+const gutterPreview = document.getElementById("gutter-preview")!;
+const gutterOutput = document.getElementById("gutter-output")!;
 const workspaceToolbarEl = document.getElementById("workspace-toolbar")!;
 const codespaceToolbarEl = document.getElementById("codespace-toolbar")!;
 const previewToolbarEl = document.getElementById("preview-toolbar")!;
@@ -42,9 +51,9 @@ const themeSelect = document.getElementById("theme-select") as HTMLSelectElement
 
 // ── Theme ──────────────────────────────────────────────
 
-type ThemeName = "dark" | "light" | "luh";
+type ThemeName = "dark" | "creme" | "light";
 
-const THEME_STORAGE_KEY = "morphic-playground-theme";
+const THEME_STORAGE_KEY = "morphic-sandbox-theme";
 
 const editorThemeFor = (name: ThemeName) => {
   if (name === "dark") {
@@ -56,7 +65,7 @@ const editorThemeFor = (name: ThemeName) => {
       selectionBackground: "#264f78",
     };
   }
-  if (name === "luh") {
+  if (name === "light") {
     return {
       background: "#ffffff",
       foreground: "#000000",
@@ -84,7 +93,7 @@ const previewThemeFor = (name: ThemeName) => {
       selectionBackground: "#264f78",
     };
   }
-  if (name === "luh") {
+  if (name === "light") {
     return {
       background: "#ffffff",
       foreground: "#000000",
@@ -104,8 +113,8 @@ const previewThemeFor = (name: ThemeName) => {
 
 function readInitialTheme(): ThemeName {
   const stored = localStorage.getItem(THEME_STORAGE_KEY);
-  if (stored === "dark" || stored === "light") return stored;
-  return "luh";
+  if (stored === "dark" || stored === "creme") return stored;
+  return "light";
 }
 
 let currentTheme: ThemeName = readInitialTheme();
@@ -137,6 +146,11 @@ const engine = new MorphicBlocks(
 );
 
 let currentPresetName = presets[0]?.name ?? "";
+
+// Remembered codespace width (px) from a divider drag; re-applied across
+// presets since a preset switch otherwise resets the codespace flex.
+// Declared before mount() because onPresetApplied fires during mount.
+let codespaceBasisPx: number | null = null;
 
 const workspace = engine.mount({
   workspaceContainer,
@@ -194,10 +208,22 @@ function handlePresetApplied(preset: MorphicPresetDefinition): void {
   currentPresetName = preset.name;
   const showWorkspace = !!preset.workspace;
   const showCodespace = !!preset.codespace;
+  const showPreview = !!preset.preview;
   workspacePane.style.display = showWorkspace ? "" : "none";
   codespacePane.style.display = showCodespace ? "" : "none";
-  codespacePane.style.flex = showCodespace && !showWorkspace ? "1 1 auto" : "";
-  previewPane.style.display = preset.preview ? "" : "none";
+  codespacePane.style.flex =
+    showCodespace && !showWorkspace
+      ? "1 1 auto"
+      : codespaceBasisPx != null
+        ? `0 0 ${codespaceBasisPx}px`
+        : "";
+  previewPane.style.display = showPreview ? "" : "none";
+
+  if (RESIZABLE_PANES) {
+    gutterCodespace.hidden = !(showWorkspace && showCodespace);
+    gutterPreview.hidden = !(showPreview && (showWorkspace || showCodespace));
+  }
+
   const ws = engine.getWorkspace();
   if (ws) Blockly.svgResize(ws);
   updateActiveButton();
@@ -227,6 +253,27 @@ const resizeObserver = new ResizeObserver(() => {
   Blockly.svgResize(workspace);
 });
 resizeObserver.observe(workspaceContainer);
+
+// Draggable pane dividers (opt-in). The toolbox and output gutters are always
+// present; the codespace/preview gutters are toggled per preset above.
+if (RESIZABLE_PANES) {
+  const reflow = (): void => Blockly.svgResize(workspace);
+  gutterToolbox.hidden = false;
+  gutterOutput.hidden = false;
+  makeResizable(gutterToolbox, { target: toolboxPanel, axis: "x", min: 160, onResize: reflow });
+  makeResizable(gutterCodespace, {
+    target: codespacePane,
+    axis: "x",
+    min: 200,
+    invert: true,
+    onResize: (size) => {
+      codespaceBasisPx = size;
+      reflow();
+    },
+  });
+  makeResizable(gutterPreview, { target: previewPane, axis: "x", min: 180, invert: true, onResize: reflow });
+  makeResizable(gutterOutput, { target: outputPanel, axis: "y", min: 80, invert: true, onResize: reflow });
+}
 
 // ── Code Editor Toggle ─────────────────────────────────
 

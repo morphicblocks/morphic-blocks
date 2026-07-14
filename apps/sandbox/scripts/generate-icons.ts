@@ -1,7 +1,7 @@
 /**
  * One-time generator: renders Material Design React icons used by the
- * playground into static SVG files under public/icons/. Run via
- *   bun run apps/playground/scripts/generate-icons.ts
+ * sandbox into static SVG files under public/icons/. Run via
+ *   bun run apps/sandbox/scripts/generate-icons.ts
  * Re-run only when adding/removing icons or changing color/size.
  */
 import { mkdir, writeFile } from "node:fs/promises";

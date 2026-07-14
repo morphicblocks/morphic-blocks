@@ -11,7 +11,7 @@ It is designed as a **reusable library** that developers embed in their own apps
 ```text
 morphic-blocks/
 ├── apps/
-│   └── playground/          # Demo app showing the framework in use
+│   └── sandbox/             # Dev app showing the framework in use
 ├── packages/
 │   └── morphic-blocks/      # Core framework (the library)
 └── CLAUDE.md
@@ -61,15 +61,15 @@ The namespace is an internal Blockly-type detail — it appears only in `Blockly
 - `"if ( %1 ) { %2 }"` → single line
 - `"if ( %1 ) {\n  %2\n}"` → multi-line with indent
 
-## Playground (`apps/playground`)
+## Sandbox (`apps/sandbox`)
 
-Demo app. Uses `import.meta.glob()` to auto-discover mode CSS files by filename. Seeds a demo workspace on load. Shows live code generation and execution.
+Local dev app. Uses `import.meta.glob()` to auto-discover mode CSS files by filename. Seeds a demo workspace on load. Shows live code generation and execution.
 
 ### Themes
 
-The playground ships three themes selectable via the header dropdown: `Dark`, `Light`, and `LUH`. Theme state persists in `localStorage` under `morphic-playground-theme`. CSS variables are defined per theme in `src/style.css` (`:root`, `[data-theme="light"]`, `[data-theme="luh"]`); editor and preview themes are wired in `src/main.ts`.
+The sandbox ships three themes selectable via the header dropdown: `Dark`, `Light`, and `Creme`. Theme state persists in `localStorage` under `morphic-sandbox-theme`. CSS variables are defined per theme in `src/style.css` (`:root` for Dark, `[data-theme="light"]`, `[data-theme="creme"]`); editor and preview themes are wired in `src/main.ts`. The `Creme` theme is a warm off-white (Solarized-style, `#fdf6e3`).
 
-**LUH theme — Leibniz University Hannover corporate identity colors.** Source: <https://www.corporate.uni-hannover.de/die-marke/farben>
+**Light theme — Leibniz University Hannover corporate identity colors.** Source: <https://www.corporate.uni-hannover.de/die-marke/farben>
 
 | Role | Hex |
 |---|---|
@@ -78,7 +78,7 @@ The playground ships three themes selectable via the header dropdown: `Dark`, `L
 | Typography | `#000000`, `#666666`, `#b2b2b2`, `#e5e5e5` |
 | Department (this lab) | `#55bdcb` |
 
-The LUH theme uses these colors plus white (`#ffffff`) for backgrounds. Greens (`#C8D317`, `#DEE574`) are reserved for explicit branding moments and are not currently used in the demo.
+The `Light` theme uses these colors plus white (`#ffffff`) for backgrounds. Greens (`#C8D317`, `#DEE574`) are reserved for explicit branding moments and are not currently used in the demo.
 
 ## Core Concept: Morphic Block
 

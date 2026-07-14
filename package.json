@@ -7,10 +7,10 @@
     "apps/*"
   ],
   "scripts": {
-    "dev": "bun run --cwd apps/playground dev",
-    "build": "bun run build:package && bun run build:playground",
+    "dev": "bun run --cwd apps/sandbox dev",
+    "build": "bun run build:package && bun run build:sandbox",
     "build:package": "bun run --cwd packages/morphic-blocks build",
-    "build:playground": "bun run --cwd apps/playground build",
-    "preview": "bun run --cwd apps/playground preview"
+    "build:sandbox": "bun run --cwd apps/sandbox build",
+    "preview": "bun run --cwd apps/sandbox preview"
   }
 }
