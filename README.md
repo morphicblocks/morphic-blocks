@@ -97,8 +97,23 @@ morphic-blocks/
     "title":      "text",
     "description":"text",
     "concept":    "code",
-    "python":     { "type": "code", "empty": { "Number": "0", "String": "\"text\"", "Boolean": "True",  "default": "None" } },
-    "javascript": { "type": "code", "empty": { "Number": "0", "String": "\"text\"", "Boolean": "true",  "default": "null" } }
+    "python": {
+      "type": "code",
+      "stringQuote": "\"",
+      "empty": {
+        "Number": { "shadow": "math_number", "fieldValues": { "NUM": "42" } },
+        "String": { "shadow": "text", "fieldValues": { "TEXT": "world" } },
+        "Boolean": { "shadow": "logic_boolean", "fieldValues": { "BOOL": "TRUE" } }
+      }
+    },
+    "javascript": {
+      "type": "code",
+      "stringQuote": "\"",
+      "empty": {
+        "Number": { "shadow": "math_number", "placeholder": "math_number", "fieldValues": { "NUM": "7" } },
+        "String": { "shadow": "text", "placeholder": "text", "fieldValues": { "TEXT": "hello" } }
+      }
+    }
   },
   "modes": [
     { "name": "iconic",     "elements": ["icon", "title", "description"] },
@@ -133,7 +148,7 @@ morphic-blocks/
 }
 ```
 
-- `elementTypes` — global registry mapping element names either to a bare type string (`"text" | "code" | "image"`) or to a config object `{ type, empty }`. The `empty` map provides per-language defaults for empty value slots, keyed by the slot's `check` (`"Number"`, `"String"`, `"Boolean"`, plus `"default"` for unchecked slots). With defaults set, a `print` with no value attached renders as `print("text")` instead of `print()` — keeping generated code syntactically valid.
+- `elementTypes` — global registry mapping element names either to a bare type string (`"text" | "code" | "image"`) or to a config object `{ type, empty?, stringQuote?, size? }`. The `empty` map provides per-language defaults for empty value slots, keyed by the slot's `check` (`"Number"`, `"String"`, `"Boolean"`, …). Each entry is a `{ shadow?, placeholder?, fieldValues? }` config: `shadow` attaches a ghosted, auto-restored Blockly shadow block; `placeholder` attaches a real (movable, deletable) block on render — placeholder wins when both are set; `fieldValues` seeds the block's fields. Per-slot `inputSlots[n].default` uses the same shape and takes priority. `stringQuote` wraps framework-supplied literals in `String` slots (`print("hello")` instead of `print(hello)`); `size` sets the display size for `image` elements given as file paths. With defaults set, a `print` with no value attached renders as `print("world")` instead of `print()` — keeping generated code syntactically valid.
 - `modes` — list of mode definitions (`{ name, elements }`)
 - `presets` — named per-view mode configurations (toolbox / workspace / codespace / preview)
 - `categories` — optional groupings for the toolbox
