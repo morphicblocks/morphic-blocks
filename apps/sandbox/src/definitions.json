@@ -324,10 +324,10 @@
         "icon": "icons/math_arithmetic.svg",
         "title": "Math",
         "description": "Performs a math operation on two values",
-        "concept": "%1 %2 %3",
-        "python": "%1 %2 %3",
-        "javascript": "%1 %2 %3",
-        "go": "%1 %2 %3"
+        "concept": "%1 %OP %2",
+        "python": "%1 %OP %2",
+        "javascript": "%1 %OP %2",
+        "go": "%1 %OP %2"
       },
       "inputSlots": {
         "1": {
@@ -342,10 +342,6 @@
           }
         },
         "2": {
-          "kind": "dummy",
-          "name": "OPERATOR"
-        },
-        "3": {
           "kind": "value",
           "name": "B",
           "default": {
@@ -354,6 +350,13 @@
               "NUM": "5"
             }
           }
+        }
+      },
+      "fields": {
+        "OP": {
+          "type": "dropdown",
+          "options": ["+", ["-", "−"], ["*", "×"], ["/", "÷"]],
+          "default": "+"
         }
       },
       "output": true,
@@ -366,10 +369,10 @@
         "icon": "icons/logic_compare.svg",
         "title": "Compare",
         "description": "Compares two values and returns a boolean",
-        "concept": "%1 %2 %3",
-        "python": "%1 %2 %3",
-        "javascript": "%1 %2 %3",
-        "go": "%1 %2 %3"
+        "concept": "%1 %OP %2",
+        "python": "%1 %OP %2",
+        "javascript": "%1 %OP %2",
+        "go": "%1 %OP %2"
       },
       "inputSlots": {
         "1": {
@@ -383,10 +386,6 @@
           }
         },
         "2": {
-          "kind": "dummy",
-          "name": "COMPARATOR"
-        },
-        "3": {
           "kind": "value",
           "name": "B",
           "default": {
@@ -395,6 +394,13 @@
               "NUM": "20"
             }
           }
+        }
+      },
+      "fields": {
+        "OP": {
+          "type": "dropdown",
+          "options": ["==", "!=", "<", ">"],
+          "default": "=="
         }
       },
       "output": "Boolean",
@@ -407,15 +413,15 @@
         "icon": "icons/m_math_number.svg",
         "title": "Number",
         "description": "A numeric value",
-        "concept": "%1",
-        "python": "%1",
-        "javascript": "%1",
-        "go": "%1"
+        "concept": "%NUM",
+        "python": "%NUM",
+        "javascript": "%NUM",
+        "go": "%NUM"
       },
-      "inputSlots": {
-        "1": {
-          "kind": "dummy",
-          "name": "CONTENT"
+      "fields": {
+        "NUM": {
+          "type": "number",
+          "default": 0
         }
       },
       "output": "Number"
@@ -427,15 +433,15 @@
         "icon": "icons/text_value.svg",
         "title": "Text",
         "description": "A text string value",
-        "concept": "Text %1",
-        "python": "\"%1\"",
-        "javascript": "\"%1\"",
-        "go": "\"%1\""
+        "concept": "Text %TEXT",
+        "python": "\"%TEXT\"",
+        "javascript": "\"%TEXT\"",
+        "go": "\"%TEXT\""
       },
-      "inputSlots": {
-        "1": {
-          "kind": "dummy",
-          "name": "CONTENT"
+      "fields": {
+        "TEXT": {
+          "type": "text",
+          "default": "hello"
         }
       },
       "output": "String"
@@ -447,15 +453,16 @@
         "icon": "icons/m_logic_boolean.svg",
         "title": "Boolean",
         "description": "A true or false value",
-        "concept": "%1",
-        "python": "%1",
-        "javascript": "%1",
-        "go": "%1"
+        "concept": "%BOOL",
+        "python": "%BOOL",
+        "javascript": "%BOOL",
+        "go": "%BOOL"
       },
-      "inputSlots": {
-        "1": {
-          "kind": "dummy",
-          "name": "CONTENT"
+      "fields": {
+        "BOOL": {
+          "type": "dropdown",
+          "options": ["true", "false"],
+          "default": "true"
         }
       },
       "output": "Boolean"
@@ -467,17 +474,13 @@
         "icon": "icons/var_declare.svg",
         "title": "Create Variable",
         "description": "Declares a new variable with a value",
-        "concept": "Create variable %1 = %2",
-        "python": "%1 = %2",
-        "javascript": "let %1 = %2;",
-        "go": "%1 := %2"
+        "concept": "Create variable %VAR = %1",
+        "python": "%VAR = %1",
+        "javascript": "let %VAR = %1;",
+        "go": "%VAR := %1"
       },
       "inputSlots": {
         "1": {
-          "kind": "dummy",
-          "name": "NAME"
-        },
-        "2": {
           "kind": "value",
           "name": "VAL",
           "default": {
@@ -486,6 +489,12 @@
               "NUM": "100"
             }
           }
+        }
+      },
+      "fields": {
+        "VAR": {
+          "type": "text",
+          "default": "x"
         }
       },
       "previousStatement": true,
@@ -499,15 +508,15 @@
         "icon": "icons/var_get.svg",
         "title": "Get Variable",
         "description": "Returns the value of a variable",
-        "concept": "Variable %1",
-        "python": "%1",
-        "javascript": "%1",
-        "go": "%1"
+        "concept": "Variable %VAR",
+        "python": "%VAR",
+        "javascript": "%VAR",
+        "go": "%VAR"
       },
-      "inputSlots": {
-        "1": {
-          "kind": "dummy",
-          "name": "CONTENT"
+      "fields": {
+        "VAR": {
+          "type": "text",
+          "default": "x"
         }
       },
       "output": true

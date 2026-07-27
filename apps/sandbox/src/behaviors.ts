@@ -40,131 +40,44 @@ export const behaviors: MorphicBehaviorMap = {
 
   // ── Operations ──────────────────────────────────────────
 
-  math_arithmetic: {
-    onViewApplied(block, { Blockly }) {
-      const input = block.getInput("OPERATOR");
-      if (input) {
-        input.appendField(
-          new Blockly.FieldDropdown([
-            ["+", "ADD"],
-            ["\u2212", "MINUS"],
-            ["\u00D7", "MULTIPLY"],
-            ["\u00F7", "DIVIDE"],
-          ]),
-          "OP",
-        );
-      }
-    },
-    generate(proxy) {
-      const ops: Record<string, string> = {
-        ADD: "+",
-        MINUS: "-",
-        MULTIPLY: "*",
-        DIVIDE: "/",
-      };
-      const opKey = raw(proxy.fields.OP, "ADD");
-      const op = ops[opKey] || "+";
-      return `${proxy.inputs.A || "0"} ${op} ${proxy.inputs.B || "0"}`;
-    },
+  // Fields (the OP dropdown) are declared in definitions.json; each option's
+  // value is the operator itself, so codegen just unwraps it. `raw()` strips
+  // the JSON quotes the codegen proxy adds to string field values.
+  math_arithmetic(proxy) {
+    const op = raw(proxy.fields.OP, "+");
+    return `${proxy.inputs.A || "0"} ${op} ${proxy.inputs.B || "0"}`;
   },
 
-  logic_compare: {
-    onViewApplied(block, { Blockly }) {
-      const input = block.getInput("COMPARATOR");
-      if (input) {
-        input.appendField(
-          new Blockly.FieldDropdown([
-            ["==", "EQ"],
-            ["!=", "NEQ"],
-            ["<", "LT"],
-            [">", "GT"],
-          ]),
-          "OP",
-        );
-      }
-    },
-    generate(proxy) {
-      const ops: Record<string, string> = {
-        EQ: "==",
-        NEQ: "!=",
-        LT: "<",
-        GT: ">",
-      };
-      const opKey = raw(proxy.fields.OP, "EQ");
-      const op = ops[opKey] || "==";
-      return `${proxy.inputs.A || "0"} ${op} ${proxy.inputs.B || "0"}`;
-    },
+  logic_compare(proxy) {
+    const op = raw(proxy.fields.OP, "==");
+    return `${proxy.inputs.A || "0"} ${op} ${proxy.inputs.B || "0"}`;
   },
 
   // ── Values ──────────────────────────────────────────────
 
-  m_math_number: {
-    onViewApplied(block, { Blockly }) {
-      const input = block.getInput("CONTENT");
-      if (input) {
-        input.appendField(new Blockly.FieldNumber(0), "NUM");
-      }
-    },
-    generate(proxy) {
-      return proxy.fields.NUM || "0";
-    },
+  m_math_number(proxy) {
+    // FieldNumber values are numeric — the codegen proxy emits them unquoted.
+    return proxy.fields.NUM || "0";
   },
 
-  text_value: {
-    onViewApplied(block, { Blockly }) {
-      const input = block.getInput("CONTENT");
-      if (input) {
-        input.appendField(new Blockly.FieldTextInput("hello"), "TEXT");
-      }
-    },
-    generate(proxy) {
-      // proxy.fields.TEXT is already JSON-quoted by the codegen proxy
-      return proxy.fields.TEXT || '""';
-    },
+  text_value(proxy) {
+    // proxy.fields.TEXT is already JSON-quoted by the codegen proxy
+    return proxy.fields.TEXT || '""';
   },
 
-  m_logic_boolean: {
-    onViewApplied(block, { Blockly }) {
-      const input = block.getInput("CONTENT");
-      if (input) {
-        input.appendField(
-          new Blockly.FieldDropdown([
-            ["true", "TRUE"],
-            ["false", "FALSE"],
-          ]),
-          "BOOL",
-        );
-      }
-    },
-    generate(proxy) {
-      return proxy.fields.BOOL === "true" ? "true" : "false";
-    },
+  m_logic_boolean(proxy) {
+    // The dropdown option value is already "true" / "false".
+    return raw(proxy.fields.BOOL, "false");
   },
 
   // ── Variables ───────────────────────────────────────────
 
-  var_declare: {
-    onViewApplied(block, { Blockly }) {
-      const input = block.getInput("NAME");
-      if (input) {
-        input.appendField(new Blockly.FieldTextInput("x"), "VAR");
-      }
-    },
-    generate(proxy) {
-      const varName = raw(proxy.fields.VAR, "x");
-      return `let ${varName} = ${proxy.inputs.VAL || "undefined"};\n`;
-    },
+  var_declare(proxy) {
+    const varName = raw(proxy.fields.VAR, "x");
+    return `let ${varName} = ${proxy.inputs.VAL || "undefined"};\n`;
   },
 
-  var_get: {
-    onViewApplied(block, { Blockly }) {
-      const input = block.getInput("CONTENT");
-      if (input) {
-        input.appendField(new Blockly.FieldTextInput("x"), "VAR");
-      }
-    },
-    generate(proxy) {
-      return raw(proxy.fields.VAR, "x");
-    },
+  var_get(proxy) {
+    return raw(proxy.fields.VAR, "x");
   },
 };
