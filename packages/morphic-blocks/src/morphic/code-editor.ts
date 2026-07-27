@@ -56,6 +56,25 @@ const DEFAULT_THEME: Required<MorphicCodeEditorTheme> = {
 const mix = (color: string, pct: number) =>
   `color-mix(in srgb, ${color} ${pct}%, transparent)`;
 
+/**
+ * Inject the framework-shipped code-editor CSS once per document. Mirrors
+ * `MorphicStyleManager.ensureToolbarStyles()`: the stylesheet lives at
+ * `code-editor.css` and is imported as a string via Vite's `?inline` query so
+ * consumers don't need a separate CSS import. Holds only theme-independent
+ * rules; theme-colour-derived styles stay in `buildThemeExtension()`.
+ */
+let codeEditorStylesLoaded = false;
+async function ensureCodeEditorStyles(): Promise<void> {
+  if (codeEditorStylesLoaded) return;
+  codeEditorStylesLoaded = true;
+  const mod = await import("./code-editor.css?inline");
+  const css = (mod as { default: string }).default;
+  const styleEl = document.createElement("style");
+  styleEl.dataset.morphicSource = "code-editor";
+  styleEl.textContent = css;
+  document.head.appendChild(styleEl);
+}
+
 const SYNC_DEBOUNCE_MS = 150;
 
 /** Blockly event types that can change generated code. */
@@ -111,17 +130,9 @@ function buildThemeExtension(
     "&.cm-focused .cm-selectionBackground, .cm-selectionBackground": {
       backgroundColor: `${t.selectionBackground} !important`,
     },
-    ".morphic-placeholder-default, .morphic-placeholder-set": {
-      borderRadius: "2px",
-      // Pad the mark so the click target stays large; the editable-hover
-      // outline (managed as a separate decoration layer) only appears on the
-      // single innermost editable placeholder under the cursor.
-      padding: "0 0.25em",
-    },
-    ".morphic-placeholder-default": {
-      fontStyle: "italic",
-      opacity: "0.55",
-    },
+    // Note: theme-independent placeholder-marker styling (border-radius,
+    // padding, italic/opacity) lives in code-editor.css, injected once by
+    // ensureCodeEditorStyles(). Only theme-colour-derived rules remain here.
     ".morphic-delete-marker": {
       color: mix(t.foreground, 70),
       backgroundColor: mix(t.foreground, 12),
@@ -372,6 +383,7 @@ export class MorphicCodeEditor {
   }
 
   async mount(): Promise<void> {
+    void ensureCodeEditorStyles();
     this.cm = await loadCodeMirror();
     const { view: cmView, state: cmState, langJs } = this.cm;
 

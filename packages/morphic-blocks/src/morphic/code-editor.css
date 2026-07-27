@@ -1,0 +1,24 @@
+/*
+ * Static structural styles for the code editor / codespace.
+ *
+ * Only theme-independent rules live here — colours that depend on the runtime
+ * editor theme (background, gutters, selection, delete/grip marker tints) stay
+ * in `buildThemeExtension()` in code-editor.ts, since they are computed from
+ * the active MorphicCodeEditorTheme.
+ *
+ * These class names are applied to CodeMirror decorations rendered inside the
+ * editor content, so a plain global stylesheet targets them correctly.
+ */
+
+.morphic-placeholder-default,
+.morphic-placeholder-set {
+  border-radius: 2px;
+  /* Small horizontal padding keeps the inline-edit click target usable without
+     making adjacent editable tokens (e.g. `3 / 5`) read as widely spaced. */
+  padding: 0 0.2em;
+}
+
+.morphic-placeholder-default {
+  font-style: italic;
+  opacity: 0.55;
+}
