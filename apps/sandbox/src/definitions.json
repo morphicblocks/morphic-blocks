@@ -37,9 +37,9 @@
           }
         },
         "Boolean": {
-          "shadow": "logic_boolean",
+          "shadow": "m_logic_boolean",
           "fieldValues": {
-            "BOOL": "TRUE"
+            "BOOL": "true"
           }
         }
       }
@@ -63,10 +63,10 @@
           }
         },
         "Boolean": {
-          "shadow": "logic_boolean",
-          "placeholder": "logic_boolean",
+          "shadow": "m_logic_boolean",
+          "placeholder": "m_logic_boolean",
           "fieldValues": {
-            "BOOL": "FALSE"
+            "BOOL": "false"
           }
         }
       }
@@ -82,9 +82,9 @@
           }
         },
         "Boolean": {
-          "placeholder": "logic_boolean",
+          "placeholder": "m_logic_boolean",
           "fieldValues": {
-            "BOOL": "TRUE"
+            "BOOL": "true"
           }
         }
       }
