@@ -85,8 +85,38 @@ export interface MorphicElementTypeConfig {
 /** Either a bare type or a config object with extras. */
 export type MorphicElementTypeEntry = MorphicElementType | MorphicElementTypeConfig;
 export type MorphicConnectionSpec = boolean | string | string[];
-export type MorphicInputKind = "value" | "statement" | "dummy";
+export type MorphicInputKind = "value" | "statement";
 export type MorphicInputAlign = "left" | "centre" | "right";
+
+/**
+ * One choice in a declared `dropdown` field. The `value` is the source of
+ * truth: it is what the block *generates* and what text/preview views render.
+ * The optional `label` is a display-only override shown on the workspace block
+ * (e.g. show `÷` while generating `/`); when omitted the value is shown.
+ *
+ * Forms:
+ *   - `"=="`               → value = label = `"=="`
+ *   - `["-", "−"]`         → value `"-"`, shown as `"−"` on the block
+ *   - `{ value, label? }`  → explicit object form
+ */
+export type MorphicDropdownOption =
+  | string
+  | [value: string, label: string]
+  | { value: string; label?: string };
+
+/**
+ * A field declared directly on a block (rendered at the `%FIELDNAME` token
+ * position). Lets dropdown / text / number / checkbox fields live in the
+ * definitions file instead of requiring a behavior's `onViewApplied`. Fields
+ * outside these four (variables, colour, plugin/custom) still use
+ * `onViewApplied` — the `%FIELDNAME` token is skipped when no declaration
+ * exists, leaving the behavior to supply the field.
+ */
+export type MorphicFieldDefinition =
+  | { type: "dropdown"; options: MorphicDropdownOption[]; default?: string }
+  | { type: "text"; default?: string }
+  | { type: "number"; default?: number; min?: number; max?: number; precision?: number }
+  | { type: "checkbox"; default?: boolean };
 
 export interface MorphicInputSlotDefinition {
   kind?: MorphicInputKind;
@@ -160,6 +190,14 @@ export interface MorphicBlockDefinition {
    * Applies to the workspace ("block") element template.
    */
   inputSlots?: Record<string, MorphicInputSlotDefinition>;
+  /**
+   * Inline field definitions keyed by `%FIELDNAME` token name (uppercase, e.g.
+   * "OP", "NUM", "TEXT"). Rendered at the token position on the workspace block
+   * and read by text/preview views and codegen. Types outside the built-in four
+   * (dropdown / text / number / checkbox) are supplied by a behavior's
+   * `onViewApplied` instead.
+   */
+  fields?: Record<string, MorphicFieldDefinition>;
   color?: number | string;
   output?: MorphicConnectionSpec;
   previousStatement?: MorphicConnectionSpec;

@@ -17,7 +17,9 @@ import {
 import type {
   MorphicBlockDefinition,
   MorphicConnectionSpec,
+  MorphicDropdownOption,
   MorphicElementTypeEntry,
+  MorphicFieldDefinition,
   MorphicInputSlotDefinition,
   MorphicModeName,
   MorphicRenderContext,
@@ -182,7 +184,7 @@ function renderTemplate(
   view: MorphicResolvedView,
 ): void {
   const tokens = parseTemplate(view.template);
-  const pendingFields: Array<string | Blockly.FieldImage> = [];
+  const pendingFields: PendingField[] = [];
   const createdPlaceholders = new Set<number>();
 
   for (const token of tokens) {
@@ -202,7 +204,12 @@ function renderTemplate(
     }
 
     if (token.kind === "field") {
-      // Fields are created by behaviors' onViewApplied, not by the template.
+      // Declared fields are built here at the token position. Undeclared tokens
+      // are left for a behavior's onViewApplied to supply (custom/plugin fields).
+      const fieldDef = definition.fields?.[token.name];
+      if (fieldDef) {
+        pendingFields.push({ field: createFieldFromDefinition(fieldDef), name: token.name });
+      }
       continue;
     }
 
@@ -264,9 +271,7 @@ function createInputFromSlot(
   const kind = slot?.kind ?? "value";
   let input: Blockly.Input;
 
-  if (kind === "dummy") {
-    input = block.appendDummyInput(inputName);
-  } else if (kind === "statement") {
+  if (kind === "statement") {
     input = block.appendStatementInput(inputName);
     if (slot?.check) {
       input.setCheck(slot.check);
@@ -295,14 +300,60 @@ function resolveAlign(align: MorphicInputSlotDefinition["align"]): number {
   return ALIGN_LEFT;
 }
 
-function flushPendingFields(
-  input: Blockly.Input,
-  fields: Array<string | Blockly.FieldImage>,
-): void {
+/**
+ * A field queued for the next Blockly input row. Strings become labels,
+ * `FieldImage`s become images (both nameless), and `{ field, name }` entries
+ * are declared fields appended under their `%FIELDNAME` token name.
+ */
+type PendingField =
+  | string
+  | Blockly.FieldImage
+  | { field: Blockly.Field; name: string };
+
+function flushPendingFields(input: Blockly.Input, fields: PendingField[]): void {
   for (const field of fields) {
-    input.appendField(field);
+    if (typeof field === "object" && "field" in field) {
+      input.appendField(field.field, field.name);
+    } else {
+      input.appendField(field);
+    }
   }
   fields.length = 0;
+}
+
+/**
+ * Build a Blockly field from a declarative `fields` entry. Covers the four
+ * built-in types; the dropdown maps each option to Blockly's `[displayText,
+ * value]` tuple, where the display text is the option's `label` (falling back
+ * to its `value`) — so the block shows the label while `getValue()` stays the
+ * value used by text views and codegen.
+ */
+function createFieldFromDefinition(def: MorphicFieldDefinition): Blockly.Field {
+  switch (def.type) {
+    case "dropdown": {
+      const options = def.options.map(toBlocklyDropdownOption);
+      const field = new Blockly.FieldDropdown(options);
+      if (def.default !== undefined) field.setValue(def.default);
+      return field;
+    }
+    case "number":
+      return new Blockly.FieldNumber(def.default ?? 0, def.min, def.max, def.precision);
+    case "checkbox":
+      return new Blockly.FieldCheckbox(def.default ? "TRUE" : "FALSE");
+    case "text":
+    default:
+      return new Blockly.FieldTextInput(def.default ?? "");
+  }
+}
+
+/** Normalise a declared dropdown option to Blockly's `[displayText, value]`. */
+function toBlocklyDropdownOption(option: MorphicDropdownOption): [string, string] {
+  if (typeof option === "string") return [option, option];
+  if (Array.isArray(option)) {
+    const [value, label] = option;
+    return [label ?? value, value];
+  }
+  return [option.label ?? option.value, option.value];
 }
 
 function captureConnectedChildren(

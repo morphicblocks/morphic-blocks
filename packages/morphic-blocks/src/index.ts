@@ -33,6 +33,8 @@ export type {
   MorphicCodeGenerationResult,
   MorphicCodeMetadata,
   MorphicConnectionSpec,
+  MorphicDropdownOption,
+  MorphicFieldDefinition,
   MorphicInputAlign,
   MorphicInputKind,
   MorphicInputSlotDefinition,

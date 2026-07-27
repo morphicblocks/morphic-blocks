@@ -455,6 +455,12 @@ function detectAtomicEdit(block: Blockly.Block): MorphicPlaceholderEditTarget | 
 
 function readFieldText(field: Blockly.Field | null | undefined): string {
   if (!field) return "";
+  // Dropdowns render their *value* in text/preview views, not their display
+  // label: the label (e.g. `÷`) is a block-only affordance, while the value
+  // (e.g. `/`) is the source token that keeps text modes valid code.
+  if (field instanceof Blockly.FieldDropdown) {
+    return String(field.getValue());
+  }
   const getText = (field as { getText?: () => string }).getText;
   return typeof getText === "function" ? getText.call(field) : String(field.getValue());
 }
