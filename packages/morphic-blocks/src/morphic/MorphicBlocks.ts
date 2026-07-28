@@ -277,6 +277,7 @@ export class MorphicBlocks extends EventTarget {
       elementTypes: this.elementTypes,
       behaviors: this.behaviors,
       modes: config.modes,
+      presets: config.presets,
       highlighting: config.highlighting,
       categories: config.toolbox?.categories,
     });

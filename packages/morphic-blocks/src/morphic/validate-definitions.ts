@@ -9,6 +9,7 @@ import type {
   MorphicElementTypeEntry,
   MorphicHighlightDefinition,
   MorphicModeDefinition,
+  MorphicPresetDefinition,
   MorphicToolboxCategory,
 } from "./types";
 
@@ -22,6 +23,7 @@ export interface ValidateDefinitionsArgs {
   elementTypes: Record<string, MorphicElementTypeEntry>;
   behaviors: MorphicBehaviorMap;
   modes?: MorphicModeDefinition[];
+  presets?: MorphicPresetDefinition[];
   highlighting?: Record<string, MorphicHighlightDefinition>;
   categories?: MorphicToolboxCategory[];
 }
@@ -45,7 +47,7 @@ export interface DefinitionValidationResult {
 export function validateDefinitions(
   args: ValidateDefinitionsArgs,
 ): DefinitionValidationResult {
-  const { definitions, elementTypes, behaviors, modes, highlighting, categories } = args;
+  const { definitions, elementTypes, behaviors, modes, presets, highlighting, categories } = args;
   const errors: string[] = [];
   const warnings: string[] = [];
 
@@ -200,6 +202,27 @@ export function validateDefinitions(
     if (!codeElementNames.has(key)) {
       warnings.push(
         `highlighting["${key}"] is not a code element — its rules will never apply.`,
+      );
+    }
+  }
+
+  // (10) Cross-namespace name collisions. A name reused as an element, a mode,
+  // and/or a preset is legal (they're separate maps) but easy to confuse — e.g.
+  // a mode named after its source element makes `python` mean three things.
+  const namespacesByName = new Map<string, Set<string>>();
+  const noteName = (name: string, namespace: string): void => {
+    const set = namespacesByName.get(name) ?? new Set<string>();
+    set.add(namespace);
+    namespacesByName.set(name, set);
+  };
+  for (const name of declaredElementNames) noteName(name, "element");
+  for (const mode of modes ?? []) noteName(mode.name, "mode");
+  for (const preset of presets ?? []) noteName(preset.name, "preset");
+  for (const [name, namespaces] of namespacesByName) {
+    if (namespaces.size > 1) {
+      warnings.push(
+        `Name "${name}" is used as ${[...namespaces].sort().join(" and ")} — reusing a name ` +
+          `across element / mode / preset is allowed but confusing; consider distinct names.`,
       );
     }
   }
