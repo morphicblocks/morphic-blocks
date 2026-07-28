@@ -15,6 +15,7 @@ import { generateJavaScriptFromWorkspace, generateJavaScriptWithMetadataFromWork
 import { generateTextFromWorkspace } from "./template-codegen";
 import { MorphicSelectionSync } from "./selection-sync";
 import { createDefinitionMap } from "./definitions";
+import { validateDefinitions } from "./validate-definitions";
 import { MorphicStyleManager } from "./styles";
 import { toModeClassToken } from "./template";
 import { DRAG_DATA_KEY, MorphicToolboxCanvas } from "./toolbox-canvas";
@@ -146,6 +147,9 @@ export class MorphicBlocks extends EventTarget {
       ),
     ];
 
+    // Definitions: static cross-field validation (silent-failure guards).
+    this.validateDefinitions(config);
+
     // Presets: validate and resolve the initial one (drives the initial modes).
     this.validatePresets(config);
     const initialPreset = config.presets?.length
@@ -262,6 +266,32 @@ export class MorphicBlocks extends EventTarget {
   }
 
   /** Validate preset definitions against modes, element types, and containers. */
+  /**
+   * Static validation of the block definitions against the mount config. Warns
+   * on degraded / dead config and throws (listing every structural problem at
+   * once) on breakage that guarantees wrong output. See `validate-definitions`.
+   */
+  private validateDefinitions(config: MorphicMountConfig): void {
+    const { errors, warnings } = validateDefinitions({
+      definitions: this.definitions,
+      elementTypes: this.elementTypes,
+      behaviors: this.behaviors,
+      modes: config.modes,
+      highlighting: config.highlighting,
+      categories: config.toolbox?.categories,
+    });
+    if (warnings.length > 0) {
+      console.warn(
+        `[MorphicBlocks] Definition warnings:\n- ${warnings.join("\n- ")}`,
+      );
+    }
+    if (errors.length > 0) {
+      throw new Error(
+        `[MorphicBlocks] Invalid definitions:\n- ${errors.join("\n- ")}`,
+      );
+    }
+  }
+
   private validatePresets(config: MorphicMountConfig): void {
     const presets = config.presets ?? [];
     if (presets.length === 0) return;

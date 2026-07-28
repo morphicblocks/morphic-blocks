@@ -8,6 +8,11 @@ export type {
   MorphicToolbarHandle,
 } from "./morphic/toolbar";
 export { makeResizable } from "./morphic/resize";
+export { validateDefinitions } from "./morphic/validate-definitions";
+export type {
+  ValidateDefinitionsArgs,
+  DefinitionValidationResult,
+} from "./morphic/validate-definitions";
 export type {
   MorphicResizeOptions,
   MorphicResizeHandle,
