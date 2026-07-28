@@ -14,7 +14,7 @@ import { resolveBlocklyType, toBlocklyType, toCleanId } from "./block-namespace"
 import { generateJavaScriptFromWorkspace, generateJavaScriptWithMetadataFromWorkspace } from "./codegen";
 import { generateTextFromWorkspace } from "./template-codegen";
 import { MorphicSelectionSync } from "./selection-sync";
-import { collectAvailableModes, createDefinitionMap } from "./definitions";
+import { createDefinitionMap } from "./definitions";
 import { MorphicStyleManager } from "./styles";
 import { toModeClassToken } from "./template";
 import { DRAG_DATA_KEY, MorphicToolboxCanvas } from "./toolbox-canvas";
@@ -156,9 +156,10 @@ export class MorphicBlocks extends EventTarget {
     }
 
     // Resolve default modes: fallback to first discovered mode or "default"
+    const declaredModeNames = (config.modes ?? []).map((mode) => mode.name);
     const availableModeNames = mergedModeStyles.map((s) => s.mode);
     const defaultMode =
-      availableModeNames[0] ?? this.getAvailableModes()[0] ?? "default";
+      availableModeNames[0] ?? declaredModeNames[0] ?? "default";
     const initialToolbox = initialPreset
       ? normalizePresetToolbox(initialPreset.toolbox)
       : undefined;
@@ -191,10 +192,7 @@ export class MorphicBlocks extends EventTarget {
 
     this.mountConfig = resolvedConfig;
 
-    this.styles.validateModeCoverage(
-      mergedModeStyles,
-      this.getAvailableModes(),
-    );
+    this.styles.validateModeCoverage(mergedModeStyles, declaredModeNames);
     if (resolvedConfig.modes?.length) {
       this.styles.ensureModeVisibilityStyles(resolvedConfig.modes);
     }
@@ -405,8 +403,13 @@ export class MorphicBlocks extends EventTarget {
     return this.workspace;
   }
 
+  /**
+   * The declared mode names (`modes[].name` from the mount config). Empty until
+   * `mount()` runs. Note: this is *modes*, not element names — an element like
+   * `icon` or `python` is not a mode unless a mode is named after it.
+   */
   public getAvailableModes(): MorphicModeName[] {
-    return collectAvailableModes(this.definitions.values());
+    return (this.mountConfig?.modes ?? []).map((mode) => mode.name);
   }
 
   /** Current workspace mode name, or `undefined` if not mounted. */

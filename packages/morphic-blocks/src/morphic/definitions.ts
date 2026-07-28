@@ -1,4 +1,4 @@
-import type { MorphicBlockDefinition, MorphicModeName } from "./types";
+import type { MorphicBlockDefinition } from "./types";
 
 export function createDefinitionMap(
   definitions: MorphicBlockDefinition[] | MorphicBlockDefinition
@@ -14,15 +14,6 @@ export function createDefinitionMap(
   return map;
 }
 
-export function collectAvailableModes(definitions: Iterable<MorphicBlockDefinition>): MorphicModeName[] {
-  const modes = new Set<string>();
-  for (const definition of definitions) {
-    for (const elementName of Object.keys(definition.elements)) {
-      modes.add(elementName);
-    }
-  }
-  return [...modes];
-}
 
 function assertDefinition(
   definition: MorphicBlockDefinition,
