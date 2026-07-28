@@ -1,29 +1,24 @@
 /* =============================================
-   Mode: Hybrid — two code elements in one tile
-   (concept rendered as block, python as text)
+   Mode: Syntax (Python) — code-style tile and workspace blocks
    ============================================= */
 
-.morphic-block.morphic-mode-hybrid {
+.morphic-block.morphic-mode-syntax-py {
   padding: 12px 16px;
 }
 
-.morphic-mode-hybrid > .morphic-element-title {
+.morphic-mode-syntax-py > .morphic-element-title {
   font-size: 14px;
   font-weight: 600;
   margin-bottom: 6px;
   font-family: system-ui, sans-serif;
 }
 
-.morphic-mode-hybrid > .morphic-element-concept {
-  margin-bottom: 6px;
-}
-
-.morphic-mode-hybrid > .morphic-element-python {
+.morphic-mode-syntax-py > .morphic-element-python {
   font-size: 13px;
   font-family: "Consolas", "Fira Code", monospace;
   color: var(--tile-muted-strong);
 }
 
-.morphic-workspace-root.morphic-mode-hybrid .blocklyText {
+.morphic-workspace-root.morphic-mode-syntax-py .blocklyText {
   font-family: "Consolas", "Fira Code", monospace;
 }

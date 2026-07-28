@@ -1,24 +1,29 @@
 /* =============================================
-   Mode: Python — code-style tile and workspace blocks
+   Mode: Mixed — two code elements in one tile
+   (concept rendered as block, python as text)
    ============================================= */
 
-.morphic-block.morphic-mode-python {
+.morphic-block.morphic-mode-mixed {
   padding: 12px 16px;
 }
 
-.morphic-mode-python > .morphic-element-title {
+.morphic-mode-mixed > .morphic-element-title {
   font-size: 14px;
   font-weight: 600;
   margin-bottom: 6px;
   font-family: system-ui, sans-serif;
 }
 
-.morphic-mode-python > .morphic-element-python {
+.morphic-mode-mixed > .morphic-element-concept {
+  margin-bottom: 6px;
+}
+
+.morphic-mode-mixed > .morphic-element-python {
   font-size: 13px;
   font-family: "Consolas", "Fira Code", monospace;
   color: var(--tile-muted-strong);
 }
 
-.morphic-workspace-root.morphic-mode-python .blocklyText {
+.morphic-workspace-root.morphic-mode-mixed .blocklyText {
   font-family: "Consolas", "Fira Code", monospace;
 }

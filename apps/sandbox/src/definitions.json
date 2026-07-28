@@ -92,32 +92,32 @@
   },
   "modes": [
     {
-      "name": "iconic",
+      "name": "simple",
       "elements": ["icon", "title", "description"]
     },
     {
-      "name": "conceptual",
+      "name": "pseudo",
       "elements": ["title", "concept"]
     },
     {
-      "name": "python",
+      "name": "syntax-py",
       "elements": ["title", "python"]
     },
     {
-      "name": "javascript",
+      "name": "syntax-js",
       "elements": ["title", "javascript"]
     },
     {
-      "name": "hybrid",
+      "name": "mixed",
       "elements": ["title", "concept", "python"]
     }
   ],
   "presets": [
-    { "name": "iconic", "label": "Iconic", "toolbox": "iconic", "workspace": "conceptual" },
-    { "name": "conceptual", "label": "Conceptual", "toolbox": "conceptual", "workspace": "conceptual", "preview": "python" },
-    { "name": "syntactic", "label": "Syntactic", "toolbox": "conceptual", "workspace": "python", "preview": "python" },
-    { "name": "textual", "label": "Textual", "toolbox": { "mode": "python", "render": { "python": "text" } }, "codespace": "python", "preview": "javascript" },
-    { "name": "hybrid", "label": "Hybrid", "toolbox": { "mode": "hybrid", "render": { "concept": "block", "python": "text" } }, "workspace": "conceptual", "codespace": "python", "preview": "javascript" }
+    { "name": "iconic", "label": "Iconic", "toolbox": "simple", "workspace": "pseudo" },
+    { "name": "conceptual", "label": "Conceptual", "toolbox": "pseudo", "workspace": "pseudo", "preview": "syntax-py" },
+    { "name": "syntactic", "label": "Syntactic", "toolbox": "pseudo", "workspace": "syntax-py", "preview": "syntax-py" },
+    { "name": "textual", "label": "Textual", "toolbox": { "mode": "syntax-py", "render": { "python": "text" } }, "codespace": "syntax-py", "preview": "syntax-js" },
+    { "name": "hybrid", "label": "Hybrid", "toolbox": { "mode": "mixed", "render": { "concept": "block", "python": "text" } }, "workspace": "pseudo", "codespace": "syntax-py", "preview": "syntax-js" }
   ],
   "highlighting": {
     "concept": {
