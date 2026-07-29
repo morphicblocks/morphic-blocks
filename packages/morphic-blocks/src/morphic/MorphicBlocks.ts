@@ -2157,6 +2157,15 @@ export class MorphicBlocks extends EventTarget {
     mode: MorphicModeName,
     context: MorphicRenderContext,
   ): void {
+    // A disposed block can linger in a stale `getAllBlocks()` snapshot: when a
+    // parent re-renders, `removeInputs` disposes its empty-default shadow and
+    // `attachEmptyDefaults` creates a fresh one, but the snapshot the caller is
+    // iterating still holds the dead shadow. Rendering it would run
+    // `FieldDropdown.init()` on a dead block, where `getConstants()` is null and
+    // Blockly throws. Skip it — the live replacement is rendered on creation.
+    if (block.isDeadOrDying()) {
+      return;
+    }
     const category = this.blockCategoryIndex.get(definition.identifier);
 
     // Apply category color before applyBlockView so the internal render() uses it.
