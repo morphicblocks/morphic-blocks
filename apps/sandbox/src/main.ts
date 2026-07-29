@@ -2,18 +2,18 @@ import * as Blockly from "blockly";
 import {
   makeResizable,
   MorphicBlocks,
-  type MorphicBlockDefinition,
-  type MorphicElementTypeEntry,
-  type MorphicHighlightDefinition,
-  type MorphicModeDefinition,
+  type MorphicBlocksFormat,
   type MorphicPresetDefinition,
-  type MorphicToolboxCategory,
 } from "morphic-blocks";
-import definitions from "./definitions.json";
+import definitionsData from "./definitions.json";
 import { behaviors } from "./behaviors";
 import "./style.css";
 
-const presets = definitions.presets as MorphicPresetDefinition[];
+// The whole definitions file, typed once. A JSON import infers `"code"` as
+// `string` (not the element-type union), so one assertion is unavoidable here —
+// it replaces the per-field casts the split API used to require.
+const definitions = definitionsData as unknown as MorphicBlocksFormat;
+const presets = definitions.presets ?? [];
 
 // Enable drag-to-resize dividers between the panes.
 const RESIZABLE_PANES = true;
@@ -139,11 +139,7 @@ themeSelect.addEventListener("change", () => {
 
 // ── Engine Setup ───────────────────────────────────────
 
-const engine = new MorphicBlocks(
-  definitions.blocks as unknown as MorphicBlockDefinition[],
-  behaviors,
-  definitions.elementTypes as Record<string, MorphicElementTypeEntry>,
-);
+const engine = new MorphicBlocks(definitions, behaviors);
 
 let currentPresetName = presets[0]?.name ?? "";
 
@@ -155,16 +151,10 @@ let codespaceBasisPx: number | null = null;
 const workspace = engine.mount({
   workspaceContainer,
   codespaceContainer,
-  presets,
   preset: currentPresetName,
   onPresetApplied: handlePresetApplied,
   modesFolder: modeStyles,
   canvasToolbox: true,
-  modes: definitions.modes as MorphicModeDefinition[],
-  highlighting: definitions.highlighting as Record<string, MorphicHighlightDefinition>,
-  toolbox: {
-    categories: definitions.categories as MorphicToolboxCategory[],
-  },
   blockly: {
     scrollbars: true,
     trashcan: true,
@@ -185,9 +175,7 @@ const workspace = engine.mount({
   },
 });
 
-engine.mountToolbox(toolboxPanel, {
-  categories: definitions.categories as MorphicToolboxCategory[],
-});
+engine.mountToolbox(toolboxPanel);
 
 Promise.all([
   engine.mountCodeEditor(codeEditorContainer, { theme: editorThemeFor(currentTheme) }),
