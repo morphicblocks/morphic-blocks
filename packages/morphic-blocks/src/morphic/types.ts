@@ -239,6 +239,10 @@ export interface MorphicHighlightDefinition {
 
 /** Top-level format for a definitions JSON file. */
 export interface MorphicBlocksFormat {
+  /** JSON Schema reference for editor tooling. Ignored by the framework. */
+  $schema?: string;
+  /** Definitions format version. Current: 1. */
+  version?: number;
   /**
    * Global element type registry.
    * Maps each element name to either a bare type ("text" | "code" | "image")

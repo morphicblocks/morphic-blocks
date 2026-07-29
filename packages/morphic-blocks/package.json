@@ -14,7 +14,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "definitions.schema.json"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json && vite build"

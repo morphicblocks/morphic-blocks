@@ -1,0 +1,273 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphicblocks.com/definitions.schema.json",
+  "title": "Morphic Blocks definitions",
+  "description": "Schema for a Morphic Blocks definitions file. Keep in sync with MorphicBlocksFormat in packages/morphic-blocks/src/morphic/types.ts.",
+  "type": "object",
+  "required": ["blocks"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": {
+      "description": "Definitions format version.",
+      "type": "integer",
+      "const": 1
+    },
+    "elementTypes": {
+      "description": "Global registry mapping each element name to a type or a config object.",
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/elementTypeEntry" }
+    },
+    "modes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/mode" }
+    },
+    "presets": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/preset" }
+    },
+    "highlighting": {
+      "description": "Token-level highlight rules, keyed by code-element name.",
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/highlight" }
+    },
+    "categories": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/category" }
+    },
+    "blocks": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/block" }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "elementType": {
+      "enum": ["text", "code", "image"]
+    },
+    "elementTypeEntry": {
+      "oneOf": [
+        { "$ref": "#/$defs/elementType" },
+        {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": { "$ref": "#/$defs/elementType" },
+            "empty": {
+              "description": "Per-check empty-slot defaults, keyed by the slot's check (e.g. Number, String, Boolean).",
+              "type": "object",
+              "additionalProperties": { "$ref": "#/$defs/emptyDefault" }
+            },
+            "stringQuote": {
+              "description": "Delimiter wrapped around framework-supplied literals in String slots (code elements).",
+              "type": "string"
+            },
+            "size": {
+              "description": "Display size for image elements: a number, \"32\", or \"32x32\".",
+              "type": ["number", "string"]
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "emptyDefault": {
+      "type": "object",
+      "properties": {
+        "shadow": { "type": "string" },
+        "placeholder": { "type": "string" },
+        "fieldValues": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "mode": {
+      "type": "object",
+      "required": ["name", "elements"],
+      "properties": {
+        "name": { "type": "string" },
+        "elements": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "presetToolbox": {
+      "oneOf": [
+        { "type": "string" },
+        {
+          "type": "object",
+          "required": ["mode"],
+          "properties": {
+            "mode": { "type": "string" },
+            "render": {
+              "type": "object",
+              "additionalProperties": { "enum": ["block", "text"] }
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "preset": {
+      "type": "object",
+      "required": ["name", "toolbox"],
+      "properties": {
+        "name": { "type": "string" },
+        "label": { "type": "string" },
+        "toolbox": { "$ref": "#/$defs/presetToolbox" },
+        "workspace": { "type": "string" },
+        "codespace": { "type": "string" },
+        "preview": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "highlight": {
+      "type": "object",
+      "properties": {
+        "keywords": { "type": "array", "items": { "type": "string" } },
+        "strings": { "type": "array", "items": { "type": "string" } },
+        "comment": { "type": "string" },
+        "numbers": { "type": "boolean" },
+        "colors": {
+          "type": "object",
+          "properties": {
+            "keyword": { "type": "string" },
+            "string": { "type": "string" },
+            "number": { "type": "string" },
+            "comment": { "type": "string" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "category": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "color": { "type": "string" },
+        "blocks": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "connectionSpec": {
+      "description": "true/false, a single check, or a list of accepted checks.",
+      "type": ["boolean", "string", "array"],
+      "items": { "type": "string" }
+    },
+    "inputSlot": {
+      "type": "object",
+      "properties": {
+        "kind": { "enum": ["value", "statement"] },
+        "name": { "type": "string" },
+        "check": {
+          "type": ["string", "array"],
+          "items": { "type": "string" }
+        },
+        "align": { "enum": ["left", "centre", "right"] },
+        "label": { "type": "string" },
+        "default": { "$ref": "#/$defs/emptyDefault" }
+      },
+      "additionalProperties": false
+    },
+    "dropdownOption": {
+      "oneOf": [
+        { "type": "string" },
+        {
+          "type": "array",
+          "prefixItems": [{ "type": "string" }, { "type": "string" }],
+          "minItems": 2,
+          "maxItems": 2
+        },
+        {
+          "type": "object",
+          "required": ["value"],
+          "properties": {
+            "value": { "type": "string" },
+            "label": { "type": "string" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "field": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["type", "options"],
+          "properties": {
+            "type": { "const": "dropdown" },
+            "options": { "type": "array", "items": { "$ref": "#/$defs/dropdownOption" } },
+            "default": { "type": "string" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": { "const": "text" },
+            "default": { "type": "string" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": { "const": "number" },
+            "default": { "type": "number" },
+            "min": { "type": "number" },
+            "max": { "type": "number" },
+            "precision": { "type": "number" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": { "const": "checkbox" },
+            "default": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "block": {
+      "type": "object",
+      "required": ["identifier", "elements"],
+      "properties": {
+        "identifier": { "type": "string", "minLength": 1 },
+        "category": { "type": "string" },
+        "elements": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": { "type": "string" }
+        },
+        "inputSlots": {
+          "description": "Configuration of %N slots, keyed by placeholder index (\"1\", \"2\", ...).",
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/inputSlot" }
+        },
+        "fields": {
+          "description": "Inline field widgets, keyed by %FIELDNAME token.",
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/field" }
+        },
+        "color": { "type": ["number", "string"] },
+        "output": { "$ref": "#/$defs/connectionSpec" },
+        "previousStatement": { "$ref": "#/$defs/connectionSpec" },
+        "nextStatement": { "$ref": "#/$defs/connectionSpec" },
+        "inputsInline": { "type": "boolean" },
+        "tooltip": { "type": "string" },
+        "helpUrl": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  }
+}
