@@ -1,4 +1,6 @@
 {
+  "$schema": "../../../packages/morphic-blocks/definitions.schema.json",
+  "version": 1,
   "elementTypes": {
     "title": "text",
     "description": "text",
