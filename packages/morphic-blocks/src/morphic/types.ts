@@ -248,6 +248,8 @@ export interface MorphicBlocksFormat {
   elementTypes?: Record<string, MorphicElementTypeEntry>;
   /** Explicit mode definitions — which elements are visible per mode. */
   modes?: MorphicModeDefinition[];
+  /** Named per-view mode configurations. Used as the mount default for `presets`. */
+  presets?: MorphicPresetDefinition[];
   /**
    * Per-element highlight rules, keyed by element name. The codespace and
    * preview modes' source elements look up entries here for their editors.

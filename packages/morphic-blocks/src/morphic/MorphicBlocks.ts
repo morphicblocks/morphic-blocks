@@ -26,6 +26,7 @@ import type {
   MorphicBehaviorContext,
   MorphicBehaviorMap,
   MorphicBlockDefinition,
+  MorphicBlocksFormat,
   MorphicCodeBlockPosition,
   MorphicCodeEditorOptions,
   MorphicCodeEditorTheme,
@@ -43,6 +44,7 @@ import type {
   MorphicSelectionSyncOptions,
   MorphicToolbarConfig,
   MorphicToolboxCanvasOptions,
+  MorphicToolboxCategory,
 } from "./types";
 
 /**
@@ -122,19 +124,53 @@ export class MorphicBlocks extends EventTarget {
   /** Teardown fn for codespace drag/drop listeners; set when codespace is mounted. */
   private codespaceDropTeardown?: () => void;
 
+  /** Format-level fields remembered from the constructor and used as `mount()`
+   * defaults, so the developer hands the whole definitions file in once and the
+   * runtime `mount()` call only carries DOM / runtime concerns. */
+  private readonly formatModes?: MorphicModeDefinition[];
+  private readonly formatPresets?: MorphicPresetDefinition[];
+  private readonly formatHighlighting?: Record<string, MorphicHighlightDefinition>;
+  private readonly formatCategories?: MorphicToolboxCategory[];
+
+  /**
+   * Build an engine from a whole definitions file plus its behaviors — the two
+   * artifacts a developer authors. `blocks` and `elementTypes` configure the
+   * engine; `modes` / `presets` / `highlighting` / `categories` are remembered
+   * as defaults for `mount()` / `mountToolbox()` (a call may still override them).
+   */
   public constructor(
-    definitions: MorphicBlockDefinition[] | MorphicBlockDefinition,
+    format: MorphicBlocksFormat,
     behaviors: MorphicBehaviorMap = {},
-    elementTypes: Record<string, MorphicElementTypeEntry> = {},
   ) {
     super();
-    this.definitions = createDefinitionMap(definitions);
+    this.definitions = createDefinitionMap(format.blocks);
     this.behaviors = behaviors;
-    this.elementTypes = elementTypes;
+    this.elementTypes = format.elementTypes ?? {};
+    this.formatModes = format.modes;
+    this.formatPresets = format.presets;
+    this.formatHighlighting = format.highlighting;
+    this.formatCategories = format.categories;
   }
 
-  public mount(config: MorphicMountConfig): Blockly.WorkspaceSvg {
+  public mount(inputConfig: MorphicMountConfig): Blockly.WorkspaceSvg {
     this.dispose();
+
+    // Fill unset format-level fields from the definitions file handed to the
+    // constructor, so a mount call only needs its DOM / runtime options.
+    const config: MorphicMountConfig = {
+      ...inputConfig,
+      modes: inputConfig.modes ?? this.formatModes,
+      presets: inputConfig.presets ?? this.formatPresets,
+      highlighting: inputConfig.highlighting ?? this.formatHighlighting,
+      toolbox:
+        inputConfig.toolbox || this.formatCategories
+          ? {
+              ...inputConfig.toolbox,
+              categories:
+                inputConfig.toolbox?.categories ?? this.formatCategories,
+            }
+          : undefined,
+    };
 
     // Derive modeStyles from modesFolder (Vite glob) when provided
     const folderStyles = config.modesFolder
@@ -415,6 +451,13 @@ export class MorphicBlocks extends EventTarget {
       this.workspace.updateToolbox({ kind: "flyoutToolbox", contents: [] });
     }
 
+    // Inherit categories from the resolved mount config (which already carries
+    // the format's categories) when the call doesn't supply its own.
+    const canvasOptions: MorphicToolboxCanvasOptions = {
+      ...options,
+      categories: options?.categories ?? this.mountConfig.toolbox?.categories,
+    };
+
     this.toolboxCanvas = new MorphicToolboxCanvas({
       container,
       workspaceContainer: this.mountConfig.workspaceHost,
@@ -426,7 +469,7 @@ export class MorphicBlocks extends EventTarget {
       mode: this.mountConfig.toolboxMode,
       render: this.mountConfig.toolboxRender,
       modes: this.mountConfig.modes,
-      options,
+      options: canvasOptions,
     });
   }
 
