@@ -46,22 +46,25 @@ export function resolveImageSize(
 
 /**
  * Resolve the empty-state default config for a value slot. Honours the
- * priority chain: per-slot `default` (highest) → elementType `empty[check]`.
- * Returns undefined when nothing is configured — callers should treat that
- * as "show the codespace marker / empty workspace socket."
+ * priority chain: per-slot `default` (highest) → elementType `empty[check]` →
+ * elementType `empty.default` (catch-all, also used when the slot has no
+ * `check`). Returns undefined when nothing is configured — callers should treat
+ * that as "show the codespace marker / empty workspace socket."
  */
 export function resolveDefaultConfig(
   slot: MorphicInputSlotDefinition | undefined,
   elementEntry: MorphicElementTypeEntry | undefined,
 ): MorphicEmptyDefaultConfig | undefined {
   if (slot?.default) return slot.default;
-  if (!slot?.check) return undefined;
   if (!elementEntry || typeof elementEntry === "string") return undefined;
   const empty = (elementEntry as MorphicElementTypeConfig).empty;
   if (!empty) return undefined;
-  const checkStr = Array.isArray(slot.check) ? slot.check[0] : slot.check;
-  if (!checkStr) return undefined;
-  return empty[checkStr];
+  const checkStr = slot?.check
+    ? Array.isArray(slot.check)
+      ? slot.check[0]
+      : slot.check
+    : undefined;
+  return (checkStr ? empty[checkStr] : undefined) ?? empty.default;
 }
 
 /**
@@ -91,9 +94,10 @@ export function resolveEmptyDefault(
   if (!entry || typeof entry === "string") return undefined;
   const empty = (entry as MorphicElementTypeConfig).empty;
   if (!empty) return undefined;
-  const checkStr = Array.isArray(check) ? check[0] : check;
-  if (!checkStr) return undefined;
-  const config = empty[checkStr];
+  const checkStr = check ? (Array.isArray(check) ? check[0] : check) : undefined;
+  // Exact check match, else the `default` catch-all (also used when the slot
+  // has no check).
+  const config = (checkStr ? empty[checkStr] : undefined) ?? empty.default;
   return config ? firstFieldValue(config) : undefined;
 }
 
