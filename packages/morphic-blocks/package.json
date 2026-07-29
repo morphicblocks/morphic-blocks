@@ -18,7 +18,7 @@
     "definitions.schema.json"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && vite build"
+    "build": "vite build && tsc -p tsconfig.build.json"
   },
   "keywords": [
     "blockly",
