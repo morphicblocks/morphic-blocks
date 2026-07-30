@@ -1,6 +1,5 @@
 import * as Blockly from "blockly";
 import { toCleanId } from "./block-namespace";
-import { resolveEmptyDefault } from "./element-types";
 import { parseTemplate } from "./template";
 import { resolveBlockView } from "./view-resolver";
 import type {
@@ -236,49 +235,49 @@ function renderBlock(
     // style of the inner field marker.
     let perFieldRecorded = false;
     if (!target) {
-      // Quote framework-supplied literals (shadow/fallback) in String slots.
-      // Quotes sit outside the marker so editing targets only the inner value.
-      const stringQuote = resolveStringQuote(slot, elementEntry);
+      // Fields that will actually be emitted for this empty slot: a present
+      // shadow's named fields, or undeclared onViewApplied fields Blockly seated
+      // on this input. Declared %FIELDNAME fields are excluded — they render via
+      // their own token, so an empty operand slot must not re-emit them (`3 + +`).
+      const shadowFields = rawTarget?.isShadow()
+        ? rawTarget.inputList.flatMap((i) => i.fieldRow).filter((f) => !!f.name)
+        : [];
+      const inputFields = !rawTarget?.isShadow() && input
+        ? input.fieldRow.filter((f) => !!f.name && !definition.fields?.[f.name!])
+        : [];
+      const willEmitValue = shadowFields.length > 0 || inputFields.length > 0;
+
+      // Quote framework-supplied literals (shadow values) in String slots — but
+      // never the empty-type marker. Quotes sit outside the recorded range so
+      // inline editing targets only the inner value.
+      const stringQuote = willEmitValue ? resolveStringQuote(slot, elementEntry) : undefined;
       if (stringQuote) appendText(state, stringQuote);
       const slotOffsetStart = state.output.length;
-      let fieldEmitted = false;
-      // Shadows: read the shadow's own fields so codespace text matches the
-      // shadow's current values (and supports inline editing of the shadow).
-      if (rawTarget?.isShadow()) {
-        for (const shadowInput of rawTarget.inputList) {
-          for (const field of shadowInput.fieldRow) {
-            if (!field.name) continue;
-            appendText(state, readFieldText(field));
-            fieldEmitted = true;
-          }
-        }
-      } else if (input) {
-        // Fields directly on the parent's input (e.g. VAR on var_declare's
-        // NAME, OP on math_arithmetic's OPERATOR). Emit each field as its
-        // own placeholder range so it's individually inline-editable.
-        for (const field of input.fieldRow) {
-          if (!field.name) continue;
+
+      if (shadowFields.length > 0) {
+        // Read the shadow's own fields so codespace text matches the shadow's
+        // current values (and supports inline editing of the shadow).
+        for (const field of shadowFields) appendText(state, readFieldText(field));
+      } else if (inputFields.length > 0) {
+        // Fields directly on the parent's input (custom onViewApplied fields).
+        // Emit each as its own placeholder range so it's individually editable.
+        for (const field of inputFields) {
           const fieldStart = state.output.length;
           appendText(state, readFieldText(field));
-          fieldEmitted = true;
-          const fieldEdit = fieldEditTarget(block, field, field.name);
+          const fieldEdit = fieldEditTarget(block, field, field.name!);
           if (fieldEdit) {
             recordPlaceholder(state, fieldStart, "set", fieldEdit);
             perFieldRecorded = true;
           }
         }
+      } else {
+        // Truly empty slot: the workspace shows an empty socket, but text can't
+        // render "nothing" — it must mark that a value belongs here. Emit a type
+        // marker from the slot's check (e.g. [NUMBER], [TEXT], [BOOL]). Filled by
+        // dragging a value block into the slot.
+        appendText(state, emptySlotMarker(slot?.check));
       }
-      if (!fieldEmitted) {
-        const fallback = resolveEmptyDefault(
-          elementEntry,
-          slot?.check,
-          definition,
-          inputName,
-        );
-        if (fallback !== undefined) {
-          appendText(state, fallback);
-        }
-      }
+
       if (!perFieldRecorded) {
         const editTarget = rawTarget?.isShadow() ? detectAtomicEdit(rawTarget) ?? undefined : undefined;
         recordPlaceholder(state, slotOffsetStart, "default", editTarget);
@@ -379,6 +378,19 @@ function recordPlaceholder(
  * Used to wrap framework-supplied literals (shadow values, empty fallbacks)
  * so the codespace renders `print("hello")` rather than `print(hello)`.
  */
+/**
+ * Marker text for a truly-empty value slot in the codespace/preview. The
+ * workspace renders an empty socket, but text can't show "nothing" — a
+ * bracketed type name (derived from the slot's `check`) signals that a value of
+ * that type belongs here. Filled by dragging a value block into the slot.
+ */
+function emptySlotMarker(check: string | string[] | undefined): string {
+  const c = Array.isArray(check) ? check[0] : check;
+  if (!c) return "[VALUE]";
+  const label: Record<string, string> = { Number: "NUMBER", String: "TEXT", Boolean: "BOOL" };
+  return `[${label[c] ?? c.toUpperCase()}]`;
+}
+
 function resolveStringQuote(
   slot: MorphicInputSlotDefinition | undefined,
   elementEntry: MorphicElementTypeEntry | undefined,

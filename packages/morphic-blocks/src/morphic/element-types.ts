@@ -1,5 +1,4 @@
 import type {
-  MorphicBlockDefinition,
   MorphicElementType,
   MorphicElementTypeConfig,
   MorphicElementTypeEntry,
@@ -65,44 +64,4 @@ export function resolveDefaultConfig(
       : slot.check
     : undefined;
   return (checkStr ? empty[checkStr] : undefined) ?? empty.default;
-}
-
-/**
- * Backward-compatible string fallback used by `template-codegen` while the
- * codespace marker work (Day 4) is pending. Pulls a representative literal
- * from the configured `fieldValues` so the codespace can keep emitting the
- * old `print(0)` / `print("text")` style output during the schema
- * transition. Returns undefined when no default is configured for the slot.
- *
- * Once the codespace marker rendering lands this helper goes away — callers
- * will switch to `resolveDefaultConfig` and emit the marker themselves.
- */
-export function resolveEmptyDefault(
-  entry: MorphicElementTypeEntry | undefined,
-  check: string | string[] | undefined,
-  blockDefinition?: MorphicBlockDefinition,
-  inputName?: string,
-): string | undefined {
-  // Block-level override first: walk inputSlots looking for a matching name.
-  if (blockDefinition?.inputSlots && inputName) {
-    for (const slot of Object.values(blockDefinition.inputSlots)) {
-      if (slot?.name === inputName && slot.default) {
-        return firstFieldValue(slot.default);
-      }
-    }
-  }
-  if (!entry || typeof entry === "string") return undefined;
-  const empty = (entry as MorphicElementTypeConfig).empty;
-  if (!empty) return undefined;
-  const checkStr = check ? (Array.isArray(check) ? check[0] : check) : undefined;
-  // Exact check match, else the `default` catch-all (also used when the slot
-  // has no check).
-  const config = (checkStr ? empty[checkStr] : undefined) ?? empty.default;
-  return config ? firstFieldValue(config) : undefined;
-}
-
-function firstFieldValue(config: MorphicEmptyDefaultConfig): string | undefined {
-  if (!config.fieldValues) return undefined;
-  const values = Object.values(config.fieldValues);
-  return values.length > 0 ? values[0] : undefined;
 }
