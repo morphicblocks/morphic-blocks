@@ -27,7 +27,7 @@ export const behaviors: MorphicBehaviorMap = {
   // ── Control ─────────────────────────────────────────────
 
   logic_if(proxy) {
-    const condition = proxy.inputs.CONDITION || "true";
+    const condition = proxy.inputs.CONDITION || "false";
     const body = proxy.inputs.DO || "";
     return `if (${condition}) {\n${body}\n}\n`;
   },
