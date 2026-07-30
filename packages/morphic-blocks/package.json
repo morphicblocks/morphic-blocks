@@ -2,6 +2,13 @@
   "name": "morphic-blocks",
   "version": "0.1.0",
   "description": "Mode-driven wrapper framework around Google Blockly",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/morphicblocks/morphic-blocks.git",
+    "directory": "packages/morphic-blocks"
+  },
+  "homepage": "https://github.com/morphicblocks/morphic-blocks#readme",
+  "bugs": "https://github.com/morphicblocks/morphic-blocks/issues",
   "type": "module",
   "main": "./dist/morphic-blocks.umd.cjs",
   "module": "./dist/morphic-blocks.js",
