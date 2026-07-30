@@ -10,10 +10,10 @@ Each block has named **elements** (visual parts). A global `elementTypes` regist
 iconic mode    → icon + title  (compact visual)
 lexical mode   → natural language block template
 syntactic mode → code-syntax block template
-code modes     → codespace (text editor) replaces the workspace
+code modes     → codespace (text editor) mirrors the workspace
 ```
 
-Workspace and toolbox can run in **different modes simultaneously**. Dragging from toolbox to workspace — or dropping onto the codespace — adds a block to the underlying model.
+Workspace and toolbox can run in **different modes simultaneously**. Dragging from the toolbox to the workspace — or dropping onto the codespace — adds a block to the underlying model.
 
 ## Use Cases
 
@@ -35,9 +35,11 @@ These are potential applications, not currently deployed. They illustrate that t
 |---------|---------------------------------------------------------------------------|
 | `text`  | Plain label / description (HTML text on tiles, never on workspace blocks) |
 | `code`  | Blockly template with `%N` / `%FIELDNAME` placeholders                    |
-| `image` | SVG or image (used inside block templates as FieldImage, or as icon)      |
+| `image` | SVG or image (used inside block templates as FieldImage, or as an icon)   |
 
 Element **names** are free-form — `icon`, `title`, `concept`, `python`, `javascript` etc. are conventions. The `elementTypes` registry maps names to types.
+
+An `image` value can be either a **bare file path** (`"icons/log.svg"` — auto-wrapped as `<img>`, sized via the element's `size` config, default 16×16) or explicit **`<img>` HTML** (`"<img src='icons/log.svg'>"`). Both work.
 
 ## Install
 
@@ -66,32 +68,41 @@ morphic-blocks/
 ├── apps/
 │   └── sandbox/               # Dev app: preset-driven view configurations
 │       └── src/
-│           ├── definitions.json  # elements, modes, blocks
-│           ├── config.json       # sandbox-only level wiring
+│           ├── definitions.json  # elementTypes, modes, presets, blocks
 │           ├── behaviors.ts      # executable code generators
 │           ├── main.ts
 │           └── modes/            # One CSS file per mode
 ├── packages/
 │   └── morphic-blocks/        # Core library
+│       ├── definitions.schema.json   # JSON Schema for definitions files
 │       └── src/morphic/
-│           ├── MorphicBlocks.ts    # Orchestration (mount, setModes, codespace, preview)
-│           ├── block-view.ts       # Block rendering + mode class decoration
-│           ├── view-resolver.ts    # Mode fallback logic
-│           ├── template.ts         # Template parsing (%1, %FIELDNAME, <img>)
-│           ├── template-codegen.ts # Text rendering from templates (codespace/preview)
-│           ├── code-editor.ts      # CodeMirror wrapper with delete gutter
-│           ├── codegen.ts          # JavaScript code generation (behaviors)
-│           ├── toolbox-canvas.ts   # Custom HTML toolbox (drag source)
-│           ├── selection-sync.ts   # Block ↔ code line highlighting
-│           ├── styles.ts           # CSS loading + mode coverage validation
-│           └── types.ts            # All TypeScript types
+│           ├── MorphicBlocks.ts       # Orchestration (mount, setModes, applyPreset, codegen)
+│           ├── block-view.ts          # Block rendering + mode class decoration + fields
+│           ├── block-namespace.ts     # Clean ↔ morphic: Blockly-type translation
+│           ├── view-resolver.ts       # Mode / source-element resolution
+│           ├── template.ts            # Template parsing (%N, %FIELDNAME, <img>)
+│           ├── template-codegen.ts    # Text rendering from templates (codespace/preview)
+│           ├── code-editor.ts         # CodeMirror wrapper (codespace/preview/code editor)
+│           ├── codegen.ts             # JavaScript code generation (behaviors)
+│           ├── element-types.ts       # elementTypes helpers (type, size, empty defaults)
+│           ├── validate-definitions.ts# Mount-time definitions validation
+│           ├── syntax-highlight.ts    # Definition-driven highlighting (CodeMirror)
+│           ├── toolbox-canvas.ts      # Custom HTML toolbox (drag source)
+│           ├── selection-sync.ts      # Block ↔ code line highlighting
+│           ├── styles.ts              # CSS loading + mode coverage validation
+│           └── types.ts               # All TypeScript types
 └── CLAUDE.md
 ```
 
 ## definitions.json Format
 
+One JSON document describes everything a block *is*. Point `$schema` at the
+shipped schema for editor autocomplete and inline validation.
+
 ```json
 {
+  "$schema": "./node_modules/morphic-blocks/definitions.schema.json",
+  "version": 1,
   "elementTypes": {
     "icon":       "image",
     "title":      "text",
@@ -102,33 +113,26 @@ morphic-blocks/
       "stringQuote": "\"",
       "empty": {
         "Number": { "shadow": "math_number", "fieldValues": { "NUM": "42" } },
-        "String": { "shadow": "text", "fieldValues": { "TEXT": "world" } },
-        "Boolean": { "shadow": "logic_boolean", "fieldValues": { "BOOL": "TRUE" } }
-      }
-    },
-    "javascript": {
-      "type": "code",
-      "stringQuote": "\"",
-      "empty": {
-        "Number": { "shadow": "math_number", "placeholder": "math_number", "fieldValues": { "NUM": "7" } },
-        "String": { "shadow": "text", "placeholder": "text", "fieldValues": { "TEXT": "hello" } }
+        "String": { "shadow": "text", "fieldValues": { "TEXT": "world" } }
       }
     }
   },
   "modes": [
-    { "name": "iconic",     "elements": ["icon", "title", "description"] },
-    { "name": "conceptual", "elements": ["title", "concept"] },
-    { "name": "python",     "elements": ["title", "python"] },
-    { "name": "javascript", "elements": ["title", "javascript"] }
+    { "name": "iconic",    "elements": ["icon", "title", "description"] },
+    { "name": "conceptual","elements": ["title", "concept"] },
+    { "name": "syntax-py", "elements": ["title", "python"] }
   ],
   "presets": [
     { "name": "iconic", "label": "Iconic", "toolbox": "iconic", "workspace": "conceptual" },
     { "name": "hybrid", "label": "Hybrid", "toolbox": "conceptual",
-      "workspace": "conceptual", "codespace": "python", "preview": "javascript" }
+      "workspace": "conceptual", "codespace": "syntax-py", "preview": "syntax-py" }
   ],
   "categories": [
     { "name": "Output", "color": "#5C81A6" }
   ],
+  "highlighting": {
+    "python": { "keywords": ["print", "if", "for"], "strings": ["\"", "'"], "comment": "#" }
+  },
   "blocks": [
     {
       "identifier": "text_print",
@@ -137,22 +141,51 @@ morphic-blocks/
         "title":      "Print",
         "description":"Prints a value to the console",
         "concept":    "Output %1",
-        "python":     "print(%1)",
-        "javascript": "console.log(%1);"
+        "python":     "print(%1)"
       },
       "inputSlots": {
-        "1": { "kind": "value", "name": "TEXT" }
+        "1": { "kind": "value", "name": "TEXT", "check": "String" }
       }
+    },
+    {
+      "identifier": "math_arithmetic",
+      "category": "Operations",
+      "elements": { "python": "%1 %OP %2" },
+      "inputSlots": {
+        "1": { "kind": "value", "name": "A", "check": "Number" },
+        "2": { "kind": "value", "name": "B", "check": "Number" }
+      },
+      "fields": {
+        "OP": { "type": "dropdown", "options": ["+", ["-", "−"], ["*", "×"], ["/", "÷"]], "default": "+" }
+      },
+      "output": true
     }
   ]
 }
 ```
 
-- `elementTypes` — global registry mapping element names either to a bare type string (`"text" | "code" | "image"`) or to a config object `{ type, empty?, stringQuote?, size? }`. The `empty` map provides per-language defaults for empty value slots, keyed by the slot's `check` (`"Number"`, `"String"`, `"Boolean"`, …). Each entry is a `{ shadow?, placeholder?, fieldValues? }` config: `shadow` attaches a ghosted, auto-restored Blockly shadow block; `placeholder` attaches a real (movable, deletable) block on render — placeholder wins when both are set; `fieldValues` seeds the block's fields. Per-slot `inputSlots[n].default` uses the same shape and takes priority. `stringQuote` wraps framework-supplied literals in `String` slots (`print("hello")` instead of `print(hello)`); `size` sets the display size for `image` elements given as file paths. With defaults set, a `print` with no value attached renders as `print("world")` instead of `print()` — keeping generated code syntactically valid.
-- `modes` — list of mode definitions (`{ name, elements }`)
-- `presets` — named per-view mode configurations (toolbox / workspace / codespace / preview)
-- `categories` — optional groupings for the toolbox
-- `blocks` — flat array of block definitions
+- `$schema` / `version` — optional. `$schema` (relative path or URL) gives editors autocomplete + validation; `version` marks the format revision. Both are ignored at runtime.
+- `elementTypes` — global registry mapping element names to a bare type string (`"text" | "code" | "image"`) or a config object `{ type, empty?, stringQuote?, size? }`. `empty` gives per-language defaults for empty value slots, keyed by the slot's `check`; each entry is `{ shadow?, placeholder?, fieldValues? }` (a `shadow` is a ghosted, auto-restored block; a `placeholder` is a real, deletable one — placeholder wins when both are set). `stringQuote` wraps framework-supplied literals in `String` slots (`print("hello")` not `print(hello)`); `size` sets the display size for path-valued `image` elements.
+- `modes` — mode definitions (`{ name, elements }`); `elements` render on the toolbox tile in list order.
+- `presets` — named per-view mode configurations (toolbox / workspace / codespace / preview).
+- `categories` — optional toolbox groupings (`{ name, color }`).
+- `highlighting` — optional per-element syntax-highlighting rules for the codespace/preview.
+- `blocks` — flat array of block definitions.
+
+### Block fields
+
+A block declares inline widgets in a `fields` map, keyed by the `%FIELDNAME` token in its templates:
+
+| Type       | Config                                          |
+|------------|-------------------------------------------------|
+| `dropdown` | `options` (below), `default` (selected value)   |
+| `text`     | `default`                                       |
+| `number`   | `default`, `min`, `max`, `precision`            |
+| `checkbox` | `default` (boolean)                             |
+
+A dropdown **option** is `"=="` (value = label), `["/", "÷"]` (`[value, label]`), or `{ "value": "/", "label": "÷" }`. The **value** is generated and shown in text views; the optional **label** is a block-only display override (so a block can show `÷` while the code says `/`). Fields outside these four (variable, colour, custom) are attached by a behavior's `onViewApplied` — an undeclared `%FIELDNAME` token is left for the behavior to fill.
+
+When a value slot is empty, the workspace shows an empty socket and the codespace shows a bracketed **type marker** (`[NUMBER]`, `[TEXT]`, `[BOOL]`) unless an `empty` default supplies a value.
 
 ## Block Identifiers
 
@@ -162,10 +195,10 @@ You always work with the **clean** identifier — it keys the `behaviors` map, t
 
 ## Mode Fields
 
-| Field      | Required | Purpose                                    |
-|------------|----------|--------------------------------------------|
-| `name`     | yes      | Mode identifier                            |
-| `elements` | yes      | Element names rendered on the toolbox tile |
+| Field      | Required | Purpose                                              |
+|------------|----------|------------------------------------------------------|
+| `name`     | yes      | Mode identifier (keep distinct from element / preset names) |
+| `elements` | yes      | Element names rendered on the toolbox tile, in list order |
 
 A mode is purely presentational. Its **source element** — what a codespace or preview renders when the mode is assigned to it — is the first `type: "code"` element in its `elements` array. How a code element renders on a toolbox tile (block vs text) is set by the preset's `toolbox` entry, so one mode is reusable across presets.
 
@@ -182,70 +215,53 @@ A **preset** assigns a mode to each view and drives which views are visible:
 | `codespace` | no*      | Mode whose source element the codespace renders          |
 | `preview`   | no       | Mode whose source element the read-only preview renders  |
 
-`toolbox` is either a **mode name** (all code elements render as blocks) or an object `{ mode, render }` where `render` is a per-element map `{ name: "block" | "text" }` controlling how each `code` element renders in the tile (e.g. `{ "mode": "python", "render": { "python": "text" } }` shows the code as source text).
+`toolbox` is either a **mode name** (all code elements render as blocks) or an object `{ mode, render }` where `render` is a per-element map `{ name: "block" | "text" }` controlling how each `code` element renders on the tile (e.g. `{ "mode": "python", "render": { "python": "text" } }` shows the code as source text). Elements not named in `render` default to `block`, and `render` affects the toolbox tile only.
 
-\* at least one of `workspace` / `codespace` must be set. Presence of a view key means the view is shown; workspace and codespace can be visible at the same time with different modes. Pass presets via the mount config (`presets`, initial `preset`, `onPresetApplied` for pane layout) and switch at runtime with `engine.applyPreset(name)`. The lower-level `engine.setModes({ workspaceMode?, toolboxMode?, toolboxRender?, codespaceMode?, previewMode? })` remains available.
-
-## Template Syntax
-
-Templates use `%N` for input slots, `%FIELDNAME` for fields, and `<img>` tags for images:
-
-| Syntax        | Result                                                                   |
-|---------------|--------------------------------------------------------------------------|
-| `%1`, `%2`    | Input slot (Blockly input + text substitution for codespace/preview)     |
-| `%FIELDNAME`  | Field value (e.g. `%NUM`, `%VAR`). Uppercase alpha token                 |
-| `<img …>`     | Image (Blockly FieldImage on block templates)                            |
-| Plain text    | Becomes a Blockly label field                                            |
-
-**Whitespace and indentation in text rendering:** preserved as authored. `"if ( %1 ) {\n  %2\n}"` produces multi-line output; `"if ( %1 ) { %2 }"` stays on one line.
+\* at least one of `workspace` / `codespace` must be set. Presence of a view key means the view is shown; workspace and codespace can be visible at the same time with different modes.
 
 ## Example Usage
 
 ```ts
-import definitions from "./definitions.json";
+import definitionsData from "./definitions.json";
 import { behaviors } from "./behaviors";
-import {
-  MorphicBlocks,
-  type MorphicBlockDefinition,
-  type MorphicElementType,
-  type MorphicModeDefinition,
-} from "morphic-blocks";
+import { MorphicBlocks, type MorphicBlocksFormat } from "morphic-blocks";
 
-const engine = new MorphicBlocks(
-  definitions.blocks as MorphicBlockDefinition[],
-  behaviors,
-  definitions.elementTypes as Record<string, MorphicElementType>,
-);
+// The whole definitions file is one argument. (A JSON import widens "code" to
+// string, so one assertion to MorphicBlocksFormat is expected here.)
+const definitions = definitionsData as unknown as MorphicBlocksFormat;
+
+const engine = new MorphicBlocks(definitions, behaviors);
 
 const workspace = engine.mount({
   workspaceContainer: document.getElementById("workspace")!,
-  codespaceContainer: document.getElementById("codespace")!,  // optional
-  workspaceMode: "lexical",
-  toolboxMode: "lexical",
+  codespaceContainer: document.getElementById("codespace")!, // optional
+  preset: "iconic",                     // initial preset (by name)
+  onPresetApplied(preset) {
+    // show/hide panes based on which view keys the preset uses
+  },
   modesFolder: import.meta.glob("./modes/*.css", { eager: true, query: "?url" }),
-  canvasToolbox: true,
-  modes: definitions.modes as MorphicModeDefinition[],
-  toolbox: { categories: definitions.categories },
+  canvasToolbox: true,                  // use the custom HTML toolbox
   blockly: { scrollbars: true, trashcan: true },
 });
 
-// Mount custom HTML toolbox
-engine.mountToolbox(document.getElementById("toolbox")!, {
-  categories: definitions.categories,
-});
+// Custom HTML toolbox (categories come from the definitions).
+engine.mountToolbox(document.getElementById("toolbox")!);
 
-// Mount codespace (editable text, receives drops, deletion via keyboard / gutter)
+// Editable text mirror of the workspace; receives drops, keyboard/gutter delete.
 await engine.mountCodespace();
 
-// Mount preview (read-only, renders mode.preview element as text)
+// Read-only preview of the preview mode's source element.
 await engine.mountPreview(document.getElementById("preview")!);
 ```
+
+Modes, presets, categories, and highlighting all come from the definitions
+passed to the constructor — `mount()` only takes runtime wiring.
 
 Switch presets or modes at runtime:
 
 ```ts
 engine.applyPreset("hybrid");
-engine.setModes({ workspaceMode: "conceptual", codespaceMode: "python" });
+engine.setModes({ workspaceMode: "conceptual", codespaceMode: "syntax-py" });
 ```
 
 Generate JavaScript from the workspace (via behaviors):
@@ -256,7 +272,10 @@ const js = engine.generateJavaScript();
 
 ## Behaviors
 
-One behavior function per block. Produces the executable code string.
+One behavior function per block, producing the executable code string for the
+**Run** path. Declared `fields` and `code` templates handle *display*, so a
+field-only block needs no behavior; behaviors are for execution and for custom
+(`onViewApplied`) fields.
 
 ```ts
 import type { MorphicBehaviorMap } from "morphic-blocks";
@@ -268,15 +287,40 @@ export const behaviors: MorphicBehaviorMap = {
 };
 ```
 
-The framework also supports **template-based rendering** for the codespace and preview — those use the `type: "code"` element content directly (with `%N` / `%FIELDNAME` substitution), separate from behaviors.
+The codespace and preview don't use behaviors — they render the `type: "code"`
+element content directly (with `%N` / `%FIELDNAME` substitution).
+
+## Template Syntax
+
+Templates use `%N` for input slots, `%FIELDNAME` for fields, and `<img>` tags for images:
+
+| Syntax        | Result                                                                   |
+|---------------|--------------------------------------------------------------------------|
+| `%1`, `%2`    | Input slot (Blockly input + text substitution for codespace/preview)     |
+| `%FIELDNAME`  | Inline field declared in `fields` (e.g. `%NUM`, `%OP`), or filled by `onViewApplied` |
+| `<img …>`     | Image (Blockly FieldImage on block templates)                            |
+| Plain text    | Becomes a Blockly label field                                            |
+
+**Whitespace and indentation in text rendering:** preserved as authored. `"if ( %1 ) {\n  %2\n}"` produces multi-line output; `"if ( %1 ) { %2 }"` stays on one line.
+
+## Validation
+
+`mount()` validates the definitions and reports problems that would otherwise
+fail silently at render time — throwing on structural breakage (mismatched `%N`
+sets across a block's code elements, a `%FIELDNAME` with no field and no
+behavior, an unresolvable `shadow` / `placeholder`) and warning on degraded
+config (a `%N` with no `inputSlots` entry, an undeclared element name, a
+`highlighting` key that isn't a code element, a config field on the wrong
+element type, a name reused across element / mode / preset). Call the exported
+`validateDefinitions(...)` to check a file before mounting.
 
 ## Mode CSS
 
-One CSS file per mode. Use `.morphic-mode-{name}` to target blocks in a specific mode. Use `.morphic-workspace-root.morphic-mode-{name}` to target the Blockly workspace.
+One CSS file per mode. Use `.morphic-mode-{name}` to target blocks in a specific mode, and `.morphic-workspace-root.morphic-mode-{name}` to target the Blockly workspace.
 
 ```css
-/* python.css */
-.morphic-workspace-root.morphic-mode-python .blocklyText {
+/* syntax-py.css */
+.morphic-workspace-root.morphic-mode-syntax-py .blocklyText {
   font-family: "Fira Code", monospace;
 }
 ```
@@ -293,26 +337,23 @@ Block colours can be driven from CSS via a custom property:
 
 ### Done
 
-- ✅ Codespace — editable-by-structure text view of the block model
-- ✅ Preview editor — per-mode alternate language preview
+- ✅ Codespace — editable-by-structure text mirror of the block model
+- ✅ Preview editor — read-only view of another mode's source element
 - ✅ Drag from toolbox or grip handle (`⠿`) into the codespace, with drop-position indicator
-- ✅ Slot-based drops — drop into empty `for`/`if` bodies, or before/after existing siblings
-- ✅ Reorder via grip — including same-chain reorder (drop on own line moves it)
+- ✅ Slot-based drops — into empty `for`/`if` bodies, before/after siblings, and into empty value slots; reorder via grip
 - ✅ Keyboard + gutter `✕` deletion
-- ✅ Per-element empty-slot defaults (`Number`/`String`/`Boolean`/`default` per language) — generated text stays syntactically valid
-- ✅ Indent compounding — nested templates stack indents automatically
-- ✅ Multi-editor selection sync — block ↔ code editor ↔ codespace ↔ preview, with click-clears-on-empty-area
-- ✅ Block→line metadata in template codegen, plus statement-input body ranges
-- ✅ Definition-driven syntax highlighting — per-element `highlighting` rules (keywords, strings, comments, numbers + colors), element-name keyed (a mode's source element already names the language); CodeMirror `ViewPlugin` + `Decoration.mark`, runtime swap on `setModes()`
-- ✅ Drag value blocks (numbers, strings, variables) into value slots — both toolbox tiles and grip-drag inside the codespace; type-check is bypassed on drop so the rendered text behaves as text
-- ✅ Right-click (or Ctrl-click) drag inside the codespace, hover affordances (blue outline on editable values, grey background on enclosing block)
-- ✅ Inline field edits for atomic placeholders — text, number, dropdown fields editable through an overlay input; shadow auto-materialises to a real block on first edit
+- ✅ Declarable inline fields (`fields` map: dropdown / text / number / checkbox) — field-only blocks need no behavior for display
+- ✅ Inline field edits for atomic placeholders (text / number / dropdown), shadow auto-materialises on first edit
+- ✅ Per-element empty-slot defaults; empty slots render a `[TYPE]` marker when no default is set
+- ✅ Definition-driven syntax highlighting — per-element `highlighting` rules, runtime-swapped on `setModes()`
+- ✅ Multi-editor selection sync — block ↔ code editor ↔ codespace ↔ preview
+- ✅ One-file constructor + mount-time validation + shipped JSON Schema (`$schema` / `version`)
 
 ### Upcoming
 
-- Editor toolbar for codespace/preview
-- Use empty defaults in the Blockly block view as well
-- Inline-edit coverage for the remaining Blockly core fields (`FieldVariable`, `FieldCheckbox`) and a customisation protocol for plugin / developer fields — deferred; option menu and rationale recorded separately
+- Per-mode field rendering — a dropdown option's displayed text mode-aware while its stored value stays single (booleans, keywords, i18n, comparative syntax)
+- Editor toolbar for the codespace / preview
+- Use empty defaults in the Blockly block view as well (cosmetic)
+- Inline-edit coverage for `FieldVariable` / `FieldCheckbox` and a protocol for plugin / developer fields
 - Bidirectional sync — AST parsing converts text back to blocks (future)
-- Schema simplification — split tiles/modes, move mode composition into definitions (future refactor)
-- Package architecture refactor — split framework into plugin/feature modules (ports-and-adapters or similar); planned as the final cleanup once feature surface stabilises
+- Package architecture refactor — split framework into plugin/feature modules, once the feature surface stabilises

@@ -94,6 +94,8 @@ A **Morphic Block** is the fundamental unit. It has named **elements** — the v
 
 Element names (`title`, `icon`, `block`, `syntax`, …) are fully free-form. The type is declared once globally in `elementTypes` — not repeated per block.
 
+An `image` value can be a **bare file path** (`"icons/log.svg"` — auto-wrapped as `<img>`, sized via the element's `size` config, default 16×16) or explicit **`<img>` HTML** (`"<img src='icons/log.svg'>"`). Both work.
+
 A **mode** declares which elements are visible and, by scanning for the first `type: "code"` element listed, determines which template is used in the workspace.
 
 ## definitions.json Structure
@@ -139,7 +141,7 @@ A **mode** declares which elements are visible and, by scanning for the first `t
 - `elementTypes` — global registry mapping element names to their type (`text`, `code`, `image`)
 - `modes` — explicit mode definitions; mode names are arbitrary (no coupling to element names)
 - `presets` — named per-view mode configurations (see below)
-- `categories` — optional metadata (name, colour); blocks reference them by name
+- `categories` — optional metadata (name, color); blocks reference them by name
 - `blocks` — flat array; per-block `elements` are plain `name: content` strings
 
 ### Mode fields
@@ -192,7 +194,7 @@ All elements are always rendered; CSS controls visibility:
 
 ```ts
 engine.mountToolbox(container, {
-  categories: [{ name: 'Output', colour: '#5C81A6' }]
+  categories: [{ name: 'Output', color: '#5C81A6' }]
 })
 ```
 
