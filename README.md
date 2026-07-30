@@ -348,10 +348,11 @@ Block colours can be driven from CSS via a custom property:
 - ✅ Definition-driven syntax highlighting — per-element `highlighting` rules, runtime-swapped on `setModes()`
 - ✅ Multi-editor selection sync — block ↔ code editor ↔ codespace ↔ preview
 - ✅ One-file constructor + mount-time validation + shipped JSON Schema (`$schema` / `version`)
+- ✅ Per-mode field rendering — a dropdown option's `display` map (keyed by element name) makes the shown text mode-aware (`True`/`true`, `and`/`&&`) while the stored value drives execution and codegen
 
 ### Upcoming
 
-- Per-mode field rendering — a dropdown option's displayed text mode-aware while its stored value stays single (booleans, keywords, i18n, comparative syntax)
+- Natural-language / locale layer — translate human-readable text (option labels like `Monday`/`Montag`, descriptions, domain labels, string literals) across natural languages, orthogonal to the representation modes; likely an external translation table keyed by locale, merged at load. Separate from per-mode field rendering (the representation axis)
 - Editor toolbar for the codespace / preview
 - Use empty defaults in the Blockly block view as well (cosmetic)
 - Inline-edit coverage for `FieldVariable` / `FieldCheckbox` and a protocol for plugin / developer fields
