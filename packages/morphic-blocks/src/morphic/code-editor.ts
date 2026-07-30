@@ -205,6 +205,7 @@ export class MorphicCodeEditor {
   /** DOM root of the active inline placeholder editor (input/select), if open. */
   private placeholderEditorEl?: HTMLElement;
   private placeholderEditorScrollHandler?: () => void;
+  private placeholderEditorOutsideHandler?: (e: MouseEvent) => void;
 
   private closePlaceholderEditor(): void {
     // Clear state references BEFORE calling .remove(): removal of a focused
@@ -218,6 +219,10 @@ export class MorphicCodeEditor {
     if (this.placeholderEditorScrollHandler && this.editorView) {
       this.editorView.scrollDOM.removeEventListener("scroll", this.placeholderEditorScrollHandler);
       this.placeholderEditorScrollHandler = undefined;
+    }
+    if (this.placeholderEditorOutsideHandler) {
+      document.removeEventListener("mousedown", this.placeholderEditorOutsideHandler);
+      this.placeholderEditorOutsideHandler = undefined;
     }
     if (el.parentNode) el.parentNode.removeChild(el);
   }
@@ -311,12 +316,19 @@ export class MorphicCodeEditor {
       if (key === "Enter") { e.preventDefault(); apply(); }
       else if (key === "Escape") { e.preventDefault(); cancel(); }
     });
-    inputEl.addEventListener("blur", () => apply());
     // Don't let clicks on the input bubble into CodeMirror's pointer handling
     // — otherwise CodeMirror would try to position its cursor in the doc and
-    // could steal focus before the input commits.
+    // could steal focus before the input commits. `click` is stopped too: it
+    // would otherwise reach the scrollDOM click listener, which reopens the
+    // editor (close+open) and kills a just-opened native <select> popup.
     inputEl.addEventListener("mousedown", (e) => e.stopPropagation());
+    inputEl.addEventListener("click", (e) => e.stopPropagation());
     if (edit.fieldType === "dropdown") {
+      // A <select> commits on `change`, NOT on blur: opening its native popup
+      // fires a blur on the select on some platforms, which would apply-and-
+      // close the editor the instant it opened. Dismissal without a change is
+      // handled by the outside-pointer listener below.
+      inputEl.addEventListener("change", () => apply());
       // The codespace renders the dropdown's display label (e.g. "=="), but
       // <option> values carry the stored key (e.g. "EQ"). Pre-select using
       // the field's actual stored value so the current option is highlighted.
@@ -326,8 +338,18 @@ export class MorphicCodeEditor {
       if (currentValue != null) {
         (inputEl as HTMLSelectElement).value = String(currentValue);
       }
-      // Apply on change so the dropdown commits without an explicit blur.
-      inputEl.addEventListener("change", () => apply());
+      // Clicking anywhere outside the open dropdown cancels it (e.g. the user
+      // reopened it and picked the same value, so no `change` fires). Register
+      // on the next frame so the click that opened the editor doesn't trip it.
+      requestAnimationFrame(() => {
+        this.placeholderEditorOutsideHandler = (e: MouseEvent) => {
+          if (e.target instanceof Node && !inputEl.contains(e.target)) cancel();
+        };
+        document.addEventListener("mousedown", this.placeholderEditorOutsideHandler);
+      });
+    } else {
+      // Text/number inputs commit on blur (and Enter).
+      inputEl.addEventListener("blur", () => apply());
     }
 
     // Close on editor scroll — repositioning is more work than re-opening.
