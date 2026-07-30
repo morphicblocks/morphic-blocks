@@ -186,6 +186,29 @@ export function validateDefinitions(
     }
   }
 
+  // (7b) Config fields on the wrong element type are silently ignored — warn so
+  // a misplacement isn't mistaken for "the setting doesn't work". `empty` /
+  // `stringQuote` apply to code elements; `size` applies to image elements.
+  for (const [name, entry] of Object.entries(elementTypes)) {
+    if (typeof entry === "string") continue;
+    const type = entry.type;
+    if (entry.size !== undefined && type !== "image") {
+      warnings.push(
+        `elementTypes."${name}": "size" applies only to image elements — ignored for a ${type} element.`,
+      );
+    }
+    if (entry.stringQuote !== undefined && type !== "code") {
+      warnings.push(
+        `elementTypes."${name}": "stringQuote" applies only to code elements — ignored for a ${type} element.`,
+      );
+    }
+    if (entry.empty !== undefined && type !== "code") {
+      warnings.push(
+        `elementTypes."${name}": "empty" applies only to code elements — ignored for a ${type} element.`,
+      );
+    }
+  }
+
   // (8) Mode elements must be declared element names.
   for (const mode of modes ?? []) {
     for (const element of mode.elements) {

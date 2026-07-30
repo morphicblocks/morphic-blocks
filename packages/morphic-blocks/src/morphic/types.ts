@@ -53,8 +53,8 @@ export interface MorphicElementTypeConfig {
   /**
    * Per-slot-check defaults for empty value inputs. Keys are the slot's
    * `check` string (e.g. `"Number"`, `"String"`, or any developer-defined
-   * check name). Slots without a matching key get no default — the
-   * codespace renders the marker (`___`) and the workspace shows an empty
+   * check name). Slots without a matching key get no default — the codespace
+   * renders a `[TYPE]` marker (e.g. `[NUMBER]`) and the workspace shows an empty
    * socket. Per-slot overrides via `inputSlots[i].default` take priority.
    */
   empty?: Record<string, MorphicEmptyDefaultConfig>;
