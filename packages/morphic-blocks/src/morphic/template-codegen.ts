@@ -270,17 +270,22 @@ function renderBlock(
             perFieldRecorded = true;
           }
         }
-      } else {
+      }
+
+      let emptySlotInfo: { parentBlockId: string; inputName: string } | undefined;
+      if (!willEmitValue) {
         // Truly empty slot: the workspace shows an empty socket, but text can't
         // render "nothing" — it must mark that a value belongs here. Emit a type
         // marker from the slot's check (e.g. [NUMBER], [TEXT], [BOOL]). Filled by
-        // dragging a value block into the slot.
+        // dragging a value block into the slot; `emptySlot` lets the codespace
+        // resolve that drop (there's no child block to walk up from).
         appendText(state, emptySlotMarker(slot?.check));
+        emptySlotInfo = { parentBlockId: block.id, inputName };
       }
 
       if (!perFieldRecorded) {
         const editTarget = rawTarget?.isShadow() ? detectAtomicEdit(rawTarget) ?? undefined : undefined;
-        recordPlaceholder(state, slotOffsetStart, "default", editTarget);
+        recordPlaceholder(state, slotOffsetStart, "default", editTarget, emptySlotInfo);
       }
       if (stringQuote) appendText(state, stringQuote);
       continue;
@@ -352,11 +357,13 @@ function recordPlaceholder(
   start: number,
   kind: "default" | "set",
   edit?: MorphicPlaceholderEditTarget,
+  emptySlot?: { parentBlockId: string; inputName: string },
 ): void {
   const end = state.output.length;
   if (end > start) {
     const range: MorphicPlaceholderRange = { start, end, kind };
     if (edit) range.edit = edit;
+    if (emptySlot) range.emptySlot = emptySlot;
     state.placeholders.push(range);
   }
 }

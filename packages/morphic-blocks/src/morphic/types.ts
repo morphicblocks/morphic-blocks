@@ -495,6 +495,13 @@ export interface MorphicPlaceholderRange {
   kind: "default" | "set";
   /** Editing target when the slot contains an atomic single-field block. */
   edit?: MorphicPlaceholderEditTarget;
+  /**
+   * Set when the range is a *truly empty* value slot (rendered as a `[TYPE]`
+   * marker, with no block in it). Identifies the parent block and input so the
+   * codespace can resolve a drop into the empty slot — there's no child block
+   * to walk up from, unlike an occupied or shadow-filled slot.
+   */
+  emptySlot?: { parentBlockId: string; inputName: string };
 }
 
 /** Result of `generateJavaScriptWithMetadata()`. */

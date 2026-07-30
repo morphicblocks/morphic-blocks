@@ -1549,9 +1549,19 @@ export class MorphicBlocks extends EventTarget {
     if (!this.workspace || !this.codespace) return null;
     const dragSourceId = getActiveGripDragSourceId();
 
-    // 1. Empty value slots — placeholder ranges with an editable target.
+    // 1. Empty value slots — placeholder ranges for a slot with no block in it.
     for (const ph of this.codespace.getPlaceholders()) {
       if (charOffset < ph.start || charOffset >= ph.end) continue;
+      // 1a. Truly empty slot ([TYPE] marker): the range carries its own
+      //     parent + input, since there's no child block to walk up from.
+      if (ph.emptySlot) {
+        const { parentBlockId, inputName } = ph.emptySlot;
+        if (parentBlockId === dragSourceId) continue;
+        const parent = this.workspace.getBlockById(parentBlockId) as Blockly.BlockSvg | null;
+        if (!parent?.getInput(inputName)?.connection) continue;
+        return { parentBlockId, inputName, highlight: { from: ph.start, to: ph.end } };
+      }
+      // 1b. Shadow-filled slot: resolve via the shadow/placeholder block.
       const blockId = ph.edit?.blockId;
       if (!blockId || blockId === dragSourceId) continue;
       const child = this.workspace.getBlockById(blockId) as Blockly.BlockSvg | null;
