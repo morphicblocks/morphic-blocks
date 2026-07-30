@@ -125,8 +125,7 @@
     "concept": {
       "keywords": ["if", "else", "while", "repeat", "for", "Output"],
       "strings": ["\""],
-      "comment": "//",
-      "numbers": true
+      "comment": "//"
     },
     "python": {
       "keywords": [
@@ -149,7 +148,6 @@
       ],
       "strings": ["\"", "'"],
       "comment": "#",
-      "numbers": true,
       "colors": {
         "keyword": "#cc7832",
         "string": "#6a8759",
@@ -177,7 +175,6 @@
       ],
       "strings": ["\"", "'", "`"],
       "comment": "//",
-      "numbers": true,
       "colors": {
         "keyword": "#569cd6",
         "string": "#ce9178",
@@ -204,7 +201,6 @@
       ],
       "strings": ["\"", "`"],
       "comment": "//",
-      "numbers": true,
       "colors": {
         "keyword": "#00acd7",
         "string": "#dcdcaa",
@@ -335,6 +331,7 @@
         "1": {
           "kind": "value",
           "name": "A",
+          "check": "Number",
           "default": {
             "shadow": "math_number",
             "placeholder": "math_number",
@@ -346,6 +343,7 @@
         "2": {
           "kind": "value",
           "name": "B",
+          "check": "Number",
           "default": {
             "placeholder": "math_number",
             "fieldValues": {
