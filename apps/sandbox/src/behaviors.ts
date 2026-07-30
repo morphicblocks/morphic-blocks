@@ -53,6 +53,13 @@ export const behaviors: MorphicBehaviorMap = {
     return `${proxy.inputs.A || "0"} ${op} ${proxy.inputs.B || "0"}`;
   },
 
+  // OP value is the JS operator (&&/||); the Python/concept display (and/or)
+  // never reaches codegen — execution always uses the value.
+  logic_operation(proxy) {
+    const op = raw(proxy.fields.OP, "&&");
+    return `${proxy.inputs.A || "false"} ${op} ${proxy.inputs.B || "false"}`;
+  },
+
   // ── Values ──────────────────────────────────────────────
 
   m_math_number(proxy) {

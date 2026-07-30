@@ -407,6 +407,35 @@
       "inputsInline": true
     },
     {
+      "identifier": "logic_operation",
+      "category": "Operations",
+      "elements": {
+        "icon": "icons/logic_compare.svg",
+        "title": "Logic",
+        "description": "Combines two booleans with and / or",
+        "concept": "%1 %OP %2",
+        "python": "%1 %OP %2",
+        "javascript": "%1 %OP %2",
+        "go": "%1 %OP %2"
+      },
+      "inputSlots": {
+        "1": { "kind": "value", "name": "A", "check": "Boolean" },
+        "2": { "kind": "value", "name": "B", "check": "Boolean" }
+      },
+      "fields": {
+        "OP": {
+          "type": "dropdown",
+          "options": [
+            { "value": "&&", "display": { "concept": "and", "python": "and" } },
+            { "value": "||", "display": { "concept": "or", "python": "or" } }
+          ],
+          "default": "&&"
+        }
+      },
+      "output": "Boolean",
+      "inputsInline": true
+    },
+    {
       "identifier": "m_math_number",
       "category": "Values",
       "elements": {
@@ -461,7 +490,10 @@
       "fields": {
         "BOOL": {
           "type": "dropdown",
-          "options": ["true", "false"],
+          "options": [
+            { "value": "true", "display": { "python": "True" } },
+            { "value": "false", "display": { "python": "False" } }
+          ],
           "default": "true"
         }
       },
