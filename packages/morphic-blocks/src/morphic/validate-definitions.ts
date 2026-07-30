@@ -157,6 +157,23 @@ export function validateDefinitions(
       }
     }
 
+    // (4b) Dropdown option `display` keys must be code elements — a display for
+    // an element that never renders as source text is dead config.
+    for (const [name, fieldDef] of Object.entries(def.fields ?? {})) {
+      if (fieldDef?.type !== "dropdown") continue;
+      for (const option of fieldDef.options) {
+        if (typeof option !== "object" || Array.isArray(option) || !option.display) continue;
+        for (const element of Object.keys(option.display)) {
+          if (!codeElementNames.has(element)) {
+            warnings.push(
+              `Block "${id}": fields["${name}"] option "${option.value}" has display for "${element}", ` +
+                `which is not a code element — that entry never applies.`,
+            );
+          }
+        }
+      }
+    }
+
     // (5) Category must exist (only when categories were supplied to validate against).
     if (
       def.category !== undefined &&

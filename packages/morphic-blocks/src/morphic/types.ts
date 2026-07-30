@@ -90,19 +90,27 @@ export type MorphicInputAlign = "left" | "centre" | "right";
 
 /**
  * One choice in a declared `dropdown` field. The `value` is the source of
- * truth: it is what the block *generates* and what text/preview views render.
- * The optional `label` is a display-only override shown on the workspace block
+ * truth: it is what the block *generates*, serializes, and executes. The
+ * optional `label` is a display-only override shown on the workspace block
  * (e.g. show `÷` while generating `/`); when omitted the value is shown.
  *
+ * `display` makes the *shown* text mode-aware without touching the value: it
+ * maps an **element name** (like `highlighting` is keyed) to the text shown
+ * when that element is rendered — so a Python source shows `True` while
+ * JavaScript shows `true`, both storing/executing the same value. Resolution
+ * when rendering element `E`: block text `display[E] ?? label ?? value`;
+ * codespace/preview text `display[E] ?? value` (`label` stays block-only).
+ * Only the representation axis — natural-language translation is separate.
+ *
  * Forms:
- *   - `"=="`               → value = label = `"=="`
- *   - `["-", "−"]`         → value `"-"`, shown as `"−"` on the block
- *   - `{ value, label? }`  → explicit object form
+ *   - `"=="`                        → value = label = `"=="`
+ *   - `["-", "−"]`                  → value `"-"`, shown as `"−"` on the block
+ *   - `{ value, label?, display? }` → explicit object form
  */
 export type MorphicDropdownOption =
   | string
   | [value: string, label: string]
-  | { value: string; label?: string };
+  | { value: string; label?: string; display?: Record<string, string> };
 
 /**
  * A field declared directly on a block (rendered at the `%FIELDNAME` token

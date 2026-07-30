@@ -190,7 +190,7 @@ function renderBlock(
       const field = block.getField(token.name);
       if (!field) continue;
       const fieldStart = state.output.length;
-      appendText(state, readFieldText(field));
+      appendText(state, resolveFieldDisplay(definition, elementName, token.name, field));
       const editTarget = fieldEditTarget(block, field, token.name);
       if (editTarget) {
         recordPlaceholder(state, fieldStart, "set", editTarget);
@@ -256,8 +256,20 @@ function renderBlock(
 
       if (shadowFields.length > 0) {
         // Read the shadow's own fields so codespace text matches the shadow's
-        // current values (and supports inline editing of the shadow).
-        for (const field of shadowFields) appendText(state, readFieldText(field));
+        // current values (and supports inline editing of the shadow). A morphic
+        // shadow (e.g. m_logic_boolean) honors per-element field display too, so
+        // an empty Boolean slot reads `True` in Python just like a real block.
+        const shadowDef = rawTarget
+          ? ctx.definitions.get(toCleanId(rawTarget.type))
+          : undefined;
+        for (const field of shadowFields) {
+          appendText(
+            state,
+            shadowDef && field.name
+              ? resolveFieldDisplay(shadowDef, elementName, field.name, field)
+              : readFieldText(field),
+          );
+        }
       } else if (inputFields.length > 0) {
         // Fields directly on the parent's input (custom onViewApplied fields).
         // Emit each as its own placeholder range so it's individually editable.
@@ -470,6 +482,30 @@ function detectAtomicEdit(block: Blockly.Block): MorphicPlaceholderEditTarget | 
     }
   }
   return { blockId: block.id, fieldName, fieldType, options };
+}
+
+/**
+ * Text a declared field contributes to codespace/preview output. For a declared
+ * `dropdown`, the shown text is the matching option's per-element `display`
+ * (keyed by the rendered `elementName`) falling back to its `value` — so a
+ * Python source shows `True` while the value stays `true`. Everything else
+ * defers to `readFieldText` (dropdown value, or the field's own text).
+ */
+function resolveFieldDisplay(
+  definition: MorphicBlockDefinition,
+  elementName: string | undefined,
+  fieldName: string,
+  field: Blockly.Field,
+): string {
+  const def = definition.fields?.[fieldName];
+  if (def?.type === "dropdown" && elementName) {
+    const value = String(field.getValue());
+    for (const option of def.options) {
+      if (typeof option !== "object" || Array.isArray(option)) continue;
+      if (option.value === value) return option.display?.[elementName] ?? value;
+    }
+  }
+  return readFieldText(field);
 }
 
 function readFieldText(field: Blockly.Field | null | undefined): string {

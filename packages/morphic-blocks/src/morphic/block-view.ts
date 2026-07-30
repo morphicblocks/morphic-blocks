@@ -208,7 +208,10 @@ function renderTemplate(
       // are left for a behavior's onViewApplied to supply (custom/plugin fields).
       const fieldDef = definition.fields?.[token.name];
       if (fieldDef) {
-        pendingFields.push({ field: createFieldFromDefinition(fieldDef), name: token.name });
+        pendingFields.push({
+          field: createFieldFromDefinition(fieldDef, view.elementName),
+          name: token.name,
+        });
       }
       continue;
     }
@@ -324,14 +327,19 @@ function flushPendingFields(input: Blockly.Input, fields: PendingField[]): void 
 /**
  * Build a Blockly field from a declarative `fields` entry. Covers the four
  * built-in types; the dropdown maps each option to Blockly's `[displayText,
- * value]` tuple, where the display text is the option's `label` (falling back
- * to its `value`) — so the block shows the label while `getValue()` stays the
- * value used by text views and codegen.
+ * value]` tuple, where the display text is the option's per-element `display`
+ * (for the active `elementName`) falling back to its `label` then `value` — so
+ * a Python-mode block shows `True` while `getValue()` stays `true` for text
+ * views and codegen. Fields are rebuilt on every mode switch, so passing the
+ * active element keeps the shown text in step.
  */
-function createFieldFromDefinition(def: MorphicFieldDefinition): Blockly.Field {
+function createFieldFromDefinition(
+  def: MorphicFieldDefinition,
+  elementName?: string,
+): Blockly.Field {
   switch (def.type) {
     case "dropdown": {
-      const options = def.options.map(toBlocklyDropdownOption);
+      const options = def.options.map((o) => toBlocklyDropdownOption(o, elementName));
       const field = new Blockly.FieldDropdown(options);
       if (def.default !== undefined) field.setValue(def.default);
       return field;
@@ -346,14 +354,22 @@ function createFieldFromDefinition(def: MorphicFieldDefinition): Blockly.Field {
   }
 }
 
-/** Normalise a declared dropdown option to Blockly's `[displayText, value]`. */
-function toBlocklyDropdownOption(option: MorphicDropdownOption): [string, string] {
+/**
+ * Normalise a declared dropdown option to Blockly's `[displayText, value]`.
+ * When rendering element `elementName`, a per-element `display` entry wins over
+ * `label`, which wins over the bare `value`.
+ */
+function toBlocklyDropdownOption(
+  option: MorphicDropdownOption,
+  elementName?: string,
+): [string, string] {
   if (typeof option === "string") return [option, option];
   if (Array.isArray(option)) {
     const [value, label] = option;
     return [label ?? value, value];
   }
-  return [option.label ?? option.value, option.value];
+  const display = elementName ? option.display?.[elementName] : undefined;
+  return [display ?? option.label ?? option.value, option.value];
 }
 
 function captureConnectedChildren(

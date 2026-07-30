@@ -188,7 +188,12 @@
           "required": ["value"],
           "properties": {
             "value": { "type": "string" },
-            "label": { "type": "string" }
+            "label": { "type": "string" },
+            "display": {
+              "type": "object",
+              "description": "Per-element display text (element name → shown text). Overrides label/value when that element is rendered; the value still drives execution and codegen.",
+              "additionalProperties": { "type": "string" }
+            }
           },
           "additionalProperties": false
         }
