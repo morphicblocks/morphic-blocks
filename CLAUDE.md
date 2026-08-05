@@ -264,3 +264,14 @@ These are *potential* applications, not currently deployed. They are worth keepi
 3. Mark the recommended option with **(recommended)** so the user can see which one you prefer
 4. The user picks one; then commit with the chosen message
 5. Add `Co-Authored-By: Claude <noreply@anthropic.com>` unless the user says to be the main author
+
+## Release Workflow (npm)
+
+Publishing happens in CI (`.github/workflows/publish.yml`) via OIDC trusted publishing, triggered by a GitHub **Release**. A published version is immutable — it can't be overwritten or edited, only superseded by a new version. Before telling the developer to cut a release, **run a pre-flight and remind them of it**:
+
+1. **Reproduce the CI build locally** — the same install (lockfile in sync), build, and packaging steps CI runs must succeed. A drifted lockfile or build failure aborts the publish.
+2. **Inspect the package contents** — confirm only the intended files ship and nothing internal leaks in.
+3. **Docs ↔ reality agreement** — verify README, install/usage instructions, and metadata match the actual `package.json` (dependencies vs peers, exports, version, etc.). Correct any claim that no longer holds.
+4. **Version** — bump `package.json` for any republish; the npm page (README included) only refreshes on a new version.
+
+Remind the developer of these checks before every release.
