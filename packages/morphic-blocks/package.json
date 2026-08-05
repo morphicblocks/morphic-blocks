@@ -33,7 +33,7 @@
     "visual-programming",
     "morphic"
   ],
-  "license": "MIT",
+  "license": "Apache-2.0",
   "dependencies": {
     "blockly": "^11.2.2"
   },
