@@ -1,6 +1,8 @@
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/morphicblocks/morphic-meta/main/brand/logos/logo.png" alt="Morphic Blocks" width="120" height="120" />
+<picture> 
+  <img src="https://raw.githubusercontent.com/morphicblocks/morphic-meta/main/brand/logos/logo.png" alt="Morphic Blocks" width="120" height="120" />
+</picture>
 
 # Morphic Blocks
 
