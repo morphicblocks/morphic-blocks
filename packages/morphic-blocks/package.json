@@ -22,7 +22,8 @@
   },
   "files": [
     "dist",
-    "definitions.schema.json"
+    "definitions.schema.json",
+    "NOTICE"
   ],
   "scripts": {
     "build": "vite build && tsc -p tsconfig.build.json"
