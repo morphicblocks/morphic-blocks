@@ -23,11 +23,12 @@ block-based and text-based programming.
 ## Install
 
 ```sh
-npm i morphic-blocks blockly
+npm i morphic-blocks
 ```
 
-`blockly` is a peer dependency. The code editor, codespace, and preview views
-additionally use CodeMirror — install those only if you need them:
+Blockly is bundled as a dependency — no separate install needed. The code editor,
+codespace, and preview views additionally use CodeMirror — install those only if
+you need them:
 
 ```sh
 npm i @codemirror/state @codemirror/view @codemirror/lang-javascript
