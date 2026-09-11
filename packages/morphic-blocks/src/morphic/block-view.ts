@@ -29,6 +29,15 @@ import type {
 export type MorphicManagedBlock = Blockly.BlockSvg & {
   __morphicMode?: string;
   __morphicContext?: MorphicRenderContext;
+  /**
+   * Input names whose configured `placeholder` has already been handled. A
+   * placeholder is a *real* block the user may edit or delete, so it is
+   * attached once when the block is first rendered and never re-created —
+   * otherwise any re-render (notably a mode switch) would resurrect a value
+   * the user deliberately removed. Shadows are exempt: Blockly owns their
+   * lifecycle and restores them by design.
+   */
+  __morphicPlaceholderSlots?: Set<string>;
 };
 
 export interface MorphicApplyBlockViewParams {
@@ -456,14 +465,20 @@ function attachEmptyDefaults(
       }
     }
 
-    // 2. Placeholder — only create when the slot is empty (target null) or
-    // currently shows a shadow that we want to override on initial render.
-    // A real (non-shadow) child means the user already attached something;
-    // do not displace it.
+    // 2. Placeholder — attached once, on the first render that sees this slot.
+    // A placeholder is a real block the user can edit or delete, so re-running
+    // this on later renders (a mode switch re-applies every view) would
+    // resurrect a value the user deleted. The slot is therefore recorded on
+    // first encounter whether or not a placeholder was created: a slot that
+    // already held a real block was never the placeholder's to fill.
     if (config.placeholder) {
+      const managed = block as MorphicManagedBlock;
+      const handledSlots = (managed.__morphicPlaceholderSlots ??= new Set<string>());
       const target = connection.targetBlock();
       const slotIsEffectivelyEmpty = !target || target.isShadow();
-      if (slotIsEffectivelyEmpty) {
+      const alreadyHandled = handledSlots.has(input.name);
+      handledSlots.add(input.name);
+      if (slotIsEffectivelyEmpty && !alreadyHandled) {
         try {
           const placeholder = workspace.newBlock(resolveBlocklyType(config.placeholder)) as Blockly.BlockSvg;
           if (config.fieldValues) {
