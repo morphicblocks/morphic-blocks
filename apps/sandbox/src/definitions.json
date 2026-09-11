@@ -11,13 +11,19 @@
         "Number": {
           "shadow": "math_number",
           "fieldValues": {
-            "NUM": "5"
+            "NUM": "0"
           }
         },
         "String": {
           "shadow": "text",
           "fieldValues": {
-            "TEXT": "value"
+            "TEXT": "text"
+          }
+        },
+        "Boolean": {
+          "shadow": "m_logic_boolean",
+          "fieldValues": {
+            "BOOL": "true"
           }
         }
       }
@@ -29,13 +35,13 @@
         "Number": {
           "shadow": "math_number",
           "fieldValues": {
-            "NUM": "42"
+            "NUM": "0"
           }
         },
         "String": {
           "shadow": "text",
           "fieldValues": {
-            "TEXT": "world"
+            "TEXT": "text"
           }
         },
         "Boolean": {
@@ -52,23 +58,20 @@
       "empty": {
         "Number": {
           "shadow": "math_number",
-          "placeholder": "math_number",
           "fieldValues": {
-            "NUM": "7"
+            "NUM": "0"
           }
         },
         "String": {
           "shadow": "text",
-          "placeholder": "text",
           "fieldValues": {
-            "TEXT": "hello"
+            "TEXT": "text"
           }
         },
         "Boolean": {
           "shadow": "m_logic_boolean",
-          "placeholder": "m_logic_boolean",
           "fieldValues": {
-            "BOOL": "false"
+            "BOOL": "true"
           }
         }
       }
@@ -78,13 +81,19 @@
       "stringQuote": "\"",
       "empty": {
         "Number": {
-          "placeholder": "math_number",
+          "shadow": "math_number",
           "fieldValues": {
-            "NUM": "100"
+            "NUM": "0"
+          }
+        },
+        "String": {
+          "shadow": "text",
+          "fieldValues": {
+            "TEXT": "text"
           }
         },
         "Boolean": {
-          "placeholder": "m_logic_boolean",
+          "shadow": "m_logic_boolean",
           "fieldValues": {
             "BOOL": "true"
           }
