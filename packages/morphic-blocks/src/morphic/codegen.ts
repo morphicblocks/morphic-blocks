@@ -1,4 +1,6 @@
-import type * as Blockly from "blockly";
+// Value import: `Blockly.INPUT_VALUE` is needed at runtime to detect which
+// inputs are value slots when deciding whether an operand needs parentheses.
+import * as Blockly from "blockly";
 import { Order, javascriptGenerator, type JavascriptGenerator } from "blockly/javascript";
 import { getCodeBehavior } from "./behavior-runtime";
 import { toBlocklyType, toCleanId } from "./block-namespace";
@@ -80,12 +82,18 @@ function createBehaviorProxy(block: Blockly.Block, generator: JavascriptGenerato
   const inputs: Record<string, string> = {};
   const fields: Record<string, string> = {};
   const context: MorphicRenderContext = block.workspace.isFlyout ? "toolbox" : "workspace";
+  // Operands are bracketed only when this block composes several values, i.e.
+  // they sit either side of an operator. A block with one value input holds a
+  // whole sub-expression (`console.log(%1)`) and needs no extra brackets.
+  const composesSeveralValues = countValueInputs(block) >= 2;
 
   for (const input of block.inputList) {
     const targetBlock = input.connection?.targetBlock();
     if (targetBlock) {
       if (targetBlock.outputConnection) {
-        inputs[input.name] = generator.valueToCode(block, input.name, Order.NONE) || "undefined";
+        const code = generator.valueToCode(block, input.name, Order.NONE) || "undefined";
+        inputs[input.name] =
+          composesSeveralValues ? parenthesizeOperand(code, targetBlock) : code;
       } else {
         inputs[input.name] = generator.statementToCode(block, input.name).trimEnd();
       }
@@ -107,6 +115,63 @@ function createBehaviorProxy(block: Blockly.Block, generator: JavascriptGenerato
     inputs,
     fields
   };
+}
+
+/**
+ * Parenthesise a value operand when the block that produced it composes other
+ * values of its own.
+ *
+ * Morphic blocks report `Order.NONE` and request their operands at
+ * `Order.NONE`, so Blockly's own precedence handling never wraps anything —
+ * a `%1 %OP %2` block nested inside another emits `2 * 3 + 4` for a workspace
+ * that reads `2 * (3 + 4)`. Rather than requiring every block to declare a
+ * precedence (which a block with an operator *dropdown* cannot express as a
+ * single value, since `+` and `*` differ), any operand that is itself
+ * composed gets wrapped. Over-parenthesising is never incorrect, and the
+ * brackets mirror the block structure: what sits inside one pair of
+ * parentheses is exactly what sits inside one block.
+ *
+ * Blocks with no value inputs — numbers, strings, booleans, variable getters,
+ * and Blockly's stock literal blocks — are atomic and pass through untouched.
+ */
+function parenthesizeOperand(code: string, target: Blockly.Block): string {
+  if (!composesValues(target) || isAlreadyWrapped(code)) {
+    return code;
+  }
+  return `(${code})`;
+}
+
+function composesValues(block: Blockly.Block): boolean {
+  return countValueInputs(block) > 0;
+}
+
+function countValueInputs(block: Blockly.Block): number {
+  return block.inputList.filter(
+    (input) => input.connection?.type === Blockly.INPUT_VALUE,
+  ).length;
+}
+
+/**
+ * True when the whole string is already enclosed in one matched pair of
+ * parentheses, so `(a + b)` is not re-wrapped while `(a) + (b)` still is.
+ */
+function isAlreadyWrapped(code: string): boolean {
+  if (!code.startsWith("(") || !code.endsWith(")")) {
+    return false;
+  }
+  let depth = 0;
+  for (let index = 0; index < code.length; index++) {
+    const char = code[index];
+    if (char === "(") {
+      depth++;
+    } else if (char === ")") {
+      depth--;
+      if (depth === 0) {
+        return index === code.length - 1;
+      }
+    }
+  }
+  return false;
 }
 
 function isValueBlock(block: Blockly.Block, definition: MorphicBlockDefinition): boolean {

@@ -1,6 +1,6 @@
 import * as Blockly from "blockly";
 import { toCleanId } from "./block-namespace";
-import { parseTemplate } from "./template";
+import { parseTemplate, type MorphicTemplateToken } from "./template";
 import { resolveBlockView } from "./view-resolver";
 import type {
   MorphicBlockDefinition,
@@ -115,10 +115,56 @@ function renderStatementChain(
   }
 }
 
+/**
+ * True when the block composes other values, i.e. has value inputs of its own
+ * (`%1 %OP %2`). Such a block's text needs bracketing when it sits inside
+ * another expression; numbers, strings, booleans and variable getters do not.
+ */
+function composesValues(block: Blockly.Block): boolean {
+  return block.inputList.some(
+    (input) => input.connection?.type === Blockly.INPUT_VALUE,
+  );
+}
+
+/**
+ * How many *value* slots this template renders. Two or more means its slots are
+ * operands of a composed expression (`%1 %OP %2`), where a composed child needs
+ * bracketing to preserve grouping. A single value slot is a whole sub-expression
+ * in its own right — `if %1:`, `print(%1)` — and bracketing it only adds noise
+ * (`if (10 == 20):` is valid Python, but nobody writes it that way).
+ *
+ * A unary operator is the one case this misses: `-%1` has a single slot yet
+ * `-(3 + 4)` does need brackets. Such templates spell the brackets out
+ * themselves — `-(%1)` — which keeps the author in control where the framework
+ * cannot infer intent.
+ */
+function countValueSlots(
+  tokens: MorphicTemplateToken[],
+  definition: MorphicBlockDefinition,
+): number {
+  let count = 0;
+  for (const token of tokens) {
+    if (token.kind !== "placeholder") continue;
+    const slot = definition.inputSlots?.[String(token.index)];
+    if ((slot?.kind ?? "value") === "value") count++;
+  }
+  return count;
+}
+
+/**
+ * `wrap` parenthesises this block's rendered text. Set when the block is a
+ * composed operand inside another expression, so the displayed code preserves
+ * the grouping the block structure already encodes — without it, a workspace
+ * meaning `2 * (3 + 4)` renders as `2 * 3 + 4`, which reads as a different
+ * program. The brackets are emitted *inside* the block's recorded range so
+ * selection, drag and delete treat `(3 + 4)` as one unit and never orphan a
+ * bracket.
+ */
 function renderBlock(
   block: Blockly.Block,
   ctx: RenderContext,
   state: RenderState,
+  wrap = false,
 ): void {
   const definition = ctx.definitions.get(toCleanId(block.type));
   if (!definition) {
@@ -177,10 +223,17 @@ function renderBlock(
   const elementEntry = elementName ? ctx.elementTypes[elementName] : undefined;
 
   const before = state.output.length;
+  if (wrap) {
+    appendText(state, "(");
+  }
+  const contentStart = state.output.length;
   const startLine = currentLine(state.output);
   const statementSlots: Record<string, { startLine: number; endLine: number }> = {};
 
   const tokens = parseTemplate(template);
+  // Composed operands are bracketed only when this template composes several
+  // values, so a lone slot (`if %1:`) stays clean in every language.
+  const composesSeveralValues = countValueSlots(tokens, definition) >= 2;
   for (const token of tokens) {
     if (token.kind === "text") {
       appendText(state, token.value);
@@ -308,13 +361,18 @@ function renderBlock(
     // quoting here. Drag affordance is provided by the per-block drag layer
     // in code-editor.ts; the placeholder mark is visual-only.
     const slotOffsetStart = state.output.length;
-    renderBlock(target, ctx, state);
+    renderBlock(target, ctx, state, composesSeveralValues && composesValues(target));
     recordPlaceholder(state, slotOffsetStart, "set", detectAtomicEdit(target) ?? undefined);
   }
 
-  if (state.output.length === before) {
-    // Block emitted nothing — don't record a zero-width range.
+  if (state.output.length === contentStart) {
+    // Block emitted nothing — drop any opening bracket already written and
+    // don't record a zero-width range.
+    state.output = state.output.slice(0, before);
     return;
+  }
+  if (wrap) {
+    appendText(state, ")");
   }
 
   // If the last emitted character is a newline, the block's content ends on
