@@ -630,20 +630,26 @@ export class MorphicBlocks extends EventTarget {
    */
   public runJavaScript(options?: {
     console?: { log: (...a: unknown[]) => void; warn?: (...a: unknown[]) => void; error?: (...a: unknown[]) => void };
+    /**
+     * Also print the program's lines to the browser console. Default `false`:
+     * lines are only collected in `output`. Ignored when `console` is given,
+     * since lines always go to a console the host passes in.
+     */
+    logToConsole?: boolean;
   }): MorphicRunResult {
     let code = "";
     let result: unknown = undefined;
     let error: Error | null = null;
     // Every printed line is collected with its level, so a host can show the
     // program's output on the page without writing its own console. Lines are
-    // still forwarded to the host's `console` option when given, otherwise to
-    // the browser console, as before.
+    // forwarded to the host's `console` option when given, or to the browser
+    // console only when `logToConsole` is set.
     const output: MorphicRunOutputLine[] = [];
-    const target = options?.console ?? console;
+    const target = options?.console ?? (options?.logToConsole ? console : undefined);
     const capture = (level: MorphicRunOutputLine["level"]) =>
       (...args: unknown[]): void => {
         output.push({ level, text: args.map(String).join(" ") });
-        (target[level] ?? target.log).apply(target, args);
+        if (target) (target[level] ?? target.log).apply(target, args);
       };
     const capturingConsole = { log: capture("log"), warn: capture("warn"), error: capture("error") };
     try {
