@@ -296,6 +296,25 @@ export interface MorphicBlocksFormat {
 
 export type MorphicRenderContext = "workspace" | "toolbox";
 
+/** One line a program printed during `runJavaScript`, with its console level. */
+export interface MorphicRunOutputLine {
+  level: "log" | "warn" | "error";
+  /** The printed arguments, converted to text and joined with spaces. */
+  text: string;
+}
+
+/** What `runJavaScript` returns (and the `morphic-run` event carries). */
+export interface MorphicRunResult {
+  /** The JavaScript that was generated and run. */
+  code: string;
+  /** The program's return value. */
+  result: unknown;
+  /** The error it threw, or `null`. */
+  error: Error | null;
+  /** Every line it printed, in order, with its level. */
+  output: MorphicRunOutputLine[];
+}
+
 export interface MorphicBehaviorContext {
   Blockly: typeof Blockly;
   workspace: Blockly.WorkspaceSvg;

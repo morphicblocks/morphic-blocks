@@ -65,6 +65,8 @@ export type {
   MorphicBlockElements,
   MorphicModeDefinition,
   MorphicPresetDefinition,
+  MorphicRunOutputLine,
+  MorphicRunResult,
   MorphicPresetToolbox,
   MorphicSelectionSyncOptions,
 } from "./morphic/types";

@@ -41,6 +41,8 @@ import type {
   MorphicPresetDefinition,
   MorphicPresetToolbox,
   MorphicRenderContext,
+  MorphicRunOutputLine,
+  MorphicRunResult,
   MorphicSelectionSyncOptions,
   MorphicToolbarConfig,
   MorphicToolboxCanvasOptions,
@@ -613,19 +615,30 @@ export class MorphicBlocks extends EventTarget {
    */
   public runJavaScript(options?: {
     console?: { log: (...a: unknown[]) => void; warn?: (...a: unknown[]) => void; error?: (...a: unknown[]) => void };
-  }): { code: string; result: unknown; error: Error | null } {
+  }): MorphicRunResult {
     let code = "";
     let result: unknown = undefined;
     let error: Error | null = null;
+    // Every printed line is collected with its level, so a host can show the
+    // program's output on the page without writing its own console. Lines are
+    // still forwarded to the host's `console` option when given, otherwise to
+    // the browser console, as before.
+    const output: MorphicRunOutputLine[] = [];
+    const target = options?.console ?? console;
+    const capture = (level: MorphicRunOutputLine["level"]) =>
+      (...args: unknown[]): void => {
+        output.push({ level, text: args.map(String).join(" ") });
+        (target[level] ?? target.log).apply(target, args);
+      };
+    const capturingConsole = { log: capture("log"), warn: capture("warn"), error: capture("error") };
     try {
       code = this.generateJavaScript();
-      const consoleArg = options?.console ?? console;
       // eslint-disable-next-line @typescript-eslint/no-implied-eval
-      result = new Function("console", code)(consoleArg);
+      result = new Function("console", code)(capturingConsole);
     } catch (e) {
       error = e instanceof Error ? e : new Error(String(e));
     }
-    const detail = { code, result, error };
+    const detail: MorphicRunResult = { code, result, error, output };
     this.dispatchEvent(new CustomEvent("morphic-run", { detail }));
     return detail;
   }

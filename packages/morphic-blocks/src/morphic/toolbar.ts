@@ -4,6 +4,7 @@ import type {
   MorphicToolbarDisplay,
   MorphicToolbarItem,
   MorphicToolbarPane,
+  MorphicRunResult,
 } from "./types";
 
 const ICON_COPY = `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="4" width="9" height="10" rx="1.5"/><path d="M3 11V3a1 1 0 0 1 1-1h7"/></svg>`;
@@ -20,11 +21,8 @@ const ICON_LOAD = `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" s
 const ICON_RESET = `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8a5 5 0 1 0 1.5-3.5"/><polyline points="3 2 3 5 6 5"/></svg>`;
 const ICON_PREVIEW = `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8s2-4 6-4 6 4 6 4-2 4-6 4-6-4-6-4z"/><circle cx="8" cy="8" r="1.5"/></svg>`;
 
-export interface MorphicRunEventDetail {
-  code: string;
-  result: unknown;
-  error: Error | null;
-}
+/** Detail of the `morphic-run` event: the same result `runJavaScript` returns. */
+export type MorphicRunEventDetail = MorphicRunResult;
 
 export interface MorphicToolbarHandle {
   refresh: () => void;
