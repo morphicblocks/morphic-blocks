@@ -249,6 +249,10 @@
       "properties": {
         "identifier": { "type": "string", "minLength": 1 },
         "category": { "type": "string" },
+        "shape": {
+          "description": "How a statement block connects: statement (above and below), start (below only), end (above only), standalone (neither). Fills previousStatement / nextStatement where unset; explicit flags win. Value blocks use output instead.",
+          "enum": ["statement", "start", "end", "standalone"]
+        },
         "elements": {
           "description": "Element name to content. The reserved key \"default\" is an optional fallback template, used for every code element the block does not list; a listed element always wins.",
           "type": "object",

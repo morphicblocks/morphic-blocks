@@ -1,5 +1,37 @@
 import { resolveElementType } from "./element-types";
-import type { MorphicBlockDefinition, MorphicElementTypeEntry } from "./types";
+import type {
+  MorphicBlockDefinition,
+  MorphicBlockShape,
+  MorphicElementTypeEntry,
+} from "./types";
+
+/** Connections each shape implies: whether it connects above and below. */
+const SHAPE_CONNECTIONS: Record<MorphicBlockShape, { above: boolean; below: boolean }> = {
+  statement: { above: true, below: true },
+  start: { above: false, below: true },
+  end: { above: true, below: false },
+  standalone: { above: false, below: false },
+};
+
+export const BLOCK_SHAPES = Object.keys(SHAPE_CONNECTIONS) as MorphicBlockShape[];
+
+/**
+ * Turn each block's optional `shape` into the connection flags it stands for,
+ * once, at load time, so rendering and codegen only ever see the flags. A flag
+ * the block sets itself is kept, which is how a connection type is added
+ * (`"shape": "statement", "previousStatement": "Action"`). `shape` stays on the
+ * block so validation can report contradictions. Returns new block objects.
+ */
+export function applyBlockShapes(blocks: MorphicBlockDefinition[]): MorphicBlockDefinition[] {
+  return blocks.map((block) => {
+    const connections = block.shape ? SHAPE_CONNECTIONS[block.shape] : undefined;
+    if (!connections) return block;
+    const next = { ...block };
+    if (connections.above && next.previousStatement === undefined) next.previousStatement = true;
+    if (connections.below && next.nextStatement === undefined) next.nextStatement = true;
+    return next;
+  });
+}
 
 /**
  * Reserved element key: a block's fallback template, used for every `code`

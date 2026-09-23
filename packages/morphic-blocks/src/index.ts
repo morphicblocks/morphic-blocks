@@ -30,6 +30,7 @@ export type {
   MorphicBehaviorProxy,
   MorphicBlockBehavior,
   MorphicBlockDefinition,
+  MorphicBlockShape,
   MorphicBlocksFormat,
   MorphicCodeBehavior,
   MorphicCodeBlockPosition,

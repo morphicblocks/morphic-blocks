@@ -1,6 +1,6 @@
 import * as Blockly from "blockly";
 import { getLifecycleBehavior } from "./behavior-runtime";
-import { DEFAULT_ELEMENT } from "./definitions";
+import { BLOCK_SHAPES, DEFAULT_ELEMENT } from "./definitions";
 import { resolveElementType } from "./element-types";
 import { parseTemplate } from "./template";
 import type {
@@ -76,6 +76,34 @@ export function validateDefinitions(
 
   for (const def of definitions.values()) {
     const id = def.identifier;
+
+    // `shape` describes statement connections. Flags written next to it win,
+    // so a flag that contradicts the shape is almost certainly a mistake.
+    if (def.shape !== undefined) {
+      if (!BLOCK_SHAPES.includes(def.shape)) {
+        errors.push(
+          `Block "${id}": unknown shape "${def.shape}". Use one of: ${BLOCK_SHAPES.join(", ")}.`,
+        );
+      } else {
+        const isSet = (spec: unknown): boolean => spec !== undefined && spec !== false;
+        const contradictions: string[] = [];
+        if (isSet(def.output)) {
+          contradictions.push("it also has an output, which makes it a value block");
+        }
+        if ((def.shape === "start" || def.shape === "standalone") && isSet(def.previousStatement)) {
+          contradictions.push("it also connects above (previousStatement)");
+        }
+        if ((def.shape === "end" || def.shape === "standalone") && isSet(def.nextStatement)) {
+          contradictions.push("it also connects below (nextStatement)");
+        }
+        if (def.shape === "statement" && (def.previousStatement === false || def.nextStatement === false)) {
+          contradictions.push("a connection flag is set to false");
+        }
+        for (const reason of contradictions) {
+          warnings.push(`Block "${id}": shape "${def.shape}" contradicts its flags: ${reason}. The flags win.`);
+        }
+      }
+    }
     const lifecycle = getLifecycleBehavior(behaviors[id]);
     const hasOnViewApplied = Boolean(lifecycle?.onViewApplied);
 

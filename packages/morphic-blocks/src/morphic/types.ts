@@ -85,6 +85,19 @@ export interface MorphicElementTypeConfig {
 /** Either a bare type or a config object with extras. */
 export type MorphicElementTypeEntry = MorphicElementType | MorphicElementTypeConfig;
 export type MorphicConnectionSpec = boolean | string | string[];
+
+/**
+ * How a statement block connects above and below, in one word:
+ * - "statement"  connects above and below (`print`, `if`)
+ * - "start"      connects below only (a "when program starts" block)
+ * - "end"        connects above only (`return`, `stop`)
+ * - "standalone" connects neither way
+ *
+ * It only fills `previousStatement` / `nextStatement` where the block does not
+ * set them itself, so an explicit flag still wins (e.g. to add a connection
+ * type). Value blocks use `output` instead and take no shape.
+ */
+export type MorphicBlockShape = "statement" | "start" | "end" | "standalone";
 export type MorphicInputKind = "value" | "statement";
 export type MorphicInputAlign = "left" | "centre" | "right";
 
@@ -210,6 +223,12 @@ export interface MorphicBlockDefinition {
   fields?: Record<string, MorphicFieldDefinition>;
   color?: number | string;
   output?: MorphicConnectionSpec;
+  /**
+   * One word for how the block connects above and below. Optional: without it
+   * the `previousStatement` / `nextStatement` flags decide, and a block with no
+   * flags is standalone. See {@link MorphicBlockShape}.
+   */
+  shape?: MorphicBlockShape;
   previousStatement?: MorphicConnectionSpec;
   nextStatement?: MorphicConnectionSpec;
   inputsInline?: boolean;
