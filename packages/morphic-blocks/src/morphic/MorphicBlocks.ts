@@ -127,6 +127,8 @@ export class MorphicBlocks extends EventTarget {
   private codespaceDropTeardown?: () => void;
   /** Redraws the workspace whenever its container changes size. */
   private workspaceResizeObserver?: ResizeObserver;
+  /** Preset most recently applied, at mount or via `applyPreset`. */
+  private activePreset?: MorphicPresetDefinition;
 
   /** Format-level fields remembered from the constructor and used as `mount()`
    * defaults, so the developer hands the whole definitions file in once and the
@@ -276,6 +278,7 @@ export class MorphicBlocks extends EventTarget {
     this.renderWorkspaceBlocks();
     this.renderFlyoutBlocks();
 
+    this.activePreset = initialPreset;
     if (initialPreset) resolvedConfig.onPresetApplied?.(initialPreset);
 
     return this.workspace;
@@ -284,6 +287,16 @@ export class MorphicBlocks extends EventTarget {
   /** Presets declared at mount (empty when none were provided). */
   public getPresets(): MorphicPresetDefinition[] {
     return [...(this.mountConfig?.presets ?? [])];
+  }
+
+  /**
+   * The preset most recently applied, at mount or via `applyPreset`, so a host
+   * can mark the active preset button without tracking it itself. `undefined`
+   * when no preset has been applied. Lower level `setModes` calls do not
+   * change it.
+   */
+  public getActivePreset(): MorphicPresetDefinition | undefined {
+    return this.activePreset;
   }
 
   /**
@@ -313,6 +326,7 @@ export class MorphicBlocks extends EventTarget {
       codespaceMode: preset.codespace ?? null,
       previewMode: preset.preview ?? null,
     });
+    this.activePreset = preset;
     this.mountConfig.onPresetApplied?.(preset);
     return preset;
   }
@@ -407,6 +421,7 @@ export class MorphicBlocks extends EventTarget {
   public dispose(): void {
     this.workspaceResizeObserver?.disconnect();
     this.workspaceResizeObserver = undefined;
+    this.activePreset = undefined;
 
     this.selectionSync?.disable();
     this.selectionSync = undefined;
