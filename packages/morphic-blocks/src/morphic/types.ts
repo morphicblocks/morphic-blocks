@@ -188,9 +188,11 @@ export interface MorphicModeDefinition {
 export interface MorphicBlockDefinition {
   identifier: string;
   /**
-   * Named visual elements of this Morphic Block.
-   * The "block" element (if present) is used as the Blockly workspace template.
-   * Falls back to the first element if "block" is absent.
+   * Named visual elements of this Morphic Block, keyed by element name.
+   *
+   * The reserved key `default` is an optional fallback template: it is used for
+   * every `code` element the block does not list itself, so a template shared by
+   * all languages can be written once. A listed element always wins.
    */
   elements: MorphicBlockElements;
   /**

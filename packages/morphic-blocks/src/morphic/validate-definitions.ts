@@ -1,5 +1,6 @@
 import * as Blockly from "blockly";
 import { getLifecycleBehavior } from "./behavior-runtime";
+import { DEFAULT_ELEMENT } from "./definitions";
 import { resolveElementType } from "./element-types";
 import { parseTemplate } from "./template";
 import type {
@@ -58,6 +59,14 @@ export function validateDefinitions(
     ),
   );
   const categoryNames = new Set((categories ?? []).map((c) => c.name));
+
+  // `default` is reserved for a block's fallback template, so it cannot also
+  // name a real element.
+  if (declaredElementNames.has(DEFAULT_ELEMENT)) {
+    errors.push(
+      `elementTypes declares "${DEFAULT_ELEMENT}", which is reserved for a block's fallback template. Rename the element.`,
+    );
+  }
 
   // A shadow/placeholder ref is valid iff it's one of our defined blocks or a
   // registered Blockly stock type (e.g. `math_number`). Stock blocks are

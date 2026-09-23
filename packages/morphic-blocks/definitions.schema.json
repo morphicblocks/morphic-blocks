@@ -250,6 +250,7 @@
         "identifier": { "type": "string", "minLength": 1 },
         "category": { "type": "string" },
         "elements": {
+          "description": "Element name to content. The reserved key \"default\" is an optional fallback template, used for every code element the block does not list; a listed element always wins.",
           "type": "object",
           "minProperties": 1,
           "additionalProperties": { "type": "string" }

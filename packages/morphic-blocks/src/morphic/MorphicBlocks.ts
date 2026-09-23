@@ -14,7 +14,7 @@ import { resolveBlocklyType, toBlocklyType, toCleanId } from "./block-namespace"
 import { generateJavaScriptFromWorkspace, generateJavaScriptWithMetadataFromWorkspace } from "./codegen";
 import { generateTextFromWorkspace } from "./template-codegen";
 import { MorphicSelectionSync } from "./selection-sync";
-import { createDefinitionMap } from "./definitions";
+import { createDefinitionMap, expandDefaultElements } from "./definitions";
 import { validateDefinitions } from "./validate-definitions";
 import { MorphicStyleManager } from "./styles";
 import { toModeClassToken } from "./template";
@@ -143,7 +143,9 @@ export class MorphicBlocks extends EventTarget {
     behaviors: MorphicBehaviorMap = {},
   ) {
     super();
-    this.definitions = createDefinitionMap(format.blocks);
+    this.definitions = createDefinitionMap(
+      expandDefaultElements(format.blocks, format.elementTypes ?? {}),
+    );
     this.behaviors = behaviors;
     this.elementTypes = format.elementTypes ?? {};
     this.formatModes = format.modes;
