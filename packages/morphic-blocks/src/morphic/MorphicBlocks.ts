@@ -123,6 +123,8 @@ export class MorphicBlocks extends EventTarget {
   private headlessWorkspaceHost?: HTMLElement;
   /** Teardown fn for codespace drag/drop listeners; set when codespace is mounted. */
   private codespaceDropTeardown?: () => void;
+  /** Redraws the workspace whenever its container changes size. */
+  private workspaceResizeObserver?: ResizeObserver;
 
   /** Format-level fields remembered from the constructor and used as `mount()`
    * defaults, so the developer hands the whole definitions file in once and the
@@ -255,6 +257,16 @@ export class MorphicBlocks extends EventTarget {
       ...(resolvedConfig.canvasToolbox ? {} : { toolbox: this.toolboxDefinition }),
     });
     this.workspace.addChangeListener(this.onWorkspaceChange);
+
+    // The framework owns the workspace, so it keeps Blockly's SVG sized to its
+    // container: pane toggles, window resizes and divider drags all change the
+    // container size, and the host never has to call Blockly itself. A headless
+    // workspace has nothing visible to size.
+    if (config.workspaceContainer && typeof ResizeObserver !== "undefined") {
+      const workspace = this.workspace;
+      this.workspaceResizeObserver = new ResizeObserver(() => Blockly.svgResize(workspace));
+      this.workspaceResizeObserver.observe(config.workspaceContainer);
+    }
 
     this.applyWorkspaceContainerClass();
     this.refreshToolbox();
@@ -391,6 +403,9 @@ export class MorphicBlocks extends EventTarget {
   }
 
   public dispose(): void {
+    this.workspaceResizeObserver?.disconnect();
+    this.workspaceResizeObserver = undefined;
+
     this.selectionSync?.disable();
     this.selectionSync = undefined;
 
