@@ -1,4 +1,3 @@
-import * as Blockly from "blockly";
 import {
   makeResizable,
   MorphicBlocks,
@@ -141,17 +140,15 @@ themeSelect.addEventListener("change", () => {
 
 const engine = new MorphicBlocks(definitions, behaviors);
 
-let currentPresetName = presets[0]?.name ?? "";
-
 // Remembered codespace width (px) from a divider drag; re-applied across
 // presets since a preset switch otherwise resets the codespace flex.
 // Declared before mount() because onPresetApplied fires during mount.
 let codespaceBasisPx: number | null = null;
 
-const workspace = engine.mount({
+engine.mount({
   workspaceContainer,
   codespaceContainer,
-  preset: currentPresetName,
+  preset: presets[0]?.name,
   onPresetApplied: handlePresetApplied,
   modesFolder: modeStyles,
   canvasToolbox: true,
@@ -193,7 +190,6 @@ Promise.all([
 // ── Preset Buttons ─────────────────────────────────────
 
 function handlePresetApplied(preset: MorphicPresetDefinition): void {
-  currentPresetName = preset.name;
   const showWorkspace = !!preset.workspace;
   const showCodespace = !!preset.codespace;
   const showPreview = !!preset.preview;
@@ -212,15 +208,13 @@ function handlePresetApplied(preset: MorphicPresetDefinition): void {
     gutterPreview.hidden = !(showPreview && (showWorkspace || showCodespace));
   }
 
-  const ws = engine.getWorkspace();
-  if (ws) Blockly.svgResize(ws);
   updateActiveButton();
 }
 
 function updateActiveButton(): void {
   const buttons = modeButtonsContainer.querySelectorAll<HTMLButtonElement>("button");
   buttons.forEach((b) =>
-    b.classList.toggle("active", b.dataset.preset === currentPresetName),
+    b.classList.toggle("active", b.dataset.preset === engine.getActivePreset()?.name),
   );
 }
 
@@ -235,20 +229,12 @@ presets.forEach((preset) => {
 
 updateActiveButton();
 
-// ── Resize Handling ────────────────────────────────────
-
-const resizeObserver = new ResizeObserver(() => {
-  Blockly.svgResize(workspace);
-});
-resizeObserver.observe(workspaceContainer);
-
 // Draggable pane dividers (opt-in). The toolbox and output gutters are always
 // present; the codespace/preview gutters are toggled per preset above.
 if (RESIZABLE_PANES) {
-  const reflow = (): void => Blockly.svgResize(workspace);
   gutterToolbox.hidden = false;
   gutterOutput.hidden = false;
-  makeResizable(gutterToolbox, { target: toolboxPanel, axis: "x", min: 160, onResize: reflow });
+  makeResizable(gutterToolbox, { target: toolboxPanel, axis: "x", min: 160 });
   makeResizable(gutterCodespace, {
     target: codespacePane,
     axis: "x",
@@ -256,11 +242,10 @@ if (RESIZABLE_PANES) {
     invert: true,
     onResize: (size) => {
       codespaceBasisPx = size;
-      reflow();
     },
   });
-  makeResizable(gutterPreview, { target: previewPane, axis: "x", min: 180, invert: true, onResize: reflow });
-  makeResizable(gutterOutput, { target: outputPanel, axis: "y", min: 80, invert: true, onResize: reflow });
+  makeResizable(gutterPreview, { target: previewPane, axis: "x", min: 180, invert: true });
+  makeResizable(gutterOutput, { target: outputPanel, axis: "y", min: 80, invert: true });
 }
 
 // ── Code Editor Toggle ─────────────────────────────────
@@ -275,20 +260,15 @@ codeBtn.addEventListener("click", () => {
     codeEditorContainer.classList.add("visible");
     codeBtn.classList.add("active");
   }
-  Blockly.svgResize(workspace);
 });
 
 // ── Code Execution ─────────────────────────────────────
 
 runBtn.addEventListener("click", () => {
-  const logs: string[] = [];
-  const { error } = engine.runJavaScript({
-    console: {
-      log: (...args) => logs.push(args.map(String).join(" ")),
-      warn: (...args) => logs.push("[warn] " + args.map(String).join(" ")),
-      error: (...args) => logs.push("[error] " + args.map(String).join(" ")),
-    },
-  });
+  const { output, error } = engine.runJavaScript();
+  const logs = output.map((line) =>
+    line.level === "log" ? line.text : `[${line.level}] ${line.text}`,
+  );
   if (error) {
     outputEl.textContent =
       logs.join("\n") + (logs.length ? "\n" : "") + `Error: ${error.message}`;
