@@ -81,6 +81,7 @@ function configureJavascriptGenerator(
 function createBehaviorProxy(block: Blockly.Block, generator: JavascriptGenerator): MorphicBehaviorProxy {
   const inputs: Record<string, string> = {};
   const fields: Record<string, string> = {};
+  const quoted: Record<string, string> = {};
   const context: MorphicRenderContext = block.workspace.isFlyout ? "toolbox" : "workspace";
   // Operands are bracketed only when this block composes several values, i.e.
   // they sit either side of an operator. A block with one value input holds a
@@ -103,7 +104,11 @@ function createBehaviorProxy(block: Blockly.Block, generator: JavascriptGenerato
       if (!field.name) {
         continue;
       }
-      fields[field.name] = stringifyFieldValue(field.getValue());
+      // No guessing: the plain value, plus a finished string literal for the
+      // behaviors that emit the value as a string (e.g. a text block).
+      const value = String(field.getValue() ?? "");
+      fields[field.name] = value;
+      quoted[field.name] = JSON.stringify(value);
     }
   }
 
@@ -113,7 +118,8 @@ function createBehaviorProxy(block: Blockly.Block, generator: JavascriptGenerato
     mode: getManagedBlockMode(block) ?? "default",
     context,
     inputs,
-    fields
+    fields,
+    quoted
   };
 }
 
@@ -208,25 +214,6 @@ function fallbackCode(type: string, definition: MorphicBlockDefinition): string 
     return "undefined";
   }
   return `// No generator behavior defined for "${type}"`;
-}
-
-function stringifyFieldValue(value: unknown): string {
-  if (typeof value === "number" || typeof value === "boolean") {
-    return String(value);
-  }
-  if (typeof value === "string") {
-    if (/^-?\d+(\.\d+)?$/.test(value)) {
-      return value;
-    }
-    if (value === "TRUE") {
-      return "true";
-    }
-    if (value === "FALSE") {
-      return "false";
-    }
-    return JSON.stringify(value);
-  }
-  return JSON.stringify(String(value ?? ""));
 }
 
 const MARKER_START_RE = /^\s*\/\/ __MORPHIC_BLOCK_START:(.+)__$/;

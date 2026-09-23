@@ -289,7 +289,18 @@ export interface MorphicBehaviorProxy {
   mode: MorphicModeName;
   context: MorphicRenderContext;
   inputs: Record<string, string>;
+  /**
+   * Plain field values, keyed by field name, exactly as the field holds them:
+   * a text field holding `x` gives `x`, a number field `42` gives `42`. Use
+   * these for identifiers and operators (`let ${proxy.fields.VAR} = …`).
+   */
   fields: Record<string, string>;
+  /**
+   * The same values as quoted, escaped string literals. Always quoted, even
+   * when the value looks like a number: `x` gives `"x"`, `42` gives `"42"`.
+   * Use these where the value is emitted as a string (e.g. a text block).
+   */
+  quoted: Record<string, string>;
 }
 
 export type MorphicCodeBehavior = (proxy: MorphicBehaviorProxy) => string;
