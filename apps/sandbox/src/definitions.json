@@ -299,8 +299,7 @@
           }
         }
       },
-      "previousStatement": true,
-      "nextStatement": true,
+      "shape": "statement",
       "inputsInline": true
     },
     {
@@ -326,8 +325,7 @@
           "name": "DO"
         }
       },
-      "previousStatement": true,
-      "nextStatement": true,
+      "shape": "statement",
       "inputsInline": true
     },
     {
@@ -353,8 +351,7 @@
           "name": "DO"
         }
       },
-      "previousStatement": true,
-      "nextStatement": true,
+      "shape": "statement",
       "inputsInline": true
     },
     {
@@ -571,8 +568,7 @@
           "default": "x"
         }
       },
-      "previousStatement": true,
-      "nextStatement": true,
+      "shape": "statement",
       "inputsInline": true
     },
     {
