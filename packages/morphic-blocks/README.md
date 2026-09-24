@@ -37,14 +37,12 @@ npm i @codemirror/state @codemirror/view @codemirror/lang-javascript
 ## Quick start
 
 ```ts
-import { MorphicBlocks, type MorphicBlocksFormat } from "morphic-blocks";
-import definitionsJson from "./definitions.json";
+import { MorphicBlocks } from "morphic-blocks";
+import definitions from "./definitions.json";
 import { behaviors } from "./behaviors";
 
-// A JSON import widens "code" to string, so one assertion is needed here.
-const definitions = definitionsJson as unknown as MorphicBlocksFormat;
-
-// Modes, presets and categories all come from the definitions file.
+// Modes, presets and categories all come from the definitions file, passed as
+// imported; mount() validates it.
 const engine = new MorphicBlocks(definitions, behaviors);
 
 engine.mount({

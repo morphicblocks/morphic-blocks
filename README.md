@@ -236,14 +236,12 @@ A **preset** assigns a mode to each view and drives which views are visible:
 ## Example Usage
 
 ```ts
-import definitionsData from "./definitions.json";
+import definitions from "./definitions.json";
 import { behaviors } from "./behaviors";
-import { MorphicBlocks, type MorphicBlocksFormat } from "morphic-blocks";
+import { MorphicBlocks } from "morphic-blocks";
 
-// The whole definitions file is one argument. (A JSON import widens "code" to
-// string, so one assertion to MorphicBlocksFormat is expected here.)
-const definitions = definitionsData as unknown as MorphicBlocksFormat;
-
+// The whole definitions file is one argument, passed as imported; mount()
+// validates it.
 const engine = new MorphicBlocks(definitions, behaviors);
 
 engine.mount({
