@@ -7,8 +7,13 @@ import type {
   MorphicToolboxCategory,
 } from "./types";
 
+/**
+ * Injects the framework's stylesheets into the page. Every helper first checks
+ * the page itself for an identical stylesheet, so engines that are created
+ * again and again (a remounted component, React's double mount in development,
+ * several editors on one page) never stack up copies of the same CSS.
+ */
 export class MorphicStyleManager {
-  private readonly loadedStyleKeys = new Set<string>();
 
   /**
    * Injects visibility CSS derived from mode definitions.
@@ -16,9 +21,6 @@ export class MorphicStyleManager {
    * in each mode's `elements` array. Developer CSS only needs to handle styling.
    */
   public ensureModeVisibilityStyles(modes: MorphicModeDefinition[]): void {
-    const cssKey = `mode-visibility:${modes.map((m) => `${m.name}:${m.elements.join(",")}`).join(";")}`;
-    if (this.loadedStyleKeys.has(cssKey)) return;
-
     const lines: string[] = ['[class^="morphic-element-"] { display: none; }'];
     for (const mode of modes) {
       const modeToken = toModeClassToken(mode.name);
@@ -28,11 +30,7 @@ export class MorphicStyleManager {
       }
     }
 
-    const styleEl = document.createElement("style");
-    styleEl.dataset.morphicSource = "mode-visibility";
-    styleEl.textContent = lines.join("\n");
-    document.head.appendChild(styleEl);
-    this.loadedStyleKeys.add(cssKey);
+    addStyle("mode-visibility", lines.join("\n"));
   }
 
   public ensureStyles(
@@ -53,15 +51,8 @@ export class MorphicStyleManager {
    * the host theme without overriding class selectors.
    */
   public async ensureToolbarStyles(): Promise<void> {
-    const key = "toolbar";
-    if (this.loadedStyleKeys.has(key)) return;
     const mod = await import("./toolbar.css?inline");
-    const css = (mod as { default: string }).default;
-    const styleEl = document.createElement("style");
-    styleEl.dataset.morphicSource = "toolbar";
-    styleEl.textContent = css;
-    document.head.appendChild(styleEl);
-    this.loadedStyleKeys.add(key);
+    addStyle("toolbar", (mod as { default: string }).default);
   }
 
   public ensureCategoryStyles(categories: MorphicToolboxCategory[]): void {
@@ -70,15 +61,10 @@ export class MorphicStyleManager {
         continue;
       }
       const token = toModeClassToken(category.name);
-      const cssKey = `category:${token}:${category.color}`;
-      if (this.loadedStyleKeys.has(cssKey)) {
-        continue;
-      }
-      const styleEl = document.createElement("style");
-      styleEl.dataset.morphicSource = `category:${token}`;
-      styleEl.textContent = `.morphic-category-${token} { --morphic-category-color: ${category.color}; }`;
-      document.head.appendChild(styleEl);
-      this.loadedStyleKeys.add(cssKey);
+      addStyle(
+        `category:${token}`,
+        `.morphic-category-${token} { --morphic-category-color: ${category.color}; }`,
+      );
     }
   }
 
@@ -106,26 +92,33 @@ export class MorphicStyleManager {
     }
 
     if (style.href) {
-      const hrefKey = `href:${style.href}`;
-      if (!this.loadedStyleKeys.has(hrefKey)) {
-        const link = document.createElement("link");
-        link.rel = "stylesheet";
-        link.href = style.href;
-        link.dataset.morphicSource = sourceName;
-        document.head.appendChild(link);
-        this.loadedStyleKeys.add(hrefKey);
-      }
+      addLink(sourceName, style.href);
     }
-
     if (style.cssText) {
-      const cssKey = `text:${sourceName}:${style.cssText}`;
-      if (!this.loadedStyleKeys.has(cssKey)) {
-        const styleElement = document.createElement("style");
-        styleElement.dataset.morphicSource = sourceName;
-        styleElement.textContent = style.cssText;
-        document.head.appendChild(styleElement);
-        this.loadedStyleKeys.add(cssKey);
-      }
+      addStyle(sourceName, style.cssText);
     }
   }
+}
+
+/** Add a `<style>` unless the page already has one with the same source and CSS. */
+function addStyle(source: string, css: string): void {
+  for (const existing of Array.from(document.head.querySelectorAll<HTMLStyleElement>("style[data-morphic-source]"))) {
+    if (existing.dataset.morphicSource === source && existing.textContent === css) return;
+  }
+  const styleEl = document.createElement("style");
+  styleEl.dataset.morphicSource = source;
+  styleEl.textContent = css;
+  document.head.appendChild(styleEl);
+}
+
+/** Add a stylesheet `<link>` unless the page already links the same file. */
+function addLink(source: string, href: string): void {
+  for (const existing of Array.from(document.head.querySelectorAll<HTMLLinkElement>("link[data-morphic-source]"))) {
+    if (existing.getAttribute("href") === href) return;
+  }
+  const link = document.createElement("link");
+  link.rel = "stylesheet";
+  link.href = href;
+  link.dataset.morphicSource = source;
+  document.head.appendChild(link);
 }
