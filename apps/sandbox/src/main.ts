@@ -141,13 +141,23 @@ const engine = new MorphicBlocks(definitions, behaviors);
 // Declared before mount() because onPresetApplied fires during mount.
 let codespaceBasisPx: number | null = null;
 
-engine.mount({
+void engine.mount({
   workspaceContainer,
+  toolboxContainer: toolboxPanel,
   codespaceContainer,
+  previewContainer,
+  codeEditorContainer,
+  toolbarContainers: {
+    workspace: workspaceToolbarEl,
+    codespace: codespaceToolbarEl,
+    preview: previewToolbarEl,
+  },
+  editorTheme: editorThemeFor(currentTheme),
+  previewTheme: previewThemeFor(currentTheme),
+  selectionSync: { highlightColor: "rgba(139, 172, 221, 0.48)" },
   preset: presets[0]?.name,
   onPresetApplied: handlePresetApplied,
   modesFolder: modeStyles,
-  canvasToolbox: true,
   blockly: {
     scrollbars: true,
     trashcan: true,
@@ -166,20 +176,6 @@ engine.mount({
       snap: true,
     },
   },
-});
-
-engine.mountToolbox(toolboxPanel);
-
-Promise.all([
-  engine.mountCodeEditor(codeEditorContainer, { theme: editorThemeFor(currentTheme) }),
-  engine.mountCodespace({ theme: editorThemeFor(currentTheme) }),
-  engine.mountPreview(previewContainer, { theme: previewThemeFor(currentTheme) }),
-]).then(() => {
-  engine.hideCodeEditor();
-  engine.enableSelectionSync({ highlightColor: "rgba(139, 172, 221, 0.48)" });
-  engine.mountToolbar(workspaceToolbarEl, { pane: "workspace" });
-  engine.mountToolbar(codespaceToolbarEl, { pane: "codespace" });
-  engine.mountToolbar(previewToolbarEl, { pane: "preview" });
 });
 
 
