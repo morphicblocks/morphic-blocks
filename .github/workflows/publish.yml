@@ -17,6 +17,7 @@ jobs:
           registry-url: https://registry.npmjs.org
       - run: bun install --frozen-lockfile
       - run: bun run build:package
+      - run: bun run test
       - run: npm install -g npm@latest
       - run: npm publish --provenance --access public
         working-directory: packages/morphic-blocks
