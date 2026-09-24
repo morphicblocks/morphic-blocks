@@ -56,23 +56,37 @@ import type {
  * Handles both `{ eager: true, as: 'url' }` (string values) and
  * `{ eager: true, query: '?url' }` ({ default: string } values).
  */
+/**
+ * A mode's stylesheet given as one string: CSS text or a link to a CSS file.
+ * CSS always contains a `{` and a link never does, so the string itself says
+ * which it is.
+ */
+function modeStyleFrom(mode: MorphicModeName, source: string): MorphicModeStyle {
+  return source.includes("{") ? { mode, cssText: source } : { mode, href: source };
+}
+
+/**
+ * Mode stylesheets from a folder import such as Vite's `import.meta.glob`,
+ * named after their files (`modes/py.css` styles mode `py`). Each value may be
+ * a link (`?url`) or the CSS itself (`?raw`, `?inline`), directly or as a
+ * module's default export.
+ */
 function parseModeStylesFromFolder(
   folder: Record<string, unknown>,
 ): MorphicModeStyle[] {
-  return Object.entries(folder)
-    .map(([path, value]) => {
-      const filename = path.split("/").pop() ?? path;
-      const mode = filename.replace(/\.css$/i, "");
-      const href =
-        typeof value === "string"
-          ? value
-          : typeof value === "object" && value !== null && "default" in value
-            ? String((value as Record<string, unknown>)["default"])
-            : undefined;
-      return { mode, href };
-    })
-    .filter((s): s is { mode: string; href: string } => Boolean(s.href))
-    .map((s): MorphicModeStyle => s);
+  const styles: MorphicModeStyle[] = [];
+  for (const [path, value] of Object.entries(folder)) {
+    const filename = path.split("/").pop() ?? path;
+    const mode = filename.replace(/\.css$/i, "");
+    const source =
+      typeof value === "string"
+        ? value
+        : typeof value === "object" && value !== null && "default" in value
+          ? String((value as Record<string, unknown>)["default"])
+          : undefined;
+    if (source) styles.push(modeStyleFrom(mode, source));
+  }
+  return styles;
 }
 
 /** Internal resolved config: workspaceMode, toolboxMode and workspaceHost are guaranteed non-optional. */
