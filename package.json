@@ -11,6 +11,7 @@
     "build": "bun run build:package && bun run build:sandbox",
     "build:package": "bun run --cwd packages/morphic-blocks build",
     "build:sandbox": "bun run --cwd apps/sandbox build",
+    "test": "bun run --cwd packages/morphic-blocks test",
     "preview": "bun run --cwd apps/sandbox preview"
   }
 }
