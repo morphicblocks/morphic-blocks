@@ -244,11 +244,12 @@ export class MorphicBlocks extends EventTarget {
       throw new Error(`MorphicBlocks.mount: unknown preset "${config.preset}".`);
     }
 
-    // Resolve default modes: fallback to first discovered mode or "default"
+    // Without a preset, start in the first declared mode; a folder import's
+    // file order is alphabetical, so a stylesheet only decides when no modes
+    // are declared.
     const declaredModeNames = (config.modes ?? []).map((mode) => mode.name);
-    const availableModeNames = mergedModeStyles.map((s) => s.mode);
     const defaultMode =
-      availableModeNames[0] ?? declaredModeNames[0] ?? "default";
+      declaredModeNames[0] ?? mergedModeStyles[0]?.mode ?? "default";
     const initialToolbox = initialPreset
       ? normalizePresetToolbox(initialPreset.toolbox)
       : undefined;

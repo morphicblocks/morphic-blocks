@@ -18,10 +18,11 @@ const format: MorphicBlocksFormat = {
 
 const engines: MorphicBlocks[] = [];
 
-function mountWith(styles: Partial<MorphicMountConfig>): void {
+function mountWith(styles: Partial<MorphicMountConfig>): MorphicBlocks {
   const engine = new MorphicBlocks(format, {});
   engines.push(engine);
   void engine.mount({ workspaceContainer: document.body.appendChild(document.createElement("div")), ...styles });
+  return engine;
 }
 
 const linkFor = (mode: string) => document.head.querySelector(`link[data-morphic-source="mode:${mode}"]`);
@@ -65,5 +66,14 @@ describe("modesFolder", () => {
 
     expect(styleFor("py")?.textContent).toBe(".py { color: teal; }");
     expect(linkFor("py")).toBeNull();
+  });
+});
+
+describe("starting mode without presets", () => {
+  test("is the first mode in the definitions, not the first stylesheet", () => {
+    // A folder import lists files alphabetically, so js.css comes before py.css.
+    const engine = mountWith({ modesFolder: { "./modes/js.css": "/assets/js.css", "./modes/py.css": "/assets/py.css" } });
+
+    expect(engine.getWorkspaceMode()).toBe("py");
   });
 });
