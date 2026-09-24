@@ -1,10 +1,9 @@
-import path from "node:path";
 import { defineConfig } from "vite";
 
 export default defineConfig({
   build: {
     lib: {
-      entry: path.resolve(__dirname, "src/index.ts"),
+      entry: "src/index.ts",
       name: "MorphicBlocks",
       fileName: "morphic-blocks",
       formats: ["es", "umd"]
