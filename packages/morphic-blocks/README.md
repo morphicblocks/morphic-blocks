@@ -45,12 +45,12 @@ import { behaviors } from "./behaviors";
 // imported; mount() validates it.
 const engine = new MorphicBlocks(definitions, behaviors);
 
+// One call sets up every view it gets a container for.
 engine.mount({
   workspaceContainer: document.getElementById("workspace")!,
+  toolboxContainer: document.getElementById("toolbox")!,
   preset: "conceptual", // a preset from definitions.json; without presets the first mode is used
 });
-
-engine.mountToolbox(document.getElementById("toolbox")!);
 
 // switch representation at runtime; the same blocks re-render
 engine.applyPreset("python");

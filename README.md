@@ -244,27 +244,27 @@ import { MorphicBlocks } from "morphic-blocks";
 // validates it.
 const engine = new MorphicBlocks(definitions, behaviors);
 
-engine.mount({
+// One call sets up every view it gets a container for. The workspace is ready
+// at once; awaiting waits for the text editors, which load in the background.
+await engine.mount({
   workspaceContainer: document.getElementById("workspace")!,
-  codespaceContainer: document.getElementById("codespace")!, // optional
+  toolboxContainer: document.getElementById("toolbox")!,     // custom HTML toolbox
+  codespaceContainer: document.getElementById("codespace")!, // editable text view
+  previewContainer: document.getElementById("preview")!,     // read-only preview
   preset: "iconic",                     // initial preset (by name)
   onPresetApplied(preset) {
     // show/hide panes based on which view keys the preset uses
   },
   modesFolder: import.meta.glob("./modes/*.css", { eager: true, query: "?url" }),
-  canvasToolbox: true,                  // use the custom HTML toolbox
   blockly: { scrollbars: true, trashcan: true },
 });
-
-// Custom HTML toolbox (categories come from the definitions).
-engine.mountToolbox(document.getElementById("toolbox")!);
-
-// Editable text mirror of the workspace; receives drops, keyboard/gutter delete.
-await engine.mountCodespace();
-
-// Read-only preview of the preview mode's source element.
-await engine.mountPreview(document.getElementById("preview")!);
 ```
+
+Every container is optional. Selection sync links the views by default
+(`selectionSync: false` turns it off), and a `codeEditorContainer` adds the
+generated JavaScript view, hidden until `engine.showCodeEditor()`. The separate
+`mountToolbox()`, `mountCodespace()`, `mountPreview()`, `mountCodeEditor()` and
+`mountToolbar()` methods remain for setting a view up later.
 
 Modes, presets, categories, and highlighting all come from the definitions
 passed to the constructor — `mount()` only takes runtime wiring.
