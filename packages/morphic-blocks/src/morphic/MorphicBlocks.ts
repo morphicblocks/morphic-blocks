@@ -263,8 +263,7 @@ export class MorphicBlocks extends EventTarget {
     this.registerBlocks();
     this.toolboxDefinition = this.resolveToolboxDefinition(resolvedConfig);
 
-    const blocklyOptions =
-      resolvedConfig.blockly ?? resolvedConfig.blocklyOptions ?? {};
+    const blocklyOptions = resolvedConfig.blockly ?? {};
 
     this.workspace = Blockly.inject(resolvedConfig.workspaceHost, {
       ...blocklyOptions,
@@ -2456,7 +2455,7 @@ export class MorphicBlocks extends EventTarget {
       return buildToolboxDefinition(toolboxConfig, this.definitions);
     }
 
-    const blocklyOptions = config.blockly ?? config.blocklyOptions;
+    const blocklyOptions = config.blockly;
     if (blocklyOptions?.toolbox) {
       return blocklyOptions.toolbox;
     }

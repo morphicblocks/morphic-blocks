@@ -467,8 +467,8 @@ export interface MorphicMountConfig {
    */
   modesFolder?: Record<string, unknown>;
   baseStyle?: MorphicStyleBundle;
+  /** Options passed through to Blockly's `inject` (zoom, grid, trashcan, and so on). */
   blockly?: Blockly.BlocklyOptions;
-  blocklyOptions?: Blockly.BlocklyOptions;
   javascript?: MorphicJavaScriptConfig;
   /**
    * Per-element highlight rules, keyed by element name. The codespace and
