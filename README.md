@@ -337,6 +337,17 @@ One CSS file per mode. Use `.morphic-mode-{name}` to target blocks in a specific
 }
 ```
 
+Hand the stylesheets to `mount()` in whatever form your bundler produces. Each
+value may be a link to the file or the CSS itself:
+
+```ts
+// a whole folder, each file styling the mode it is named after (Vite)
+modesFolder: import.meta.glob("./modes/*.css", { eager: true, query: "?url" }),
+
+// or mode by mode, e.g. from a text import or a public URL
+modeStyles: { py: pyCss, js: "/modes/js.css" },
+```
+
 Block colours can be driven from CSS via a custom property:
 
 ```css
