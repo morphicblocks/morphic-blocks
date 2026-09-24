@@ -391,6 +391,8 @@ export class MorphicCodeEditor {
   private hoverHighlightEffect?: StateEffectType<{ from: number; to: number } | null>;
   private editableHoverHighlightEffect?: StateEffectType<{ from: number; to: number } | null>;
   private emptyClickListener?: (e: MouseEvent) => void;
+  // Set by dispose(); a mount still waiting for CodeMirror then stops.
+  private disposed = false;
 
   constructor(
     container: HTMLElement,
@@ -407,6 +409,7 @@ export class MorphicCodeEditor {
   async mount(): Promise<void> {
     void ensureCodeEditorStyles();
     this.cm = await loadCodeMirror();
+    if (this.disposed) return;
     const { view: cmView, state: cmState, langJs } = this.cm;
 
     this.themeCompartment = new cmState.Compartment();
@@ -1170,6 +1173,7 @@ export class MorphicCodeEditor {
   }
 
   dispose(): void {
+    this.disposed = true;
     this.detachSyncListener();
     if (this.syncTimer !== undefined) {
       clearTimeout(this.syncTimer);

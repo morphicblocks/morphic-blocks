@@ -345,7 +345,9 @@ export class MorphicBlocks extends EventTarget {
       pending.push(this.mountPreview(config.previewContainer, previewTheme ? { theme: previewTheme } : undefined));
     }
     if (config.codeEditorContainer) {
-      pending.push(this.mountCodeEditor(config.codeEditorContainer, editorOptions).then(() => this.hideCodeEditor()));
+      pending.push(this.mountCodeEditor(config.codeEditorContainer, editorOptions).then(() => {
+        if (generation === this.mountGeneration) this.hideCodeEditor();
+      }));
     }
     await Promise.all(pending);
     if (generation !== this.mountGeneration || !this.workspace) return;
@@ -1006,7 +1008,9 @@ export class MorphicBlocks extends EventTarget {
       options,
     );
 
-    await this.codeEditor.mount();
+    const editor = this.codeEditor;
+    await editor.mount();
+    if (this.codeEditor !== editor) return;
     this.refreshSelectionSync();
   }
 
@@ -1056,7 +1060,10 @@ export class MorphicBlocks extends EventTarget {
       mergedOptions,
     );
 
-    await this.codespace.mount();
+    const codespace = this.codespace;
+    await codespace.mount();
+    // Disposed or replaced while CodeMirror was loading.
+    if (this.codespace !== codespace) return;
     this.codespaceDropTeardown = this.attachCodespaceDropTarget(
       this.mountConfig.codespaceContainer,
       this.workspace,
@@ -1973,7 +1980,9 @@ export class MorphicBlocks extends EventTarget {
       mergedOptions,
     );
 
-    await this.previewEditor.mount();
+    const preview = this.previewEditor;
+    await preview.mount();
+    if (this.previewEditor !== preview) return;
     this.refreshSelectionSync();
   }
 
