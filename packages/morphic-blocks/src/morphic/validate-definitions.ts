@@ -222,10 +222,38 @@ export function validateDefinitions(
       );
     }
 
+    // (5b) Values TypeScript cannot check when definitions come from a JSON
+    // file: an unknown slot kind or field type silently breaks the block.
+    for (const [key, slot] of Object.entries(def.inputSlots ?? {})) {
+      if (slot?.kind !== undefined && !SLOT_KINDS.includes(slot.kind)) {
+        errors.push(
+          `Block "${id}": inputSlots["${key}"] has unknown kind "${slot.kind}". Use one of: ${SLOT_KINDS.join(", ")}.`,
+        );
+      }
+    }
+    for (const [name, fieldDef] of Object.entries(def.fields ?? {})) {
+      if (!FIELD_TYPES.includes(fieldDef?.type)) {
+        errors.push(
+          `Block "${id}": fields["${name}"] has unknown type "${fieldDef?.type}". Use one of: ${FIELD_TYPES.join(", ")}.`,
+        );
+      }
+    }
+
     // (6) Per-slot shadow/placeholder defaults must resolve.
     for (const [key, slot] of Object.entries(def.inputSlots ?? {})) {
       checkRef(slot?.default?.shadow, `Block "${id}": inputSlots["${key}"].default.shadow`);
       checkRef(slot?.default?.placeholder, `Block "${id}": inputSlots["${key}"].default.placeholder`);
+    }
+  }
+
+  // (6b) Every element type must be one the renderer knows. From a JSON file a
+  // typo such as "cdoe" would otherwise make the element silently disappear.
+  for (const [name, entry] of Object.entries(elementTypes)) {
+    const type = resolveElementType(entry);
+    if (!ELEMENT_TYPES.includes(type as string)) {
+      errors.push(
+        `elementTypes."${name}": unknown type "${type}". Use one of: ${ELEMENT_TYPES.join(", ")}.`,
+      );
     }
   }
 
@@ -313,6 +341,10 @@ export function validateDefinitions(
     );
   }
 }
+
+const ELEMENT_TYPES: readonly string[] = ["text", "code", "image"];
+const SLOT_KINDS: readonly string[] = ["value", "statement"];
+const FIELD_TYPES: readonly string[] = ["dropdown", "text", "number", "checkbox"];
 
 function sameNumberSet(a: Set<number>, b: Set<number>): boolean {
   if (a.size !== b.size) return false;
