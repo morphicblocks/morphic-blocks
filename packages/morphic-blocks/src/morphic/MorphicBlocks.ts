@@ -170,7 +170,7 @@ export class MorphicBlocks extends EventTarget {
     this.formatCategories = format.categories;
   }
 
-  public mount(inputConfig: MorphicMountConfig): Blockly.WorkspaceSvg {
+  public mount(inputConfig: MorphicMountConfig): void {
     this.dispose();
 
     // Fill unset format-level fields from the definitions file handed to the
@@ -290,8 +290,6 @@ export class MorphicBlocks extends EventTarget {
 
     this.activePreset = initialPreset;
     if (initialPreset) resolvedConfig.onPresetApplied?.(initialPreset);
-
-    return this.workspace;
   }
 
   /** Presets declared at mount (empty when none were provided). */
@@ -521,6 +519,11 @@ export class MorphicBlocks extends EventTarget {
     });
   }
 
+  /**
+   * The underlying Blockly workspace, for the rare case that needs Blockly
+   * directly (e.g. creating blocks from code). Everyday use goes through the
+   * engine. `undefined` before `mount`.
+   */
   public getWorkspace(): Blockly.WorkspaceSvg | undefined {
     return this.workspace;
   }

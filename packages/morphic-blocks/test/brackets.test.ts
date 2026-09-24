@@ -78,7 +78,8 @@ beforeEach(() => {
   const container = document.createElement("div");
   document.body.appendChild(container);
   engine = new MorphicBlocks(format, behaviors);
-  workspace = engine.mount({ workspaceContainer: container, workspaceMode: "py" });
+  engine.mount({ workspaceContainer: container, workspaceMode: "py" });
+  workspace = engine.getWorkspace()!;
 });
 
 afterEach(() => {
