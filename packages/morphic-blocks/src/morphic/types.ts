@@ -442,9 +442,32 @@ export interface MorphicMountConfig {
   workspaceContainer?: HTMLElement;
   /**
    * Container for the primary text editor (codespace). Optional, but required
-   * when a preset shows the codespace.
+   * when a preset shows the codespace. `mount()` sets the codespace up in it.
    */
   codespaceContainer?: HTMLElement;
+  /**
+   * Container for the custom HTML toolbox. `mount()` sets the toolbox up in it,
+   * which implies `canvasToolbox`.
+   */
+  toolboxContainer?: HTMLElement;
+  /** Container for the read-only preview. `mount()` sets the preview up in it. */
+  previewContainer?: HTMLElement;
+  /**
+   * Container for the generated JavaScript view, a developer tool. `mount()`
+   * sets it up hidden; `showCodeEditor()` reveals it.
+   */
+  codeEditorContainer?: HTMLElement;
+  /** Toolbar containers per pane, set up once the text editors are ready. */
+  toolbarContainers?: Partial<Record<MorphicToolbarPane, HTMLElement>>;
+  /** Theme for the codespace and code editor set up by `mount()`. */
+  editorTheme?: MorphicCodeEditorTheme;
+  /** Theme for the preview set up by `mount()`. Defaults to `editorTheme`. */
+  previewTheme?: MorphicCodeEditorTheme;
+  /**
+   * Link block and code selection across views. On by default when `mount()`
+   * sets up more than one view; `false` turns it off, an object configures it.
+   */
+  selectionSync?: boolean | MorphicSelectionSyncOptions;
   /** Mode definitions — drives automatic element visibility CSS. */
   modes?: MorphicModeDefinition[];
   /**

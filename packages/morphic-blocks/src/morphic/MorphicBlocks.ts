@@ -45,6 +45,7 @@ import type {
   MorphicRunOutputLine,
   MorphicRunResult,
   MorphicSelectionSyncOptions,
+  MorphicToolbarPane,
   MorphicToolbarConfig,
   MorphicToolboxCanvasOptions,
   MorphicToolboxCategory,
@@ -141,6 +142,10 @@ export class MorphicBlocks extends EventTarget {
   private workspaceResizeObserver?: ResizeObserver;
   /** Preset most recently applied, at mount or via `applyPreset`. */
   private activePreset?: MorphicPresetDefinition;
+  /** Counts mounts, so async view setup can tell it was superseded. */
+  private mountGeneration = 0;
+  /** Options of the active selection sync, reused when an editor is replaced. */
+  private selectionSyncOptions?: MorphicSelectionSyncOptions;
 
   /** Format-level fields remembered from the constructor and used as `mount()`
    * defaults, so the developer hands the whole definitions file in once and the
@@ -174,7 +179,13 @@ export class MorphicBlocks extends EventTarget {
     this.formatCategories = format.categories;
   }
 
-  public mount(inputConfig: MorphicMountConfig): void {
+  /**
+   * Set the editor up. Everything given a container is mounted: workspace,
+   * toolbox, codespace, preview, code editor and toolbars. The workspace is
+   * ready as soon as this returns; the returned promise settles once the text
+   * editors, which load in the background, are ready too.
+   */
+  public mount(inputConfig: MorphicMountConfig): Promise<void> {
     this.dispose();
 
     // Fill unset format-level fields from the definitions file handed to the
@@ -248,6 +259,8 @@ export class MorphicBlocks extends EventTarget {
       codespaceMode,
       previewMode,
       workspaceHost,
+      // A toolbox container means the custom HTML toolbox.
+      canvasToolbox: config.canvasToolbox ?? !!config.toolboxContainer,
     };
 
     this.mountConfig = resolvedConfig;
@@ -290,8 +303,47 @@ export class MorphicBlocks extends EventTarget {
     this.renderWorkspaceBlocks();
     this.renderFlyoutBlocks();
 
+    if (config.toolboxContainer) {
+      this.mountToolbox(config.toolboxContainer);
+    }
+
     this.activePreset = initialPreset;
     if (initialPreset) resolvedConfig.onPresetApplied?.(initialPreset);
+
+    return this.mountViews(config, ++this.mountGeneration);
+  }
+
+  /**
+   * Set up the text editors and what depends on them (toolbars, selection
+   * sync). Runs after the synchronous part of `mount()`; bails out quietly
+   * when the engine was disposed or mounted again meanwhile.
+   */
+  private async mountViews(config: MorphicMountConfig, generation: number): Promise<void> {
+    const editorOptions = config.editorTheme ? { theme: config.editorTheme } : undefined;
+    const previewTheme = config.previewTheme ?? config.editorTheme;
+    const pending: Promise<void>[] = [];
+    if (config.codespaceContainer) {
+      pending.push(this.mountCodespace(editorOptions));
+    }
+    if (config.previewContainer) {
+      pending.push(this.mountPreview(config.previewContainer, previewTheme ? { theme: previewTheme } : undefined));
+    }
+    if (config.codeEditorContainer) {
+      pending.push(this.mountCodeEditor(config.codeEditorContainer, editorOptions).then(() => this.hideCodeEditor()));
+    }
+    await Promise.all(pending);
+    if (generation !== this.mountGeneration || !this.workspace) return;
+
+    for (const [pane, container] of Object.entries(config.toolbarContainers ?? {})) {
+      if (container) this.mountToolbar(container, { pane: pane as MorphicToolbarPane });
+    }
+
+    const viewCount =
+      (config.workspaceContainer ? 1 : 0) + pending.length;
+    const wantsSync = config.selectionSync ?? viewCount > 1;
+    if (wantsSync && pending.length > 0) {
+      this.enableSelectionSync(typeof wantsSync === "object" ? wantsSync : undefined);
+    }
   }
 
   /** Presets declared at mount (empty when none were provided). */
@@ -939,6 +991,7 @@ export class MorphicBlocks extends EventTarget {
     );
 
     await this.codeEditor.mount();
+    this.refreshSelectionSync();
   }
 
   /**
@@ -992,6 +1045,7 @@ export class MorphicBlocks extends EventTarget {
       this.mountConfig.codespaceContainer,
       this.workspace,
     );
+    this.refreshSelectionSync();
   }
 
   private attachCodespaceDropTarget(
@@ -1904,6 +1958,7 @@ export class MorphicBlocks extends EventTarget {
     );
 
     await this.previewEditor.mount();
+    this.refreshSelectionSync();
   }
 
   private generatePreviewText(): MorphicCodeGenerationResult {
@@ -2076,6 +2131,7 @@ export class MorphicBlocks extends EventTarget {
     }
 
     this.selectionSync?.disable();
+    this.selectionSyncOptions = options;
     this.selectionSync = new MorphicSelectionSync(
       this.workspace,
       editors,
@@ -2084,10 +2140,19 @@ export class MorphicBlocks extends EventTarget {
     this.selectionSync.enable();
   }
 
+  /**
+   * Rebuild an active selection sync after an editor was (re)mounted, so it
+   * links the current editors rather than a disposed one.
+   */
+  private refreshSelectionSync(): void {
+    if (this.selectionSync) this.enableSelectionSync(this.selectionSyncOptions);
+  }
+
   /** Disable selection sync and clear any active highlights. */
   public disableSelectionSync(): void {
     this.selectionSync?.disable();
     this.selectionSync = undefined;
+    this.selectionSyncOptions = undefined;
   }
 
   private readonly onWorkspaceChange = (
