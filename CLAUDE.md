@@ -14,8 +14,16 @@ morphic-blocks/
 │   └── sandbox/             # Dev app showing the framework in use
 ├── packages/
 │   └── morphic-blocks/      # Core framework (the library)
+│       └── test/            # Vitest tests, run in jsdom
 └── CLAUDE.md
 ```
+
+### Tests
+
+`bun run test` (repo root) runs the framework tests with Vitest in jsdom. Run
+them after every framework change, and add a test for each fix or feature that
+fails without the change. `test/setup-dom.ts` stubs the text measuring calls
+jsdom cannot answer; tests check generated text, not rendering.
 
 ## Framework Architecture (`packages/morphic-blocks`)
 
