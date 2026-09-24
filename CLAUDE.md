@@ -43,10 +43,10 @@ jsdom cannot answer; tests check generated text, not rendering.
 1. User provides **definitions** (JSON): each block has an `elements` map (element name → content)
 2. User provides **behaviors** (JS/TS): functions that generate code for each block type
 3. User provides **CSS files**: one per mode, using `.morphic-mode-{name}` classes
-4. `MorphicBlocks.mount()` initializes Blockly + morphic features
+4. `MorphicBlocks.mount()` initializes Blockly + morphic features and sets up every view it gets a container for
 5. `engine.applyPreset()` / `engine.setModes()` switch the per-view modes at runtime — blocks re-render
 
-`mount()` accepts either `workspaceContainer`, `codespaceContainer`, or both. At least one is required. When only `codespaceContainer` is provided, Blockly runs headless (offscreen) so the block model stays authoritative. A preset that shows a codespace requires `codespaceContainer`. Views are set up by presets; without presets the first mode is used, and `setModes()` switches views freely at runtime.
+`mount()` is the single setup call: it takes `workspaceContainer`, `toolboxContainer`, `codespaceContainer`, `previewContainer`, `codeEditorContainer` and `toolbarContainers`, plus `editorTheme` / `previewTheme`, and sets up each view it gets a container for. It returns a promise that settles once the text editors (lazy loaded CodeMirror) are ready; the workspace is ready immediately. Selection sync is on by default when more than one view is set up (`selectionSync: false` turns it off, an object configures it), and the code editor starts hidden. The separate `mount*` methods remain for setting a view up later; mounting an editor again relinks an active selection sync. At least one of `workspaceContainer` / `codespaceContainer` is required. When only `codespaceContainer` is provided, Blockly runs headless (offscreen) so the block model stays authoritative. A preset that shows a codespace requires `codespaceContainer`. Views are set up by presets; without presets the first mode is used, and `setModes()` switches views freely at runtime.
 
 ### Block identifier namespacing
 
@@ -190,9 +190,9 @@ All elements are always rendered; CSS controls visibility:
 </div>
 ```
 
-## Custom Toolbox (`mountToolbox`)
+## Custom Toolbox (`toolboxContainer` / `mountToolbox`)
 
-`engine.mountToolbox(container, options?)` replaces Blockly's built-in flyout:
+`mount({ toolboxContainer })`, or `engine.mountToolbox(container, options?)` later, replaces Blockly's built-in flyout (a toolbox container implies `canvasToolbox`):
 
 - Renders Morphic Block tiles as HTML (no off-screen Blockly workspaces)
 - Drag-and-drop: dragging a tile into the workspace creates the actual Blockly block
