@@ -47,4 +47,25 @@ describe("dispose and mount again", () => {
     expect(containers.previewContainer.querySelectorAll(".cm-editor")).toHaveLength(1);
     expect(containers.codeEditorContainer.querySelectorAll(".cm-editor")).toHaveLength(1);
   });
+
+  test("toolbars follow the new workspace", async () => {
+    const engine = create();
+    const workspaceContainer = div();
+    const toolbar = div();
+    const containers = { workspaceContainer, codespaceContainer: div(), toolbarContainers: { workspace: toolbar } };
+
+    await engine.mount(containers);
+    engine.dispose();
+    await engine.mount(containers);
+
+    const undo = () => toolbar.querySelector<HTMLButtonElement>("[data-toolbar-id='undo']");
+    expect(undo()?.disabled).toBe(true);
+
+    const block = engine.getWorkspace()!.newBlock("morphic:say");
+    block.initSvg();
+    block.render();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(undo()?.disabled).toBe(false);
+  });
 });

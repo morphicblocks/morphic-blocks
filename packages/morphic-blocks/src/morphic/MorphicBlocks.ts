@@ -524,6 +524,10 @@ export class MorphicBlocks extends EventTarget {
     this.toolboxCanvas?.dispose();
     this.toolboxCanvas = undefined;
 
+    // Each handle's dispose drops it from the set and, with the last one,
+    // removes the toolbar listener from the workspace.
+    for (const handle of [...this.toolbars]) handle.dispose();
+
     if (this.flyoutWorkspace) {
       this.flyoutWorkspace.removeChangeListener(this.onFlyoutChange);
       this.flyoutWorkspace = undefined;
