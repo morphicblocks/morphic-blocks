@@ -74,12 +74,13 @@ function parseModeStylesFromFolder(
 }
 
 /** Internal resolved config: workspaceMode, toolboxMode and workspaceHost are guaranteed non-optional. */
-type MorphicResolvedMountConfig = Omit<
-  MorphicMountConfig,
-  "workspaceMode" | "toolboxMode"
-> & {
+type MorphicResolvedMountConfig = MorphicMountConfig & {
   workspaceMode: MorphicModeName;
   toolboxMode: MorphicModeName;
+  /** Independent mode for the codespace; its source element is rendered there. */
+  codespaceMode?: MorphicModeName;
+  /** Mode for the preview editor; its source element is rendered there. */
+  previewMode?: MorphicModeName;
   /** Per-element block/text override for toolbox tiles (from the active preset's toolbox entry). */
   toolboxRender?: Record<string, "block" | "text">;
   /** The element Blockly was injected into — either the user's workspaceContainer or an internal headless host. */
@@ -223,17 +224,15 @@ export class MorphicBlocks extends EventTarget {
       : undefined;
     const workspaceMode = initialPreset
       ? (initialPreset.workspace ?? initialPreset.codespace ?? defaultMode)
-      : (config.workspaceMode ?? defaultMode);
+      : defaultMode;
     const toolboxMode = initialToolbox
       ? initialToolbox.mode
-      : (config.toolboxMode ?? defaultMode);
+      : defaultMode;
     const toolboxRender = initialToolbox?.render;
-    const codespaceMode = initialPreset
-      ? initialPreset.codespace
-      : config.codespaceMode;
-    const previewMode = initialPreset ? initialPreset.preview : config.previewMode;
+    const codespaceMode = initialPreset?.codespace;
+    const previewMode = initialPreset?.preview;
 
-    this.validateContainers({ ...config, codespaceMode });
+    this.validateContainers(config);
 
     const workspaceHost = config.workspaceContainer ?? this.createHeadlessHost();
 
@@ -2207,12 +2206,6 @@ export class MorphicBlocks extends EventTarget {
     if (!config.workspaceContainer && !config.codespaceContainer) {
       throw new Error(
         "MorphicBlocks.mount requires at least one of workspaceContainer or codespaceContainer.",
-      );
-    }
-
-    if (config.codespaceMode && !config.codespaceContainer) {
-      throw new Error(
-        "MorphicBlocks.mount: codespaceMode requires a codespaceContainer.",
       );
     }
   }

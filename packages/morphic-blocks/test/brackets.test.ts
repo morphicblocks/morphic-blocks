@@ -78,7 +78,8 @@ beforeEach(() => {
   const container = document.createElement("div");
   document.body.appendChild(container);
   engine = new MorphicBlocks(format, behaviors);
-  engine.mount({ workspaceContainer: container, workspaceMode: "py" });
+  // No presets, so the first mode ("py") drives the workspace.
+  engine.mount({ workspaceContainer: container });
   workspace = engine.getWorkspace()!;
 });
 

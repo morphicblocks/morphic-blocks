@@ -415,8 +415,8 @@ export interface MorphicMountConfig {
    */
   workspaceContainer?: HTMLElement;
   /**
-   * Container for the primary text editor (codespace). Optional — required
-   * when a `codespaceMode` is used.
+   * Container for the primary text editor (codespace). Optional, but required
+   * when a preset shows the codespace.
    */
   codespaceContainer?: HTMLElement;
   /** Mode definitions — drives automatic element visibility CSS. */
@@ -441,19 +441,6 @@ export interface MorphicMountConfig {
    * Use this when calling `mountToolbox()` to avoid Blockly toolbox type conflicts.
    */
   canvasToolbox?: boolean;
-  workspaceMode?: MorphicModeName;
-  toolboxMode?: MorphicModeName;
-  /**
-   * Independent mode for the codespace. When set, the codespace renders the
-   * source element of this mode instead of following `workspaceMode`.
-   */
-  codespaceMode?: MorphicModeName;
-  /**
-   * Mode for the preview editor. The preview renders the source element of
-   * this mode. When unset, the preview falls back to the active workspace
-   * mode's `preview` element (legacy behavior).
-   */
-  previewMode?: MorphicModeName;
   ui?: {
     workspaceClassName?: string | string[];
     toolboxClassName?: string | string[];
