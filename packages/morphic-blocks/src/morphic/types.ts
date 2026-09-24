@@ -267,6 +267,32 @@ export interface MorphicHighlightDefinition {
 }
 
 /** Top-level format for a definitions JSON file. */
+/**
+ * A definitions file as TypeScript sees a JSON import: the same structure as
+ * `MorphicBlocksFormat`, but with every exact value relaxed to its general
+ * kind (`"code"` becomes any string, a `[value, label]` pair any string list),
+ * and maps tolerate the `undefined` entries TypeScript adds when a list mixes
+ * objects. TypeScript widens JSON this way, so the constructor accepts it
+ * directly and `mount()` validates the values at runtime instead.
+ */
+export type MorphicBlocksFormatJson = Widen<MorphicBlocksFormat>;
+
+type Widen<T> = T extends string
+  ? string
+  : T extends number
+    ? number
+    : T extends boolean
+      ? boolean
+      : T extends readonly (infer Item)[]
+        ? Widen<Item>[]
+        : T extends object
+          ? string extends keyof T
+            ? // A map (index signature). In a list of objects, TypeScript gives
+              // JSON keys some entries lack the type `undefined`, so maps allow it.
+              { [Key in keyof T]: Widen<T[Key]> | undefined }
+            : { [Key in keyof T]: Widen<T[Key]> }
+          : T;
+
 export interface MorphicBlocksFormat {
   /** JSON Schema reference for editor tooling. Ignored by the framework. */
   $schema?: string;

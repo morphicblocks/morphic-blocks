@@ -1,0 +1,30 @@
+{
+  "elementTypes": {
+    "title": "text",
+    "code": { "type": "code", "stringQuote": "\"", "empty": { "Number": { "shadow": "math_number", "fieldValues": { "NUM": "0" } } } }
+  },
+  "modes": [{ "name": "only", "elements": ["title", "code"] }],
+  "presets": [
+    { "name": "blocks", "toolbox": "only", "workspace": "only" },
+    { "name": "text", "toolbox": { "mode": "only", "render": { "code": "text" } }, "codespace": "only", "preview": "only" }
+  ],
+  "blocks": [
+    {
+      "identifier": "say",
+      "elements": { "title": "Say", "code": "say(%1)" },
+      "inputSlots": { "1": { "kind": "value", "name": "VALUE", "default": { "shadow": "text", "fieldValues": { "TEXT": "hi" } } } },
+      "shape": "statement"
+    },
+    {
+      "identifier": "math",
+      "elements": { "code": "%1 %OP %2" },
+      "inputSlots": {
+        "1": { "kind": "value", "name": "A", "check": "Number" },
+        "2": { "kind": "value", "name": "B", "check": "Number", "default": { "placeholder": "math_number", "fieldValues": { "NUM": "5" } } }
+      },
+      "fields": { "OP": { "type": "dropdown", "options": ["+", ["*", "×"], { "value": "&&", "display": { "code": "and" } }] } },
+      "output": true
+    },
+    { "identifier": "number", "elements": { "code": "%NUM" }, "fields": { "NUM": { "type": "number", "default": 0 } }, "output": "Number" }
+  ]
+}

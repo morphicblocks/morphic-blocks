@@ -27,6 +27,7 @@ import type {
   MorphicBehaviorMap,
   MorphicBlockDefinition,
   MorphicBlocksFormat,
+  MorphicBlocksFormatJson,
   MorphicCodeBlockPosition,
   MorphicCodeEditorOptions,
   MorphicCodeEditorTheme,
@@ -156,10 +157,12 @@ export class MorphicBlocks extends EventTarget {
    * as defaults for `mount()` / `mountToolbox()` (a call may still override them).
    */
   public constructor(
-    format: MorphicBlocksFormat,
+    // A JSON import is accepted as is; mount() validates its values.
+    formatInput: MorphicBlocksFormat | MorphicBlocksFormatJson,
     behaviors: MorphicBehaviorMap = {},
   ) {
     super();
+    const format = formatInput as MorphicBlocksFormat;
     this.definitions = createDefinitionMap(
       applyBlockShapes(expandDefaultElements(format.blocks, format.elementTypes ?? {})),
     );
