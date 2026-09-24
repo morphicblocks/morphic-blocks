@@ -1,11 +1,20 @@
 import { toModeClassToken } from "./template";
 import type {
   MorphicModeDefinition,
-  MorphicModeStyle,
   MorphicModeName,
   MorphicStyleBundle,
   MorphicToolboxCategory,
 } from "./types";
+
+/**
+ * One mode's stylesheet, a link or the CSS itself. Hosts pass `modesFolder` or
+ * the `modeStyles` map; the engine merges both into a list of these.
+ */
+export interface MorphicModeStyle {
+  mode: MorphicModeName;
+  href?: string;
+  cssText?: string;
+}
 
 /**
  * Injects the framework's stylesheets into the page. Every helper first checks

@@ -17,7 +17,7 @@ import { MorphicSelectionSync } from "./selection-sync";
 import { applyBlockShapes, createDefinitionMap, expandDefaultElements } from "./definitions";
 import { applyFont, measuredFont, readCssFont, remeasureBlocks, type MorphicBlockFont } from "./block-font";
 import { validateDefinitions } from "./validate-definitions";
-import { MorphicStyleManager } from "./styles";
+import { MorphicStyleManager, type MorphicModeStyle } from "./styles";
 import { toModeClassToken } from "./template";
 import { DRAG_DATA_KEY, MorphicToolboxCanvas } from "./toolbox-canvas";
 import { buildToolboxDefinition } from "./toolbox";
@@ -37,7 +37,6 @@ import type {
   MorphicHighlightDefinition,
   MorphicModeDefinition,
   MorphicModeName,
-  MorphicModeStyle,
   MorphicMountConfig,
   MorphicPlaceholderEditTarget,
   MorphicPresetDefinition,
