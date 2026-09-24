@@ -1,17 +1,13 @@
 import {
   makeResizable,
   MorphicBlocks,
-  type MorphicBlocksFormat,
   type MorphicPresetDefinition,
 } from "morphic-blocks";
-import definitionsData from "./definitions.json";
+import definitions from "./definitions.json";
 import { behaviors } from "./behaviors";
 import "./style.css";
 
-// The whole definitions file, typed once. A JSON import infers `"code"` as
-// `string` (not the element-type union), so one assertion is unavoidable here —
-// it replaces the per-field casts the split API used to require.
-const definitions = definitionsData as unknown as MorphicBlocksFormat;
+// The JSON import goes to the engine as is; mount() validates it.
 const presets = definitions.presets ?? [];
 
 // Enable drag-to-resize dividers between the panes.
