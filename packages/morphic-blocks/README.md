@@ -37,28 +37,25 @@ npm i @codemirror/state @codemirror/view @codemirror/lang-javascript
 ## Quick start
 
 ```ts
-import { MorphicBlocks } from "morphic-blocks";
-import definitions from "./definitions.json";
+import { MorphicBlocks, type MorphicBlocksFormat } from "morphic-blocks";
+import definitionsJson from "./definitions.json";
 import { behaviors } from "./behaviors";
 
-const engine = new MorphicBlocks(
-  definitions.blocks,
-  behaviors,
-  definitions.elementTypes,
-);
+// A JSON import widens "code" to string, so one assertion is needed here.
+const definitions = definitionsJson as unknown as MorphicBlocksFormat;
+
+// Modes, presets and categories all come from the definitions file.
+const engine = new MorphicBlocks(definitions, behaviors);
 
 engine.mount({
   workspaceContainer: document.getElementById("workspace")!,
-  modes: definitions.modes,
-  workspaceMode: "conceptual",
+  preset: "conceptual", // a preset from definitions.json; without presets the first mode is used
 });
 
-engine.mountToolbox(document.getElementById("toolbox")!, {
-  categories: definitions.categories,
-});
+engine.mountToolbox(document.getElementById("toolbox")!);
 
-// switch representation at runtime — the same blocks re-render
-engine.setModes({ workspaceMode: "python" });
+// switch representation at runtime; the same blocks re-render
+engine.applyPreset("python");
 ```
 
 ## Features
