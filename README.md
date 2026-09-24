@@ -232,7 +232,7 @@ const definitions = definitionsData as unknown as MorphicBlocksFormat;
 
 const engine = new MorphicBlocks(definitions, behaviors);
 
-const workspace = engine.mount({
+engine.mount({
   workspaceContainer: document.getElementById("workspace")!,
   codespaceContainer: document.getElementById("codespace")!, // optional
   preset: "iconic",                     // initial preset (by name)
