@@ -90,7 +90,9 @@ function parseModeStylesFromFolder(
 }
 
 /** Internal resolved config: workspaceMode, toolboxMode and workspaceHost are guaranteed non-optional. */
-type MorphicResolvedMountConfig = MorphicMountConfig & {
+type MorphicResolvedMountConfig = Omit<MorphicMountConfig, "modeStyles"> & {
+  /** Every mode stylesheet, from `modesFolder` and `modeStyles` combined. */
+  modeStyles: MorphicModeStyle[];
   workspaceMode: MorphicModeName;
   toolboxMode: MorphicModeName;
   /** Independent mode for the codespace; its source element is rendered there. */
@@ -225,9 +227,9 @@ export class MorphicBlocks extends EventTarget {
       : [];
     const mergedModeStyles = [
       ...folderStyles,
-      ...(config.modeStyles ?? []).filter(
-        (s) => !folderStyles.some((f) => f.mode === s.mode),
-      ),
+      ...Object.entries(config.modeStyles ?? {})
+        .filter(([mode]) => !folderStyles.some((f) => f.mode === mode))
+        .map(([mode, source]) => modeStyleFrom(mode, source)),
     ];
 
     // Definitions: static cross-field validation (silent-failure guards).
@@ -2523,7 +2525,7 @@ export class MorphicBlocks extends EventTarget {
   }
 
   private resolveToolboxDefinition(
-    config: MorphicMountConfig,
+    config: Omit<MorphicMountConfig, "modeStyles">,
   ): NonNullable<Blockly.BlocklyOptions["toolbox"]> {
     if (config.toolbox) {
       const layoutKind = this.resolveToolboxKind(config.toolboxLayout);
@@ -2611,7 +2613,7 @@ export class MorphicBlocks extends EventTarget {
 
   private createCategoryIndex(
     toolbox?: MorphicMountConfig["toolbox"],
-    config?: MorphicMountConfig,
+    config?: Omit<MorphicMountConfig, "modeStyles">,
   ): Map<string, MorphicBlockCategoryMeta> {
     const index = new Map<string, MorphicBlockCategoryMeta>();
 

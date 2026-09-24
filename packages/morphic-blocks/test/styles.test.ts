@@ -21,7 +21,7 @@ function openEditor(): MorphicBlocks {
   const engine = new MorphicBlocks(format, {});
   engine.mount({
     workspaceContainer: document.body.appendChild(document.createElement("div")),
-    modeStyles: [{ mode: "only", cssText: ".morphic-mode-only { color: teal; }" }],
+    modeStyles: { only: ".morphic-mode-only { color: teal; }" },
   });
   engines.push(engine);
   return engine;

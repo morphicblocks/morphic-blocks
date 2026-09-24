@@ -33,6 +33,25 @@ afterEach(() => {
   document.head.innerHTML = "";
 });
 
+describe("modeStyles", () => {
+  test("takes CSS text or a link per mode", () => {
+    mountWith({ modeStyles: { py: ".py { color: teal; }", js: "/modes/js.css" } });
+
+    expect(styleFor("py")?.textContent).toBe(".py { color: teal; }");
+    expect(linkFor("js")?.getAttribute("href")).toBe("/modes/js.css");
+  });
+
+  test("a folder stylesheet wins over a hand-given one for the same mode", () => {
+    mountWith({
+      modesFolder: { "./modes/py.css": "/assets/py.css" },
+      modeStyles: { py: ".py { color: teal; }" },
+    });
+
+    expect(linkFor("py")?.getAttribute("href")).toBe("/assets/py.css");
+    expect(styleFor("py")).toBeNull();
+  });
+});
+
 describe("modesFolder", () => {
   test("loads links from a folder import", () => {
     mountWith({ modesFolder: { "./modes/py.css": { default: "/assets/py.css" }, "./modes/js.css": "/assets/js.css" } });

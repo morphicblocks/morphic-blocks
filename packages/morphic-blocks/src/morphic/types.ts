@@ -494,10 +494,17 @@ export interface MorphicMountConfig {
     workspaceClassName?: string | string[];
     toolboxClassName?: string | string[];
   };
-  modeStyles?: MorphicModeStyle[];
   /**
-   * Pass the result of `import.meta.glob('./modes/*.css', { eager: true, query: '?url' })`
-   * (or `{ eager: true, as: 'url' }` for older Vite).
+   * One stylesheet per mode, given by hand: mode name to CSS text or a link to
+   * a CSS file, e.g. `{ py: pyCss, js: "/modes/js.css" }`. CSS always contains
+   * a `{` and a link never does, so each value says which it is.
+   */
+  modeStyles?: Record<MorphicModeName, string>;
+  /**
+   * A whole folder of mode stylesheets, e.g. the result of
+   * `import.meta.glob('./modes/*.css', { eager: true, query: '?url' })`.
+   * Each file styles the mode it is named after; values may be links (`?url`)
+   * or CSS text (`?raw`).
    * The framework derives mode names from CSS filenames and loads the stylesheets automatically.
    * Takes precedence over `modeStyles` for the same modes.
    */
