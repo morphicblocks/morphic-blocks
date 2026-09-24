@@ -385,6 +385,7 @@ export type MorphicBehaviorDefinition =
   | MorphicCodeBehavior;
 export type MorphicBehaviorMap = Record<string, MorphicBehaviorDefinition>;
 
+/** One mode's stylesheet, as the engine loads it. Internal: hosts pass `modeStyles` as a map. */
 export interface MorphicModeStyle {
   mode: MorphicModeName;
   href?: string;

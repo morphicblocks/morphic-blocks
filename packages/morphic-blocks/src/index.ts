@@ -46,7 +46,6 @@ export type {
   MorphicInputKind,
   MorphicInputSlotDefinition,
   MorphicModeName,
-  MorphicModeStyle,
   MorphicMountConfig,
   MorphicPlaceholderEditTarget,
   MorphicPlaceholderRange,
