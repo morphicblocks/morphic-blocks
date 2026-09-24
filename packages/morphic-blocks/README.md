@@ -26,7 +26,7 @@ block-based and text-based programming.
 npm i morphic-blocks
 ```
 
-Blockly is bundled as a dependency — no separate install needed. The code editor,
+Blockly is a dependency, so it is installed for you. The code editor,
 codespace, and preview views additionally use CodeMirror — install those only if
 you need them:
 
