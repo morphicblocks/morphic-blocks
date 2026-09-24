@@ -7,7 +7,7 @@
     "url": "git+https://github.com/morphicblocks/morphic-blocks.git",
     "directory": "packages/morphic-blocks"
   },
-  "homepage": "https://github.com/morphicblocks/morphic-blocks#readme",
+  "homepage": "https://morphicblocks.com",
   "bugs": "https://github.com/morphicblocks/morphic-blocks/issues",
   "type": "module",
   "main": "./dist/morphic-blocks.umd.cjs",
