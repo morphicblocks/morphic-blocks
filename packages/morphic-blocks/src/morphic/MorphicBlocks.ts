@@ -15,6 +15,7 @@ import { generateJavaScriptFromWorkspace, generateJavaScriptWithMetadataFromWork
 import { generateTextFromWorkspace } from "./template-codegen";
 import { MorphicSelectionSync } from "./selection-sync";
 import { applyBlockShapes, createDefinitionMap, expandDefaultElements } from "./definitions";
+import { applyFont, measuredFont, readCssFont, remeasureBlocks, type MorphicBlockFont } from "./block-font";
 import { validateDefinitions } from "./validate-definitions";
 import { MorphicStyleManager } from "./styles";
 import { toModeClassToken } from "./template";
@@ -158,6 +159,9 @@ export class MorphicBlocks extends EventTarget {
   private workspaceResizeObserver?: ResizeObserver;
   /** Preset most recently applied, at mount or via `applyPreset`. */
   private activePreset?: MorphicPresetDefinition;
+  /** The workspace's theme and font before any mode's CSS font was applied. */
+  private baseTheme?: Blockly.Theme;
+  private baseFont?: MorphicBlockFont;
   /** Counts mounts, so async view setup can tell it was superseded. */
   private mountGeneration = 0;
   /** Options of the active selection sync, reused when an editor is replaced. */
@@ -287,6 +291,12 @@ export class MorphicBlocks extends EventTarget {
       this.styles.ensureModeVisibilityStyles(resolvedConfig.modes);
     }
     this.styles.ensureStyles(resolvedConfig.baseStyle, mergedModeStyles);
+    // A mode stylesheet that is still loading may change the block font, and
+    // web fonts change text widths once they arrive.
+    for (const link of Array.from(document.head.querySelectorAll<HTMLLinkElement>('link[data-morphic-source^="mode:"]'))) {
+      if (!link.sheet) link.addEventListener("load", this.onStylesLoaded, { once: true });
+    }
+    document.fonts?.addEventListener("loadingdone", this.onStylesLoaded);
     this.blockCategoryIndex = this.createCategoryIndex(
       resolvedConfig.toolbox,
       resolvedConfig,
@@ -303,6 +313,8 @@ export class MorphicBlocks extends EventTarget {
     });
     this.workspace.addChangeListener(this.onWorkspaceChange);
     workspaceOwners.set(this.workspace, this);
+    this.baseTheme = this.workspace.getTheme();
+    this.baseFont = measuredFont(this.workspace);
 
     // The framework owns the workspace, so it keeps Blockly's SVG sized to its
     // container: pane toggles, window resizes and divider drags all change the
@@ -315,6 +327,7 @@ export class MorphicBlocks extends EventTarget {
     }
 
     this.applyWorkspaceContainerClass();
+    this.syncWorkspaceFont();
     this.refreshToolbox();
     this.bindFlyoutWorkspace();
     this.renderWorkspaceBlocks();
@@ -505,6 +518,7 @@ export class MorphicBlocks extends EventTarget {
     }
     this.workspaceResizeObserver?.disconnect();
     this.workspaceResizeObserver = undefined;
+    document.fonts?.removeEventListener("loadingdone", this.onStylesLoaded);
     this.activePreset = undefined;
 
     this.selectionSync?.disable();
@@ -546,6 +560,8 @@ export class MorphicBlocks extends EventTarget {
     }
 
     this.mountConfig = undefined;
+    this.baseTheme = undefined;
+    this.baseFont = undefined;
     this.toolboxDefinition = undefined;
     this.blockCategoryIndex.clear();
     this.appliedWorkspaceClasses = [];
@@ -933,6 +949,7 @@ export class MorphicBlocks extends EventTarget {
     }
 
     this.applyWorkspaceContainerClass();
+    this.syncWorkspaceFont();
     this.refreshToolbox();
     this.bindFlyoutWorkspace();
     this.renderWorkspaceBlocks();
@@ -2419,6 +2436,31 @@ export class MorphicBlocks extends EventTarget {
     );
     this.appliedWorkspaceClasses = workspaceClasses;
   }
+
+  /**
+   * Measure block text with the font the workspace mode's CSS draws it in.
+   * The probe sits in the workspace container with Blockly's renderer and
+   * base theme classes, so it gets Blockly's own font unless the mode's CSS
+   * overrides it, exactly like real block text.
+   */
+  private syncWorkspaceFont(): void {
+    const workspace = this.workspace;
+    const host = this.mountConfig?.workspaceHost;
+    if (!workspace || !host || !this.baseTheme || !this.baseFont) return;
+    const font = readCssFont(
+      host,
+      [[workspace.getRenderer().getClassName(), this.baseTheme.getClassName()]],
+      this.baseFont,
+    );
+    if (applyFont(workspace, this.baseTheme, this.baseFont, font)) remeasureBlocks(workspace);
+  }
+
+  private readonly onStylesLoaded = (): void => {
+    if (!this.workspace || !this.mountConfig) return;
+    this.syncWorkspaceFont();
+    remeasureBlocks(this.workspace);
+    this.toolboxCanvas?.rerender(this.mountConfig.toolboxMode, this.mountConfig.toolboxRender);
+  };
 
   private applyFlyoutClass(): void {
     if (!this.workspace || !this.mountConfig) {

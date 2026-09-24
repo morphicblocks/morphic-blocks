@@ -2,6 +2,7 @@ import * as Blockly from "blockly";
 import { getLifecycleBehavior } from "./behavior-runtime";
 import { resolveBlocklyType } from "./block-namespace";
 import { applyBlockView } from "./block-view";
+import { applyFont, measuredFont, readCssFont, type MorphicBlockFont } from "./block-font";
 import { resolveElementType, resolveImageSize } from "./element-types";
 import {
   normalizeImageValue,
@@ -39,6 +40,8 @@ export class MorphicToolboxCanvas {
   private previewWorkspace?: Blockly.WorkspaceSvg;
   private readonly onPreviewWorkspace?: (workspace: Blockly.WorkspaceSvg) => void;
   private previewContainer?: HTMLDivElement;
+  /** The preview workspace's own theme and font, before any tile font. */
+  private previewBase?: { theme: Blockly.Theme; font: MorphicBlockFont };
 
   private readonly onDragOver: (e: DragEvent) => void;
   private readonly onDrop: (e: DragEvent) => void;
@@ -103,6 +106,7 @@ export class MorphicToolboxCanvas {
     if (this.previewWorkspace) {
       this.previewWorkspace.dispose();
       this.previewWorkspace = undefined;
+      this.previewBase = undefined;
     }
     if (this.previewContainer?.parentNode) {
       this.previewContainer.parentNode.removeChild(this.previewContainer);
@@ -204,6 +208,7 @@ export class MorphicToolboxCanvas {
         : content;
 
       if (isCodeElement && render === "block") {
+        this.syncPreviewFont(elementName);
         const svg = this.createBlockPreviewSvg(definition, this.currentMode);
         if (svg) {
           el.appendChild(svg);
@@ -235,6 +240,24 @@ export class MorphicToolboxCanvas {
     });
     this.onPreviewWorkspace?.(this.previewWorkspace);
     return this.previewWorkspace;
+  }
+
+  /**
+   * The tile shows a copy of the rendered block outside Blockly, so its text
+   * takes the font the tile's CSS gives that element. Measure with that font.
+   */
+  private syncPreviewFont(elementName: string): void {
+    const ws = this.ensurePreviewWorkspace();
+    this.previewBase ??= { theme: ws.getTheme(), font: measuredFont(ws) };
+    const font = readCssFont(
+      this.container,
+      [
+        ["morphic-block", `morphic-mode-${toModeClassToken(this.currentMode)}`],
+        [`morphic-element-${toModeClassToken(elementName)}`],
+      ],
+      this.previewBase.font,
+    );
+    applyFont(ws, this.previewBase.theme, this.previewBase.font, font);
   }
 
   private createBlockPreviewSvg(
