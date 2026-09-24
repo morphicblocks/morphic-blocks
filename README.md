@@ -47,7 +47,7 @@ An `image` value can be either a **bare file path** (`"icons/log.svg"` — auto-
 bun install
 ```
 
-## Run Playground
+## Run Sandbox
 
 ```bash
 bun run dev
@@ -60,6 +60,18 @@ bun run build
 ```
 
 Library output is emitted to `packages/morphic-blocks/dist/`.
+
+## Test
+
+```bash
+bun run test
+```
+
+Runs the framework tests with [Vitest](https://vitest.dev) in
+[jsdom](https://github.com/jsdom/jsdom), a browser stand-in, since Blockly needs
+a DOM. Tests live in `packages/morphic-blocks/test/`; `setup-dom.ts` answers the
+few text measuring calls jsdom cannot, because only generated text is tested,
+not rendering.
 
 ## Project Structure
 
@@ -75,6 +87,8 @@ morphic-blocks/
 ├── packages/
 │   └── morphic-blocks/        # Core library
 │       ├── definitions.schema.json   # JSON Schema for definitions files
+│       ├── vitest.config.ts          # Test runner config (jsdom)
+│       ├── test/                     # Framework tests + DOM setup
 │       └── src/morphic/
 │           ├── MorphicBlocks.ts       # Orchestration (mount, setModes, applyPreset, codegen)
 │           ├── block-view.ts          # Block rendering + mode class decoration + fields
