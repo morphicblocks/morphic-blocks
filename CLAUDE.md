@@ -38,7 +38,7 @@ morphic-blocks/
 4. `MorphicBlocks.mount()` initializes Blockly + morphic features
 5. `engine.applyPreset()` / `engine.setModes()` switch the per-view modes at runtime — blocks re-render
 
-`mount()` accepts either `workspaceContainer`, `codespaceContainer`, or both. At least one is required. When only `codespaceContainer` is provided, Blockly runs headless (offscreen) so the block model stays authoritative. Using a codespace (via `codespaceMode` or a preset with `codespace`) requires `codespaceContainer`.
+`mount()` accepts either `workspaceContainer`, `codespaceContainer`, or both. At least one is required. When only `codespaceContainer` is provided, Blockly runs headless (offscreen) so the block model stays authoritative. A preset that shows a codespace requires `codespaceContainer`. Views are set up by presets; without presets the first mode is used, and `setModes()` switches views freely at runtime.
 
 ### Block identifier namespacing
 
