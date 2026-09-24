@@ -96,6 +96,16 @@ function normalizePresetToolbox(toolbox: MorphicPresetToolbox): {
     : { mode: toolbox.mode, render: toolbox.render };
 }
 
+/**
+ * Blockly keeps one global table of block types for the whole page, while each
+ * engine has its own definitions, modes and behaviors. A block's `init`
+ * therefore asks which engine owns the workspace it is created in and lets that
+ * engine build it, so several editors can share a page. A workspace no engine
+ * has claimed falls back to the engine that registered the type most recently.
+ */
+const workspaceOwners = new WeakMap<Blockly.Workspace, MorphicBlocks>();
+const fallbackOwners = new Map<string, MorphicBlocks>();
+
 export class MorphicBlocks extends EventTarget {
   private readonly definitions: Map<string, MorphicBlockDefinition>;
   private readonly behaviors: MorphicBehaviorMap;
@@ -261,6 +271,7 @@ export class MorphicBlocks extends EventTarget {
       ...(resolvedConfig.canvasToolbox ? {} : { toolbox: this.toolboxDefinition }),
     });
     this.workspace.addChangeListener(this.onWorkspaceChange);
+    workspaceOwners.set(this.workspace, this);
 
     // The framework owns the workspace, so it keeps Blockly's SVG sized to its
     // container: pane toggles, window resizes and divider drags all change the
@@ -419,6 +430,9 @@ export class MorphicBlocks extends EventTarget {
   }
 
   public dispose(): void {
+    for (const [blocklyType, owner] of fallbackOwners) {
+      if (owner === this) fallbackOwners.delete(blocklyType);
+    }
     this.workspaceResizeObserver?.disconnect();
     this.workspaceResizeObserver = undefined;
     this.activePreset = undefined;
@@ -504,6 +518,7 @@ export class MorphicBlocks extends EventTarget {
       render: this.mountConfig.toolboxRender,
       modes: this.mountConfig.modes,
       options: canvasOptions,
+      onPreviewWorkspace: (workspace) => workspaceOwners.set(workspace, this),
     });
   }
 
@@ -2153,31 +2168,37 @@ export class MorphicBlocks extends EventTarget {
       // and connection checks rely on). Definitions and behaviors stay keyed
       // by the clean identifier; see block-namespace.ts.
       const blocklyType = toBlocklyType(definition.identifier);
+      fallbackOwners.set(blocklyType, this);
       if (this.registeredBlockTypes.has(blocklyType)) {
         continue;
       }
 
-      const engine = this;
+      // The entry is the same for every engine: it only finds the engine that
+      // owns the workspace and hands the block to it.
+      const identifier = definition.identifier;
       Blockly.Blocks[blocklyType] = {
         init(this: Blockly.BlockSvg) {
-          const context: MorphicRenderContext = this.workspace.isFlyout
-            ? "toolbox"
-            : "workspace";
-          const mode = engine.resolveMode(context);
-          engine.applyView(this, definition, mode, context);
-
-          const lifecycleBehavior = getLifecycleBehavior(
-            engine.behaviors[definition.identifier],
-          );
-          lifecycleBehavior?.init?.(
-            this,
-            engine.createBehaviorContext(this, definition, mode, context),
-          );
+          const owner = workspaceOwners.get(this.workspace) ?? fallbackOwners.get(blocklyType);
+          owner?.initManagedBlock(this, identifier);
         },
       };
 
       this.registeredBlockTypes.add(blocklyType);
     }
+  }
+
+  /** Build a newly created block with this engine's definition, mode and behavior. */
+  private initManagedBlock(block: Blockly.BlockSvg, identifier: string): void {
+    const definition = this.definitions.get(identifier);
+    if (!definition) {
+      return;
+    }
+    const context: MorphicRenderContext = block.workspace.isFlyout ? "toolbox" : "workspace";
+    const mode = this.resolveMode(context);
+    this.applyView(block, definition, mode, context);
+
+    const lifecycleBehavior = getLifecycleBehavior(this.behaviors[definition.identifier]);
+    lifecycleBehavior?.init?.(block, this.createBehaviorContext(block, definition, mode, context));
   }
 
   private validateContainers(config: MorphicMountConfig): void {
@@ -2419,6 +2440,7 @@ export class MorphicBlocks extends EventTarget {
     }
 
     this.flyoutWorkspace = flyoutWorkspace;
+    workspaceOwners.set(flyoutWorkspace, this);
     this.flyoutWorkspace.addChangeListener(this.onFlyoutChange);
     this.applyFlyoutClass();
   }

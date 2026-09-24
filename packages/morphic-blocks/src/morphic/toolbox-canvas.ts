@@ -37,6 +37,7 @@ export class MorphicToolboxCanvas {
   private renderOverride?: Record<string, "block" | "text">;
 
   private previewWorkspace?: Blockly.WorkspaceSvg;
+  private readonly onPreviewWorkspace?: (workspace: Blockly.WorkspaceSvg) => void;
   private previewContainer?: HTMLDivElement;
 
   private readonly onDragOver: (e: DragEvent) => void;
@@ -54,10 +55,13 @@ export class MorphicToolboxCanvas {
     render?: Record<string, "block" | "text">;
     modes?: MorphicModeDefinition[];
     options?: MorphicToolboxCanvasOptions;
+    /** Called once with the hidden workspace used to draw block previews. */
+    onPreviewWorkspace?: (workspace: Blockly.WorkspaceSvg) => void;
   }) {
     this.container = params.container;
     this.workspaceContainer = params.workspaceContainer;
     this.workspace = params.workspace;
+    this.onPreviewWorkspace = params.onPreviewWorkspace;
     this.definitions = params.definitions;
     this.blockColors = params.blockColors;
     this.behaviors = params.behaviors;
@@ -229,6 +233,7 @@ export class MorphicToolboxCanvas {
     this.previewWorkspace = Blockly.inject(this.previewContainer, {
       scrollbars: false,
     });
+    this.onPreviewWorkspace?.(this.previewWorkspace);
     return this.previewWorkspace;
   }
 
