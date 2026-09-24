@@ -10,6 +10,10 @@ export default mergeConfig(
       environment: "jsdom",
       include: ["test/**/*.test.ts"],
       setupFiles: ["./test/setup-dom.ts"],
+      // Type tests (*.test-d.ts) are checked by the TypeScript compiler. Only
+      // errors in test files count: the library source is already type checked
+      // by the build, and vite.config.ts lacks Node's type definitions.
+      typecheck: { enabled: true, include: ["test/**/*.test-d.ts"], ignoreSourceErrors: true },
     },
   }),
 );
