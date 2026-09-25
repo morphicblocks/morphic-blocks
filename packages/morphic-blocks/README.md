@@ -95,6 +95,9 @@ files; use your bundler's equivalent.
   mode. No per-representation duplication.
 - **Headless & embeddable** — bring your own UI; the framework stays unstyled.
 - **Built on Blockly** — the proven engine stays authoritative underneath.
+- **No external requests.** The framework never contacts another server, so
+  your site decides every request its visitors make. Blockly's own media is
+  the one exception, and you can [serve it yourself](#serve-blocklys-media-yourself).
 
 ## Documentation
 
