@@ -256,9 +256,13 @@ await engine.mount({
     // show/hide panes based on which view keys the preset uses
   },
   modesFolder: import.meta.glob("./modes/*.css", { eager: true, query: "?url" }),
-  blockly: { scrollbars: true, trashcan: true },
+  blockly: { scrollbars: true, trashcan: true, media: "blockly-media/" },
 });
 ```
+
+`blockly.media` makes Blockly load its images and sounds from your own site
+instead of Google's server; the package README shows how to copy them there,
+and the sandbox does it in `scripts/copy-blockly-media.mjs`.
 
 Every container is optional. Selection sync links the views by default
 (`selectionSync: false` turns it off), and a `codeEditorContainer` adds the

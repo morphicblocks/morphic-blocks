@@ -56,6 +56,37 @@ engine.mount({
 engine.applyPreset("python");
 ```
 
+## Serve Blockly's media yourself
+
+By default Blockly loads its images and sounds from Google's server
+(`blockly-demo.appspot.com`), so every visitor's browser contacts it. To keep
+all requests on your own site, copy Blockly's `media` folder into your static
+files before `dev` and `build`:
+
+```js
+// scripts/copy-blockly-media.mjs
+import { cpSync } from "node:fs";
+import { createRequire } from "node:module";
+import { dirname, join } from "node:path";
+
+// Blockly comes with morphic-blocks, so look it up from there.
+const require = createRequire(import.meta.url);
+const blockly = dirname(require.resolve("blockly", { paths: [dirname(require.resolve("morphic-blocks"))] }));
+cpSync(join(blockly, "media"), "public/blockly-media", { recursive: true });
+```
+
+Then point Blockly at the copy:
+
+```ts
+engine.mount({
+  workspaceContainer: document.getElementById("workspace")!,
+  blockly: { media: "blockly-media/" },
+});
+```
+
+This works with every package manager. `public/` is Vite's folder for static
+files; use your bundler's equivalent.
+
 ## Features
 
 - **One definition, many representations** — define a block once; render it as
