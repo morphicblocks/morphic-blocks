@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "vitest";
-import type * as Blockly from "blockly";
+import * as Blockly from "blockly";
 import { MorphicBlocks } from "../src";
 import type { MorphicBlocksFormat, MorphicMountConfig } from "../src/morphic/types";
 
@@ -44,5 +44,14 @@ describe("tile workspace", () => {
 
     expect(main.options.hasSounds).toBe(true);
     expect(tiles.options.hasSounds).toBe(false);
+  });
+
+  test("draws tiles with the host's renderer, theme and direction", () => {
+    const theme = Blockly.Theme.defineTheme("host-theme", { name: "host-theme", base: Blockly.Themes.Classic });
+    const { tiles } = mountWith({ renderer: "zelos", theme, rtl: true });
+
+    expect(tiles.getRenderer().name).toBe("zelos");
+    expect(tiles.options.theme).toBe(theme);
+    expect(tiles.RTL).toBe(true);
   });
 });

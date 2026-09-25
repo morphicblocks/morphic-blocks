@@ -235,12 +235,20 @@ export class MorphicToolboxCanvas {
     this.previewContainer.style.cssText =
       "position:absolute;left:-9999px;top:-9999px;width:800px;height:600px;overflow:hidden;";
     document.body.appendChild(this.previewContainer);
+    // Options hold the host's own settings; the live theme may be one the
+    // engine derived for a mode's font, which each tile sets again anyway.
+    const host = this.workspace.options;
     this.previewWorkspace = Blockly.inject(this.previewContainer, {
       scrollbars: false,
       // Load media from wherever the host's workspace does, never from
       // Blockly's default server. Nothing plays here, so no sounds at all.
-      media: this.workspace.options.pathToMedia,
+      media: host.pathToMedia,
       sounds: false,
+      // Draw tiles the way the host's workspace draws its blocks.
+      renderer: host.renderer,
+      rendererOverrides: host.rendererOverrides ?? undefined,
+      theme: host.theme,
+      rtl: host.RTL,
     });
     this.onPreviewWorkspace?.(this.previewWorkspace);
     return this.previewWorkspace;
