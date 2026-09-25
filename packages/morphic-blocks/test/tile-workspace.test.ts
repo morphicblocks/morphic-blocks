@@ -50,7 +50,7 @@ describe("tile workspace", () => {
     const theme = Blockly.Theme.defineTheme("host-theme", { name: "host-theme", base: Blockly.Themes.Classic });
     const { tiles } = mountWith({ renderer: "zelos", theme, rtl: true });
 
-    expect(tiles.getRenderer().name).toBe("zelos");
+    expect(tiles.getRenderer().getClassName()).toBe("zelos-renderer");
     expect(tiles.options.theme).toBe(theme);
     expect(tiles.RTL).toBe(true);
   });
