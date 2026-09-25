@@ -71,7 +71,7 @@ The namespace is an internal Blockly-type detail — it appears only in `Blockly
 
 ## Sandbox (`apps/sandbox`)
 
-Local dev app. Uses `import.meta.glob()` to auto-discover mode CSS files by filename. Seeds a demo workspace on load. Shows live code generation and execution.
+Local dev app. Uses `import.meta.glob()` to auto-discover mode CSS files by filename. Seeds a demo workspace on load. Shows live code generation and execution. Serves Blockly's media itself: `scripts/copy-blockly-media.mjs` copies it into `public/blockly-media/` before `dev` and `build`, and `blockly.media` points there.
 
 ### Themes
 
@@ -199,6 +199,7 @@ All elements are always rendered; CSS controls visibility:
 - Optional category grouping via `<div data-category="...">` wrappers
 - Re-renders on `setModes({ toolboxMode })`
 - Options: `{ blocks?: string[], categories?: MorphicToolboxCategory[] }`
+- Block tiles are drawn in a hidden Blockly workspace that takes `media`, `renderer`, `rendererOverrides`, `theme` and `rtl` from the host workspace's options and never loads sounds
 
 ```ts
 engine.mountToolbox(container, {
@@ -264,6 +265,7 @@ These are *potential* applications, not currently deployed. They are worth keepi
 - **Don't restrict users** — UI components should be unstyled/headless so developers can style them freely
 - **Library scope** — the framework is an embeddable library, not a standalone app
 - **No unnecessary abstraction** — minimum complexity for the current task
+- **No external requests:** the framework never loads anything from another server; `test/no-external-requests.test.ts` fails on any address in `src/`. Anything external stays the host's choice (config, or a plugin later)
 
 ## Commit Workflow
 
