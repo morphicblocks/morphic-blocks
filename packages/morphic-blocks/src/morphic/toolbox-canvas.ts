@@ -237,6 +237,10 @@ export class MorphicToolboxCanvas {
     document.body.appendChild(this.previewContainer);
     this.previewWorkspace = Blockly.inject(this.previewContainer, {
       scrollbars: false,
+      // Load media from wherever the host's workspace does, never from
+      // Blockly's default server. Nothing plays here, so no sounds at all.
+      media: this.workspace.options.pathToMedia,
+      sounds: false,
     });
     this.onPreviewWorkspace?.(this.previewWorkspace);
     return this.previewWorkspace;
