@@ -1,6 +1,6 @@
 {
   "name": "morphic-blocks",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Mode-driven wrapper framework around Google Blockly",
   "repository": {
     "type": "git",
