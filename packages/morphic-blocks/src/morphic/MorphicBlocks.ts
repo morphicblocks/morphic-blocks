@@ -2578,6 +2578,10 @@ export class MorphicBlocks extends EventTarget {
     if (!this.workspace || !this.toolboxDefinition || this.mountConfig?.canvasToolbox) {
       return;
     }
+    // Blockly gives a read only workspace no toolbox, so there is none to update.
+    if (this.workspace.options.readOnly) {
+      return;
+    }
     this.workspace.updateToolbox(this.toolboxDefinition);
   }
 
