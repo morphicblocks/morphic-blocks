@@ -2,6 +2,7 @@ import "blockly/blocks";
 
 export { MorphicBlocks } from "./morphic/MorphicBlocks";
 export { MorphicToolboxCanvas } from "./morphic/toolbox-canvas";
+export { toCleanId } from "./morphic/block-namespace";
 export { toolbarItems, renderToolbar } from "./morphic/toolbar";
 export type {
   MorphicRunEventDetail,
