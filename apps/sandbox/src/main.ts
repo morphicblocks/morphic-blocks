@@ -7,8 +7,21 @@ import definitions from "./definitions.json";
 import { behaviors } from "./behaviors";
 import "./style.css";
 
-// The JSON import goes to the engine as is; mount() validates it.
-const presets = definitions.presets ?? [];
+// Open the sandbox with ?rtl to try a right to left page and workspace.
+const RTL = new URLSearchParams(location.search).has("rtl");
+if (RTL) document.documentElement.dir = "rtl";
+
+// The JSON import goes to the engine as is; mount() validates it. The Arabic
+// test block and the preset that shows its concept text in the codespace only
+// appear in the right to left sandbox.
+const format = RTL
+  ? definitions
+  : {
+      ...definitions,
+      blocks: definitions.blocks.filter((block) => block.identifier !== "rtl_test"),
+      presets: definitions.presets?.filter((preset) => preset.name !== "arabic"),
+    };
+const presets = format.presets ?? [];
 
 // Enable drag-to-resize dividers between the panes.
 const RESIZABLE_PANES = true;
@@ -134,14 +147,6 @@ themeSelect.addEventListener("change", () => {
 
 // ── Engine Setup ───────────────────────────────────────
 
-// Open the sandbox with ?rtl to try a right to left page and workspace.
-const RTL = new URLSearchParams(location.search).has("rtl");
-if (RTL) document.documentElement.dir = "rtl";
-
-// The Arabic test block only shows in the right to left sandbox.
-const format = RTL
-  ? definitions
-  : { ...definitions, blocks: definitions.blocks.filter((block) => block.identifier !== "rtl_test") };
 const engine = new MorphicBlocks(format, behaviors);
 
 // Remembered codespace width (px) from a divider drag; re-applied across
