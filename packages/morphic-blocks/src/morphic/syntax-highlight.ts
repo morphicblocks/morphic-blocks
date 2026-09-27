@@ -122,12 +122,16 @@ export function buildHighlightExtensions(
     ".morphic-tok-comment": { color: "#808080", fontStyle: "italic" },
   });
 
+  // The default colours above and these share a selector shape, so the later
+  // stylesheet would win a tie, and with several text views on a page that
+  // can be another view's default. Scoping to `.cm-content` makes the
+  // developer's colours the more specific rule, whatever the order.
   const colors = rules.colors ?? {};
   const overrideSpec: Record<string, Record<string, string>> = {};
-  if (colors.keyword) overrideSpec[".morphic-tok-keyword"] = { color: colors.keyword };
-  if (colors.string) overrideSpec[".morphic-tok-string"] = { color: colors.string };
-  if (colors.number) overrideSpec[".morphic-tok-number"] = { color: colors.number };
-  if (colors.comment) overrideSpec[".morphic-tok-comment"] = { color: colors.comment, fontStyle: "italic" };
+  if (colors.keyword) overrideSpec[".cm-content .morphic-tok-keyword"] = { color: colors.keyword };
+  if (colors.string) overrideSpec[".cm-content .morphic-tok-string"] = { color: colors.string };
+  if (colors.number) overrideSpec[".cm-content .morphic-tok-number"] = { color: colors.number };
+  if (colors.comment) overrideSpec[".cm-content .morphic-tok-comment"] = { color: colors.comment, fontStyle: "italic" };
 
   const exts: Extension[] = [plugin, baseTheme];
   if (Object.keys(overrideSpec).length > 0) {
