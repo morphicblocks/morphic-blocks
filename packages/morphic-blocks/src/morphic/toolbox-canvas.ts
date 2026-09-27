@@ -10,13 +10,13 @@ import {
   renderTemplateAsHtml,
   toModeClassToken,
 } from "./template";
-import { resolveBlockView } from "./view-resolver";
 import type {
   MorphicBehaviorMap,
   MorphicBlockDefinition,
   MorphicElementTypeEntry,
   MorphicModeDefinition,
   MorphicModeName,
+  MorphicResolvedView,
   MorphicToolboxCanvasOptions,
   MorphicToolboxCategory,
 } from "./types";
@@ -209,7 +209,7 @@ export class MorphicToolboxCanvas {
 
       if (isCodeElement && render === "block") {
         this.syncPreviewFont(elementName);
-        const svg = this.createBlockPreviewSvg(definition, this.currentMode);
+        const svg = this.createBlockPreviewSvg(definition, this.currentMode, elementName);
         if (svg) {
           el.appendChild(svg);
         } else {
@@ -275,6 +275,7 @@ export class MorphicToolboxCanvas {
   private createBlockPreviewSvg(
     definition: MorphicBlockDefinition,
     mode: MorphicModeName,
+    elementName: string,
   ): SVGSVGElement | null {
     try {
       const ws = this.ensurePreviewWorkspace();
@@ -285,7 +286,13 @@ export class MorphicToolboxCanvas {
       const color = this.blockColors.get(definition.identifier);
       if (color) block.setColour(color);
 
-      const view = resolveBlockView(definition, mode, this.elementTypes, this.modes);
+      // Each code element on the tile is drawn from its own template.
+      const view: MorphicResolvedView = {
+        mode,
+        template: definition.elements[elementName] ?? "",
+        elementName,
+        inputSlots: definition.inputSlots,
+      };
       applyBlockView({
         block,
         definition,

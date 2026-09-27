@@ -55,3 +55,25 @@ describe("tile workspace", () => {
     expect(tiles.RTL).toBe(true);
   });
 });
+
+describe("tile code elements", () => {
+  test("each code element is drawn from its own template", async () => {
+    const engine = new MorphicBlocks(
+      {
+        elementTypes: { concept: "code", python: "code" },
+        modes: [{ name: "both", elements: ["concept", "python"] }],
+        blocks: [{ identifier: "say", elements: { concept: "say it", python: "print()" }, shape: "statement" }],
+      },
+      {},
+    );
+    engines.push(engine);
+    const toolbox = div();
+    await engine.mount({ workspaceContainer: div(), toolboxContainer: toolbox });
+
+    const text = (element: string) =>
+      toolbox.querySelector(`.morphic-element-${element} svg`)?.textContent?.replace(/\s/g, "");
+
+    expect(text("concept")).toBe("sayit");
+    expect(text("python")).toBe("print()");
+  });
+});
