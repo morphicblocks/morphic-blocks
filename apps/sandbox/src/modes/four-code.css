@@ -1,0 +1,27 @@
+/* =============================================
+   Mode: Four code — four code elements in one tile
+   (concept and python as blocks, javascript and go as text)
+   ============================================= */
+
+.morphic-block.morphic-mode-four-code {
+  padding: 12px 16px;
+}
+
+.morphic-mode-four-code > .morphic-element-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  font-family: system-ui, sans-serif;
+}
+
+.morphic-mode-four-code > .morphic-element-concept,
+.morphic-mode-four-code > .morphic-element-python {
+  margin-bottom: 6px;
+}
+
+.morphic-mode-four-code > .morphic-element-javascript,
+.morphic-mode-four-code > .morphic-element-go {
+  font-size: 13px;
+  font-family: "Consolas", "Fira Code", monospace;
+  color: var(--tile-muted-strong);
+}

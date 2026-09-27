@@ -121,6 +121,10 @@
     {
       "name": "mixed",
       "elements": ["title", "concept", "python"]
+    },
+    {
+      "name": "four-code",
+      "elements": ["title", "concept", "python", "javascript", "go"]
     }
   ],
   "presets": [
@@ -160,6 +164,16 @@
       },
       "workspace": "pseudo",
       "codespace": "syntax-py",
+      "preview": "syntax-js"
+    },
+    {
+      "name": "four",
+      "label": "Four",
+      "toolbox": {
+        "mode": "four-code",
+        "render": { "concept": "block", "python": "block", "javascript": "text", "go": "text" }
+      },
+      "workspace": "pseudo",
       "preview": "syntax-js"
     }
   ],
