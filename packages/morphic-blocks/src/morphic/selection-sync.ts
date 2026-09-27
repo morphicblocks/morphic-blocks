@@ -6,8 +6,6 @@ import type {
   MorphicSelectionSyncOptions,
 } from "./types";
 
-const DEFAULT_HIGHLIGHT_COLOR = "rgba(255, 255, 255, 0.07)";
-
 /**
  * Bidirectional selection sync between a Blockly workspace and one or more
  * `MorphicCodeEditor` instances (code editor, codespace, preview).
@@ -43,9 +41,9 @@ export class MorphicSelectionSync {
     this.editors = Array.isArray(editors) ? [...editors] : [editors];
     this.blockToCode = options.blockToCode !== false;
     this.codeToBlock = options.codeToBlock !== false;
-    const color = options.highlightColor ?? DEFAULT_HIGHLIGHT_COLOR;
+    // Without a colour of its own, each editor follows its theme's selection colour.
     for (const editor of this.editors) {
-      editor.setHighlightColor(color);
+      editor.setHighlightColor(options.highlightColor);
     }
   }
 

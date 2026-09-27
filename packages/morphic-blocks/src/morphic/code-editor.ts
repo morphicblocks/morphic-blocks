@@ -393,7 +393,9 @@ export class MorphicCodeEditor {
   private themeCompartment?: import("@codemirror/state").Compartment;
   private syntaxHighlightCompartment?: import("@codemirror/state").Compartment;
   private highlightEffect?: StateEffect<HighlightRange>;
-  private highlightColor = "rgba(255, 255, 255, 0.07)";
+  /** The host's highlight colour; without one, the theme's selection colour is used. */
+  private highlightColor?: string;
+  private themeSelection = DEFAULT_THEME.selectionBackground;
   private metadataEffect?: StateEffectType<MorphicCodeMetadata>;
   private placeholderEffect?: StateEffectType<MorphicPlaceholderRange[]>;
   private dropIndicatorEffect?: StateEffectType<DropIndicator | null>;
@@ -428,6 +430,7 @@ export class MorphicCodeEditor {
     this.syntaxHighlightCompartment = new cmState.Compartment();
 
     const themeExt = buildThemeExtension(cmView, this.options.theme ?? {});
+    this.themeSelection = this.options.theme?.selectionBackground ?? DEFAULT_THEME.selectionBackground;
     const initialHighlightExt = buildHighlightExtensions(
       cmView,
       cmState,
@@ -501,7 +504,7 @@ export class MorphicCodeEditor {
             const doc = tr.state.doc;
             const mark = cmView.Decoration.mark({
               class: "morphic-highlight",
-              attributes: { style: `background: ${editor.highlightColor}` },
+              attributes: { style: `background: ${editor.highlightColor ?? mix(editor.themeSelection, 60)}` },
             });
             const ranges = spans
               .map((s) => {
@@ -1084,8 +1087,8 @@ export class MorphicCodeEditor {
     });
   }
 
-  /** Update the highlight background colour. */
-  setHighlightColor(color: string): void {
+  /** Update the highlight background colour; `undefined` follows the theme's selection colour. */
+  setHighlightColor(color: string | undefined): void {
     this.highlightColor = color;
   }
 
@@ -1165,6 +1168,7 @@ export class MorphicCodeEditor {
 
   setTheme(theme: MorphicCodeEditorTheme): void {
     if (!this.editorView || !this.cm || !this.themeCompartment) return;
+    this.themeSelection = theme.selectionBackground ?? DEFAULT_THEME.selectionBackground;
     const themeExt = buildThemeExtension(this.cm.view, theme);
     this.editorView.dispatch({
       effects: this.themeCompartment.reconfigure(themeExt),
