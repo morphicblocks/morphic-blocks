@@ -251,8 +251,11 @@ body {
 /* ── Toolbox Panel (sidebar) ────────────────── */
 
 #toolbox-panel {
-  width: 240px;
+  /* Grows with its tiles, so big block fonts are not cut off. */
+  width: max-content;
   min-width: 240px;
+  max-width: 50vw;
+  overflow-x: auto;
   background: var(--bg-panel);
   border-right: 1px solid var(--border);
   overflow-y: auto;
