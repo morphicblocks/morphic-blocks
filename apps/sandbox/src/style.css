@@ -507,3 +507,35 @@ body {
 [data-theme="creme"] .morphic-element-icon img {
   filter: invert(1);
 }
+
+/* Tile elements menu and block font switch (for trying the engine API) */
+#tile-elements {
+  position: relative;
+  color: var(--text-muted);
+}
+
+#tile-elements summary,
+.font-btn {
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-weight: bold;
+  list-style: none;
+}
+
+#tile-elements-list {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 10;
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-panel);
+  white-space: nowrap;
+}

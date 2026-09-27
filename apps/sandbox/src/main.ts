@@ -224,6 +224,59 @@ presets.forEach((preset) => {
 
 updateActiveButton();
 
+// ── Tile elements and block font (to try setModeElements and refresh) ──
+
+const tileElementsList = document.getElementById("tile-elements-list")!;
+const toolboxModeName = (): string | undefined => {
+  const toolbox = engine.getActivePreset()?.toolbox;
+  return typeof toolbox === "string" ? toolbox : toolbox?.mode;
+};
+
+function renderTileElements(): void {
+  const mode = definitions.modes?.find((m) => m.name === toolboxModeName());
+  if (!mode) return;
+  const shown = new Set(tileElementsShown.get(mode.name) ?? mode.elements);
+  tileElementsList.innerHTML = "";
+  for (const name of Object.keys(definitions.elementTypes ?? {})) {
+    const label = document.createElement("label");
+    const box = document.createElement("input");
+    box.type = "checkbox";
+    box.checked = shown.has(name);
+    box.addEventListener("change", () => {
+      const checked = Array.from(tileElementsList.querySelectorAll<HTMLInputElement>("input:checked"))
+        .map((input) => input.value);
+      try {
+        engine.setModeElements(mode.name, checked);
+        tileElementsShown.set(mode.name, checked);
+      } catch (error) {
+        box.checked = !box.checked;
+        console.warn(error);
+      }
+    });
+    box.value = name;
+    label.append(box, name);
+    tileElementsList.appendChild(label);
+  }
+}
+
+const tileElementsShown = new Map<string, string[]>();
+modeButtonsContainer.addEventListener("click", renderTileElements);
+renderTileElements();
+
+// Block font size in points; null keeps the size the mode CSS sets.
+let blockFontPt: number | null = null;
+const blockFontStyle = document.head.appendChild(document.createElement("style"));
+
+function changeBlockFont(stepPt: number): void {
+  // Blockly's own size is 11pt; stay within sizes people really use.
+  blockFontPt = Math.min(16, Math.max(8, (blockFontPt ?? 11) + stepPt));
+  blockFontStyle.textContent = `.blocklyText { font-size: ${blockFontPt}pt !important; }`;
+  engine.refresh();
+}
+
+document.getElementById("font-smaller")!.addEventListener("click", () => changeBlockFont(-1));
+document.getElementById("font-bigger")!.addEventListener("click", () => changeBlockFont(1));
+
 // Draggable pane dividers (opt-in). The toolbox and output gutters are always
 // present; the codespace/preview gutters are toggled per preset above.
 if (RESIZABLE_PANES) {
