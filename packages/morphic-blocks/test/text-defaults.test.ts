@@ -76,3 +76,53 @@ test("a default without fields still shows", async () => {
   // The default is part of its parent, never a block of its own.
   expect(metadata.size).toBe(1);
 });
+
+test("a dropdown in a text view lists options as that view writes them", async () => {
+  const flagFormat: MorphicBlocksFormat = {
+    elementTypes: { concept: "code", python: "code" },
+    modes: [
+      { name: "concept", elements: ["concept"] },
+      { name: "py", elements: ["python"] },
+    ],
+    blocks: [
+      {
+        identifier: "flag",
+        elements: { concept: "%BOOL", python: "%BOOL" },
+        fields: {
+          BOOL: {
+            type: "dropdown",
+            options: [
+              { value: "true", label: "yes", display: { python: "True" } },
+              { value: "false", label: "no", display: { python: "False" } },
+            ],
+            default: "true",
+          },
+        },
+        output: "Boolean",
+      },
+    ],
+  };
+  const engine = new MorphicBlocks(flagFormat, {});
+  engines.push(engine);
+  await engine.mount({ workspaceContainer: document.body.appendChild(document.createElement("div")) });
+  const workspace = engine.getWorkspace()!;
+  workspace.newBlock("morphic:flag");
+  const flagDefinitions = createDefinitionMap(
+    applyBlockShapes(expandDefaultElements(flagFormat.blocks, flagFormat.elementTypes ?? {})),
+  );
+
+  // The workspace shows the concept mode; the codespace writes Python.
+  const { placeholders } = generateTextFromWorkspace(
+    workspace,
+    "py",
+    flagDefinitions,
+    flagFormat.elementTypes ?? {},
+    flagFormat.modes ?? [],
+  );
+
+  expect(placeholders.find((range) => range.edit)?.edit?.options).toEqual([
+    ["True", "true"],
+    ["False", "false"],
+  ]);
+});
+

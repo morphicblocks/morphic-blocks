@@ -244,7 +244,7 @@ function renderBlock(
       if (!field) continue;
       const fieldStart = state.output.length;
       appendText(state, resolveFieldDisplay(definition, elementName, token.name, field));
-      const editTarget = fieldEditTarget(block, field, token.name);
+      const editTarget = withTextLabels(fieldEditTarget(block, field, token.name), block, ctx);
       if (editTarget) {
         recordPlaceholder(state, fieldStart, "set", editTarget);
       }
@@ -365,7 +365,9 @@ function renderBlock(
       }
 
       if (!perFieldRecorded) {
-        const editTarget = rawTarget?.isShadow() ? detectAtomicEdit(rawTarget) ?? undefined : undefined;
+        const editTarget = rawTarget?.isShadow()
+          ? withTextLabels(detectAtomicEdit(rawTarget), rawTarget, ctx) ?? undefined
+          : undefined;
         recordPlaceholder(state, slotOffsetStart, "default", editTarget, emptySlotInfo);
       }
       if (stringQuote) appendText(state, stringQuote);
@@ -378,7 +380,7 @@ function renderBlock(
     // in code-editor.ts; the placeholder mark is visual-only.
     const slotOffsetStart = state.output.length;
     renderBlock(target, ctx, state, composesSeveralValues && composesValues(target));
-    recordPlaceholder(state, slotOffsetStart, "set", detectAtomicEdit(target) ?? undefined);
+    recordPlaceholder(state, slotOffsetStart, "set", withTextLabels(detectAtomicEdit(target), target, ctx) ?? undefined);
   }
 
   if (state.output.length === contentStart) {
@@ -522,6 +524,39 @@ function fieldEditTarget(
     return null;
   }
   return { blockId: block.id, fieldName, fieldType, options };
+}
+
+/**
+ * A dropdown opened in a text view lists its options the way that view writes
+ * them (`True` in a Python codespace), not with the block's own labels, which
+ * belong to whatever mode the workspace shows.
+ */
+function withTextLabels(
+  edit: MorphicPlaceholderEditTarget | null,
+  block: Blockly.Block,
+  ctx: RenderContext,
+): MorphicPlaceholderEditTarget | null {
+  if (!edit?.options) return edit;
+  const definition = ctx.definitions.get(toCleanId(block.type));
+  const field = definition?.fields?.[edit.fieldName];
+  if (!definition || field?.type !== "dropdown") return edit;
+  let elementName = ctx.elementOverride;
+  if (!elementName) {
+    try {
+      elementName = resolveBlockView(definition, ctx.mode, ctx.elementTypes, ctx.modeDefs).elementName;
+    } catch {
+      return edit;
+    }
+  }
+  const shown = (value: string): string => {
+    for (const option of field.options) {
+      if (typeof option === "object" && !Array.isArray(option) && option.value === value) {
+        return (elementName && option.display?.[elementName]) ?? value;
+      }
+    }
+    return value;
+  };
+  return { ...edit, options: edit.options.map(([, value]) => [shown(value), value]) };
 }
 
 function detectAtomicEdit(block: Blockly.Block): MorphicPlaceholderEditTarget | null {
