@@ -126,6 +126,28 @@ function normalizePresetToolbox(toolbox: MorphicPresetToolbox): {
 /** Where Blockly's media is loaded from unless the host sets `blockly.media`. */
 const DEFAULT_BLOCKLY_MEDIA = "blockly-media/";
 
+/** Media folders already checked on this page, so each is checked once. */
+const checkedMedia = new Set<string>();
+
+/**
+ * Tell the developer when Blockly's media is missing, since icons then vanish
+ * and sounds stay silent without any error. Blockly draws its trash can and
+ * zoom controls from `sprites.png`, so checking it asks for a file the page
+ * loads anyway.
+ */
+function warnWhenMediaMissing(media: string): void {
+  if (checkedMedia.has(media) || typeof Image === "undefined") return;
+  checkedMedia.add(media);
+  const probe = new Image();
+  probe.onerror = () => {
+    console.warn(
+      `[MorphicBlocks] Blockly's media is missing at "${media}", so icons are not shown and sounds stay silent. ` +
+        `Copy it there with "morphic-blocks copy-media <folder>", or point blockly.media to where it is.`,
+    );
+  };
+  probe.src = `${media}sprites.png`;
+}
+
 const workspaceOwners = new WeakMap<Blockly.Workspace, MorphicBlocks>();
 const fallbackOwners = new Map<string, MorphicBlocks>();
 
@@ -343,6 +365,7 @@ export class MorphicBlocks extends EventTarget {
     workspaceOwners.set(this.workspace, this);
     this.baseTheme = this.workspace.getTheme();
     this.baseFont = measuredFont(this.workspace);
+    if (config.workspaceContainer) warnWhenMediaMissing(this.workspace.options.pathToMedia);
 
     // The framework owns the workspace, so it keeps Blockly's SVG sized to its
     // container: pane toggles, window resizes and divider drags all change the
