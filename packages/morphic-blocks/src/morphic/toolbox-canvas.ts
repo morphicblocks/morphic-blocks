@@ -266,6 +266,7 @@ export class MorphicToolboxCanvas {
       [
         ["morphic-block", `morphic-mode-${toModeClassToken(this.currentMode)}`],
         [`morphic-element-${toModeClassToken(elementName)}`],
+        [ws.getRenderer().getClassName(), ws.getTheme().getClassName()],
       ],
       this.previewBase.font,
     );
@@ -336,6 +337,10 @@ export class MorphicToolboxCanvas {
         "viewBox",
         `${bbox.x - pad} ${bbox.y - pad} ${bbox.width + pad * 2} ${bbox.height + pad * 2}`,
       );
+      // Blockly scopes its block CSS (text colour, editable field boxes, the
+      // block font) to its renderer and theme classes, which sit on the
+      // workspace's injection div. The copy leaves that div, so it carries them.
+      svg.setAttribute("class", `${ws.getRenderer().getClassName()} ${ws.getTheme().getClassName()}`);
       svg.appendChild(clone);
 
       block.dispose(false);

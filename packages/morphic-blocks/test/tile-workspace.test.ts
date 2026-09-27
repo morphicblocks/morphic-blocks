@@ -56,6 +56,16 @@ describe("tile workspace", () => {
   });
 });
 
+describe("tile block styles", () => {
+  test("tile blocks carry the classes Blockly scopes its block CSS to", () => {
+    const { tiles } = mountWith({});
+    const svg = document.querySelector(".morphic-element-code svg")!;
+
+    expect(svg.classList).toContain(tiles.getRenderer().getClassName());
+    expect(svg.classList).toContain(tiles.getTheme().getClassName());
+  });
+});
+
 describe("tile code elements", () => {
   test("each code element is drawn from its own template", async () => {
     const engine = new MorphicBlocks(
