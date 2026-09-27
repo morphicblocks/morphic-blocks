@@ -965,11 +965,15 @@ export class MorphicBlocks extends EventTarget {
       );
     }
 
-    this.applyWorkspaceContainerClass();
-    this.syncWorkspaceFont();
+    // Workspace blocks follow only the workspace mode, so a toolbox change
+    // alone leaves them as they are.
+    if (modes.workspaceMode) {
+      this.applyWorkspaceContainerClass();
+      this.syncWorkspaceFont();
+      this.renderWorkspaceBlocks();
+    }
     this.refreshToolbox();
     this.bindFlyoutWorkspace();
-    this.renderWorkspaceBlocks();
     this.renderFlyoutBlocks();
     this.codespace?.setHighlightRules(this.resolveHighlightRules("codespace"));
     this.previewEditor?.setHighlightRules(this.resolveHighlightRules("preview"));
