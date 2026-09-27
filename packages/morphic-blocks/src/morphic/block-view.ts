@@ -65,6 +65,7 @@ export interface MorphicApplyBlockViewParams {
 export function applyBlockView(params: MorphicApplyBlockViewParams): void {
   const { block, definition, view, mode, context, elementTypes, resolveBlocklyType } = params;
   const connectedChildren = captureConnectedChildren(block);
+  const shadowStates = captureShadowStates(block);
 
   removeInputs(block);
   renderTemplate(block, definition, view);
@@ -84,6 +85,7 @@ export function applyBlockView(params: MorphicApplyBlockViewParams): void {
   }
 
   restoreConnectedChildren(block, connectedChildren);
+  restoreShadowStates(block, shadowStates);
   if (elementTypes) {
     attachEmptyDefaults(block, definition, view, elementTypes, resolveBlocklyType);
   }
@@ -394,6 +396,40 @@ function captureConnectedChildren(
     }
   }
   return connectedChildren;
+}
+
+/**
+ * Shadow state per input, with the shadow's current field values: a value the
+ * user typed into a default must survive the inputs being rebuilt.
+ */
+function captureShadowStates(
+  block: Blockly.BlockSvg,
+): Map<string, Blockly.serialization.blocks.State> {
+  const states = new Map<string, Blockly.serialization.blocks.State>();
+  for (const input of block.inputList) {
+    const state = input.connection?.getShadowState(true);
+    if (state) {
+      states.set(input.name, state);
+    }
+  }
+  return states;
+}
+
+function restoreShadowStates(
+  block: Blockly.BlockSvg,
+  states: Map<string, Blockly.serialization.blocks.State>,
+): void {
+  for (const [inputName, state] of states) {
+    const connection = block.getInput(inputName)?.connection;
+    if (!connection || connection.getShadowState()) {
+      continue;
+    }
+    try {
+      connection.setShadowState(state);
+    } catch {
+      // The new view's slot no longer accepts it; its default applies instead.
+    }
+  }
 }
 
 /**
