@@ -290,7 +290,7 @@
         "1": {
           "kind": "value",
           "name": "TEXT",
-          "check": "String",
+          "check": ["String", "Number", "Boolean"],
           "default": {
             "shadow": "text",
             "fieldValues": {
@@ -470,6 +470,24 @@
           ],
           "default": "&&"
         }
+      },
+      "output": "Boolean",
+      "inputsInline": true
+    },
+    {
+      "identifier": "logic_negate",
+      "category": "Operations",
+      "elements": {
+        "icon": "icons/logic_compare.svg",
+        "title": "Not",
+        "description": "Turns true into false and false into true",
+        "concept": "not %1",
+        "python": "not %1",
+        "javascript": "!%1",
+        "go": "!%1"
+      },
+      "inputSlots": {
+        "1": { "kind": "value", "name": "VALUE", "check": "Boolean" }
       },
       "output": "Boolean",
       "inputsInline": true

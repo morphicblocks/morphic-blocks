@@ -42,6 +42,10 @@ export const behaviors: MorphicBehaviorMap = {
     return `${proxy.inputs.A || "false"} ${op} ${proxy.inputs.B || "false"}`;
   },
 
+  logic_negate(proxy) {
+    return `!(${proxy.inputs.VALUE || "false"})`;
+  },
+
   // ── Values ──────────────────────────────────────────────
 
   m_math_number(proxy) {
