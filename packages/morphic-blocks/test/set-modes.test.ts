@@ -104,3 +104,21 @@ describe("setModeElements", () => {
     expect(() => engine.setModeElements("one", ["title"])).toThrow(/needs a code element/);
   });
 });
+
+describe("text view mode classes", () => {
+  test("codespace and preview are marked with the mode they show", async () => {
+    const engine = new MorphicBlocks(format, { say: () => "say();\n" });
+    engines.push(engine);
+    const codespaceContainer = div();
+    const previewContainer = div();
+    await engine.mount({ workspaceContainer: div(), codespaceContainer, previewContainer });
+
+    engine.setModes({ codespaceMode: "one", previewMode: "two" });
+    expect(codespaceContainer.classList).toContain("morphic-mode-one");
+    expect(previewContainer.classList).toContain("morphic-mode-two");
+
+    engine.setModes({ codespaceMode: "two" });
+    expect(codespaceContainer.classList).toContain("morphic-mode-two");
+    expect(codespaceContainer.classList).not.toContain("morphic-mode-one");
+  });
+});

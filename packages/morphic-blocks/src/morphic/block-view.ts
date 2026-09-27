@@ -173,6 +173,22 @@ export function applyBlockColorFromCSS(block: Blockly.BlockSvg): void {
   }
 }
 
+/**
+ * Mark a text view (codespace, preview) with the mode it shows, so a mode's
+ * CSS can style it like the workspace and the tiles.
+ */
+export function applyTextViewModeClass(
+  root: Element,
+  mode: MorphicModeName | undefined,
+  rootClassName: string,
+): void {
+  removePrefixedClasses(root.classList, MODE_CLASS_PREFIX);
+  root.classList.add(rootClassName);
+  if (mode) {
+    root.classList.add(`${MODE_CLASS_PREFIX}${toModeClassToken(mode)}`);
+  }
+}
+
 function decorateBlockRoot(
   block: Blockly.BlockSvg,
   mode: MorphicModeName,

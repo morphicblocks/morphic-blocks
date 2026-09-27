@@ -6,6 +6,7 @@ import {
   applyBlockIdentifierClass,
   applyBlockColorFromCSS,
   applyRootModeClasses,
+  applyTextViewModeClass,
   captureFieldValues,
   restoreFieldValues,
 } from "./block-view";
@@ -164,6 +165,8 @@ export class MorphicBlocks extends EventTarget {
   private previewEditor?: MorphicCodeEditor;
   private selectionSync?: MorphicSelectionSync;
   private toolboxDefinition?: NonNullable<Blockly.BlocklyOptions["toolbox"]>;
+  /** Container the preview editor was mounted into. */
+  private previewHost?: HTMLElement;
   private blockCategoryIndex = new Map<string, MorphicBlockCategoryMeta>();
   private appliedWorkspaceClasses: string[] = [];
   private appliedToolboxFlyoutClasses: string[] = [];
@@ -553,6 +556,7 @@ export class MorphicBlocks extends EventTarget {
 
     this.previewEditor?.dispose();
     this.previewEditor = undefined;
+    this.previewHost = undefined;
 
     this.toolboxCanvas?.dispose();
     this.toolboxCanvas = undefined;
@@ -1037,6 +1041,7 @@ export class MorphicBlocks extends EventTarget {
       this.syncWorkspaceFont();
       this.renderWorkspaceBlocks();
     }
+    this.applyTextViewClasses();
     this.refreshToolbox();
     this.bindFlyoutWorkspace();
     this.renderFlyoutBlocks();
@@ -1161,6 +1166,7 @@ export class MorphicBlocks extends EventTarget {
         options?.onPlaceholderApply ?? ((edit, newValue) => this.applyPlaceholderEdit(edit, newValue)),
     };
 
+    this.applyTextViewClasses();
     this.codespace = new MorphicCodeEditor(
       this.mountConfig.codespaceContainer,
       this.workspace,
@@ -2081,6 +2087,8 @@ export class MorphicBlocks extends EventTarget {
       showPlaceholderMarkers: options?.showPlaceholderMarkers ?? false,
     };
 
+    this.previewHost = container;
+    this.applyTextViewClasses();
     this.previewEditor = new MorphicCodeEditor(
       container,
       this.workspace,
@@ -2499,6 +2507,20 @@ export class MorphicBlocks extends EventTarget {
 
     // Restore field values after onViewApplied has recreated the fields
     restoreFieldValues(block, savedFieldValues);
+  }
+
+  private applyTextViewClasses(): void {
+    if (!this.mountConfig) return;
+    if (this.mountConfig.codespaceContainer) {
+      applyTextViewModeClass(
+        this.mountConfig.codespaceContainer,
+        this.getCodespaceMode(),
+        "morphic-codespace-root",
+      );
+    }
+    if (this.previewHost) {
+      applyTextViewModeClass(this.previewHost, this.mountConfig.previewMode, "morphic-preview-root");
+    }
   }
 
   private applyWorkspaceContainerClass(): void {
