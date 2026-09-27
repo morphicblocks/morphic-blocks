@@ -249,10 +249,14 @@ export interface MorphicBlockDefinition {
  * Blocks treats text as a rendered view, not a freeform editing surface.
  */
 export interface MorphicHighlightDefinition {
-  /** Words to highlight as keywords (exact match against `[A-Za-z_]\w*` tokens). */
+  /** Words to highlight as keywords, matched as whole words in any script (`if`, `اطبع`). */
   keywords?: string[];
-  /** String delimiters (e.g. `["\"", "'"]`). Span until matching close on same line. */
-  strings?: string[];
+  /**
+   * String delimiters. A mark that opens and closes (`"\""`, `"'"`), or an
+   * `[open, close]` pair for quotes that differ (`["„", "“"]`, `["«", "»"]`).
+   * A string spans to its close on the same line.
+   */
+  strings?: (string | [open: string, close: string])[];
   /** Line-comment marker (e.g. `"#"`, `"//"`). Highlights from the marker to end of line. */
   comment?: string;
   /** Highlight integer/decimal numeric literals. Defaults to true; pass `false` to disable. */

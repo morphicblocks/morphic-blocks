@@ -49,3 +49,30 @@ describe("highlight colors", () => {
     expect(classCount(own!)).toBeGreaterThan(classCount(fallback!));
   });
 });
+
+describe("highlighted words and strings", () => {
+  test("keywords in any script and quotes that open and close differently", async () => {
+    const engine = new MorphicBlocks(
+      {
+        elementTypes: { ar: "code" },
+        modes: [{ name: "ar", elements: ["ar"] }],
+        blocks: [{ identifier: "say", elements: { ar: "اطبع „مرحبا“ إذا" }, shape: "statement" }],
+        highlighting: { ar: { keywords: ["اطبع"], strings: [["„", "“"]] } },
+      },
+      { say: () => "" },
+    );
+    engines.push(engine);
+    const codespace = div();
+    await engine.mount({ workspaceContainer: div(), codespaceContainer: codespace });
+    const block = engine.getWorkspace()!.newBlock("morphic:say");
+    (block as unknown as { initSvg(): void }).initSvg();
+    // The codespace writes the new block after a short debounce.
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    const tokens = (kind: string) =>
+      Array.from(codespace.querySelectorAll(`.morphic-tok-${kind}`)).map((token) => token.textContent);
+    expect(tokens("keyword")).toEqual(["اطبع"]);
+    expect(tokens("string")).toEqual(["„مرحبا“"]);
+  });
+});
+

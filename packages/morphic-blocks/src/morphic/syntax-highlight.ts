@@ -20,7 +20,9 @@ export function buildHighlightExtensions(
   if (!rules) return [];
 
   const keywordSet = new Set(rules.keywords ?? []);
-  const stringDelims = rules.strings ?? [];
+  const stringDelims = (rules.strings ?? []).map((d) =>
+    typeof d === "string" ? { open: d, close: d } : { open: d[0], close: d[1] },
+  );
   const lineComment = rules.comment;
   const numbers = rules.numbers !== false;
 
@@ -43,16 +45,16 @@ export function buildHighlightExtensions(
       }
       let consumedString = false;
       for (const d of stringDelims) {
-        if (line.startsWith(d, i)) {
+        if (line.startsWith(d.open, i)) {
           const start = i;
-          i += d.length;
+          i += d.open.length;
           while (i < len) {
             if (line[i] === "\\" && i + 1 < len) {
               i += 2;
               continue;
             }
-            if (line.startsWith(d, i)) {
-              i += d.length;
+            if (line.startsWith(d.close, i)) {
+              i += d.close.length;
               break;
             }
             i += 1;
@@ -71,7 +73,9 @@ export function buildHighlightExtensions(
           continue;
         }
       }
-      const ident = /^[A-Za-z_]\w*/.exec(line.slice(i));
+      // A word in any script: letters, combining marks (Arabic vowel signs),
+      // digits and underscores.
+      const ident = /^[\p{L}\p{M}_][\p{L}\p{M}\p{N}_]*/u.exec(line.slice(i));
       if (ident) {
         if (keywordSet.has(ident[0])) {
           builder.add(lineFrom + i, lineFrom + i + ident[0].length, markKw);
