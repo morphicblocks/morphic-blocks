@@ -287,6 +287,22 @@ function renderBlock(
     // skipped so the `default` italic-dim style doesn't stack on the `set`
     // style of the inner field marker.
     let perFieldRecorded = false;
+    // A default that is one of the developer's own blocks is written through
+    // its template, so it reads like the same block placed there (`"Hello"`
+    // quotes itself, a fieldless `*` still shows). Its ranges stay defaults,
+    // and it gets no block metadata: a shadow is never selected or dragged.
+    if (!target && rawTarget && ctx.definitions.has(toCleanId(rawTarget.type))) {
+      const slotOffsetStart = state.output.length;
+      const placeholdersBefore = state.placeholders.length;
+      renderBlock(rawTarget, ctx, state, composesSeveralValues && composesValues(rawTarget));
+      for (const shadow of rawTarget.getDescendants(false)) state.metadata.delete(shadow.id);
+      if (state.output.length > slotOffsetStart) {
+        const inner = state.placeholders.splice(placeholdersBefore);
+        for (const range of inner) state.placeholders.push({ ...range, kind: "default" });
+        if (inner.length === 0) recordPlaceholder(state, slotOffsetStart, "default");
+        continue;
+      }
+    }
     if (!target) {
       // Fields that will actually be emitted for this empty slot: a present
       // shadow's named fields, or undeclared onViewApplied fields Blockly seated
