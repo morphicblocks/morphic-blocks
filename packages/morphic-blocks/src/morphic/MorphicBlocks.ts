@@ -634,6 +634,19 @@ export class MorphicBlocks extends EventTarget {
    * directly (e.g. creating blocks from code). Everyday use goes through the
    * engine. `undefined` before `mount`.
    */
+  /**
+   * Measure blocks and toolbox tiles again. Blockly measures block text only
+   * when it draws a block, so call this after the app changes the block font
+   * through its own CSS (a font size switch, say). Stylesheets and web fonts
+   * that finish loading are handled already.
+   */
+  public refresh(): void {
+    if (!this.workspace || !this.mountConfig) return;
+    this.syncWorkspaceFont();
+    remeasureBlocks(this.workspace);
+    this.toolboxCanvas?.rerender(this.mountConfig.toolboxMode, this.mountConfig.toolboxRender);
+  }
+
   public getWorkspace(): Blockly.WorkspaceSvg | undefined {
     return this.workspace;
   }
@@ -2477,12 +2490,7 @@ export class MorphicBlocks extends EventTarget {
     if (applyFont(workspace, this.baseTheme, this.baseFont, font)) remeasureBlocks(workspace);
   }
 
-  private readonly onStylesLoaded = (): void => {
-    if (!this.workspace || !this.mountConfig) return;
-    this.syncWorkspaceFont();
-    remeasureBlocks(this.workspace);
-    this.toolboxCanvas?.rerender(this.mountConfig.toolboxMode, this.mountConfig.toolboxRender);
-  };
+  private readonly onStylesLoaded = (): void => this.refresh();
 
   private applyFlyoutClass(): void {
     if (!this.workspace || !this.mountConfig) {

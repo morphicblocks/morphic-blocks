@@ -107,6 +107,16 @@ describe("block text font", () => {
     expect(tiles.previewWorkspace.getRenderer().getConstants().FIELD_TEXT_FONTFAMILY).toBe("monospace");
   });
 
+  test("blocks are measured again after the app changes their font", () => {
+    const engine = mount();
+    pyFont.fontFamily = "serif";
+
+    engine.refresh();
+
+    expect(constantsOf(engine).FIELD_TEXT_FONTFAMILY).toBe("serif");
+    pyFont.fontFamily = "monospace";
+  });
+
   test("a block can be removed right after its text was remeasured", () => {
     const engine = mount();
     const workspace = engine.getWorkspace()!;
