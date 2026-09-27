@@ -66,6 +66,39 @@ describe("tile block styles", () => {
   });
 });
 
+describe("tile slot defaults", () => {
+  test("a tile shows a slot's default value", async () => {
+    const engine = new MorphicBlocks(
+      {
+        elementTypes: { code: "code" },
+        modes: [{ name: "only", elements: ["code"] }],
+        blocks: [
+          {
+            identifier: "repeat",
+            elements: { code: "repeat %1 times" },
+            inputSlots: { "1": { kind: "value", name: "TIMES", default: { shadow: "number", fieldValues: { NUM: "3" } } } },
+            shape: "statement",
+          },
+          {
+            identifier: "number",
+            elements: { code: "%NUM" },
+            fields: { NUM: { type: "number", default: 0 } },
+            output: "Number",
+          },
+        ],
+      },
+      {},
+    );
+    engines.push(engine);
+    const toolbox = div();
+    await engine.mount({ workspaceContainer: div(), toolboxContainer: toolbox });
+
+    const tile = toolbox.querySelector("[data-block-type='repeat'] .morphic-element-code svg");
+    // The default's SVG comes before its parent's text in the document.
+    expect(tile?.textContent?.replace(/\s/g, "")).toBe("3repeattimes");
+  });
+});
+
 describe("tile code elements", () => {
   test("each code element is drawn from its own template", async () => {
     const engine = new MorphicBlocks(

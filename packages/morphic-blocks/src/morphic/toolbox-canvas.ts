@@ -300,6 +300,9 @@ export class MorphicToolboxCanvas {
         view,
         mode: "block",
         context: "toolbox",
+        // Slot defaults too, so the tile shows the block as it will be dropped.
+        elementTypes: this.elementTypes,
+        resolveBlocklyType: (ref) => resolveBlocklyType(ref, this.definitions),
       });
 
       // Invoke onViewApplied to add fields (dropdowns, number inputs, etc.)
@@ -314,7 +317,12 @@ export class MorphicToolboxCanvas {
         definition,
       });
 
-      block.initSvg();
+      // Slot defaults were attached before the block had an SVG, so they
+      // need theirs too.
+      for (const part of block.getDescendants(false) as Blockly.BlockSvg[]) {
+        part.initSvg();
+        part.queueRender();
+      }
       block.render();
 
       const svgRoot = block.getSvgRoot();
