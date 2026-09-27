@@ -229,7 +229,8 @@ export class MorphicBlocks extends EventTarget {
     // constructor, so a mount call only needs its DOM / runtime options.
     const config: MorphicMountConfig = {
       ...inputConfig,
-      modes: inputConfig.modes ?? this.formatModes,
+      // A copy, so changing a mode's elements at runtime leaves the host's own list alone.
+      modes: (inputConfig.modes ?? this.formatModes)?.slice(),
       presets: inputConfig.presets ?? this.formatPresets,
       highlighting: inputConfig.highlighting ?? this.formatHighlighting,
       toolbox:
@@ -470,7 +471,7 @@ export class MorphicBlocks extends EventTarget {
     }
   }
 
-  private validatePresets(config: MorphicMountConfig): void {
+  private validatePresets(config: Pick<MorphicMountConfig, "presets" | "modes" | "codespaceContainer">): void {
     const presets = config.presets ?? [];
     if (presets.length === 0) return;
     const modes = config.modes ?? [];
@@ -676,6 +677,57 @@ export class MorphicBlocks extends EventTarget {
   /** Preview mode name, or `undefined` when no preview mode is set. */
   public getPreviewMode(): MorphicModeName | undefined {
     return this.mountConfig?.previewMode;
+  }
+
+  /**
+   * Change which elements a mode shows while the app runs, e.g. to let the
+   * user pick what a toolbox tile shows. Every view using the mode is redrawn;
+   * a mode a codespace or preview renders must keep a code element.
+   */
+  public setModeElements(mode: MorphicModeName, elements: string[]): void {
+    if (!this.mountConfig || !this.workspace) {
+      throw new Error(
+        "MorphicBlocks must be mounted before setModeElements can be used.",
+      );
+    }
+    const modes = this.mountConfig.modes ?? [];
+    const index = modes.findIndex((m) => m.name === mode);
+    if (index === -1) {
+      throw new Error(`setModeElements: unknown mode "${mode}".`);
+    }
+    const unknown = elements.filter((name) => !(name in this.elementTypes));
+    if (unknown.length > 0) {
+      throw new Error(`setModeElements: unknown elements ${unknown.map((name) => `"${name}"`).join(", ")}.`);
+    }
+    const updated: MorphicModeDefinition = { ...modes[index]!, elements: [...elements] };
+    const renderedAsText =
+      (!!this.mountConfig.codespaceContainer && mode === this.getCodespaceMode()) ||
+      mode === this.mountConfig.previewMode;
+    if (renderedAsText && resolveModeSourceElement(updated, this.elementTypes) === undefined) {
+      throw new Error(
+        `setModeElements: mode "${mode}" is shown in a codespace or preview and needs a code element.`,
+      );
+    }
+    const nextModes = modes.map((m, i) => (i === index ? updated : m));
+    this.validatePresets({ ...this.mountConfig, modes: nextModes });
+
+    // Replaced in place: the toolbox shares this list.
+    const previousModes = modes.slice();
+    modes[index] = updated;
+    this.styles.ensureModeVisibilityStyles(modes, previousModes);
+
+    if (mode === this.mountConfig.toolboxMode) {
+      this.toolboxCanvas?.rerender(this.mountConfig.toolboxMode, this.mountConfig.toolboxRender);
+      this.renderFlyoutBlocks();
+    }
+    if (mode === this.mountConfig.workspaceMode) {
+      this.syncWorkspaceFont();
+      this.renderWorkspaceBlocks();
+    }
+    this.codespace?.setHighlightRules(this.resolveHighlightRules("codespace"));
+    this.previewEditor?.setHighlightRules(this.resolveHighlightRules("preview"));
+    this.codespace?.refresh();
+    this.previewEditor?.refresh();
   }
 
   /** Mode definition by name, or `undefined`. */

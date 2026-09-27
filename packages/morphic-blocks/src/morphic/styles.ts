@@ -29,17 +29,23 @@ export class MorphicStyleManager {
    * Hides all morphic elements by default, then shows only those listed
    * in each mode's `elements` array. Developer CSS only needs to handle styling.
    */
-  public ensureModeVisibilityStyles(modes: MorphicModeDefinition[]): void {
-    const lines: string[] = ['[class^="morphic-element-"] { display: none; }'];
-    for (const mode of modes) {
-      const modeToken = toModeClassToken(mode.name);
-      for (const element of mode.elements) {
-        const elementToken = toModeClassToken(element);
-        lines.push(`.morphic-mode-${modeToken} > .morphic-element-${elementToken} { display: block; }`);
+  public ensureModeVisibilityStyles(
+    modes: MorphicModeDefinition[],
+    previousModes?: MorphicModeDefinition[],
+  ): void {
+    const css = modeVisibilityCss(modes);
+    if (previousModes) {
+      // Replace the rules the old modes added, or they would keep showing
+      // elements a mode no longer lists.
+      const previousCss = modeVisibilityCss(previousModes);
+      for (const existing of Array.from(document.head.querySelectorAll<HTMLStyleElement>("style[data-morphic-source]"))) {
+        if (existing.dataset.morphicSource === "mode-visibility" && existing.textContent === previousCss) {
+          existing.textContent = css;
+          return;
+        }
       }
     }
-
-    addStyle("mode-visibility", lines.join("\n"));
+    addStyle("mode-visibility", css);
   }
 
   public ensureStyles(
@@ -107,6 +113,19 @@ export class MorphicStyleManager {
       addStyle(sourceName, style.cssText);
     }
   }
+}
+
+/** Hide every element, then show the ones each mode lists. */
+function modeVisibilityCss(modes: MorphicModeDefinition[]): string {
+  const lines: string[] = ['[class^="morphic-element-"] { display: none; }'];
+  for (const mode of modes) {
+    const modeToken = toModeClassToken(mode.name);
+    for (const element of mode.elements) {
+      const elementToken = toModeClassToken(element);
+      lines.push(`.morphic-mode-${modeToken} > .morphic-element-${elementToken} { display: block; }`);
+    }
+  }
+  return lines.join("\n");
 }
 
 /** Add a `<style>` unless the page already has one with the same source and CSS. */
