@@ -99,6 +99,49 @@ describe("tile slot defaults", () => {
   });
 });
 
+describe("text rendered tiles", () => {
+  test("a code element shown as text reads like the codespace writes it", async () => {
+    const engine = new MorphicBlocks(
+      {
+        elementTypes: { python: "code" },
+        modes: [{ name: "py", elements: ["python"] }],
+        presets: [{ name: "text", toolbox: { mode: "py", render: { python: "text" } }, workspace: "py" }],
+        blocks: [
+          {
+            identifier: "loop",
+            elements: { python: "for i in range(%1):" },
+            inputSlots: { "1": { kind: "value", name: "TIMES", default: { shadow: "number", fieldValues: { NUM: "3" } } } },
+            shape: "statement",
+          },
+          {
+            identifier: "flag",
+            elements: { python: "%BOOL" },
+            fields: {
+              BOOL: { type: "dropdown", options: [{ value: "true", display: { python: "True" } }, "false"], default: "true" },
+            },
+            output: "Boolean",
+          },
+          {
+            identifier: "number",
+            elements: { python: "%NUM" },
+            fields: { NUM: { type: "number", default: 0 } },
+            output: "Number",
+          },
+        ],
+      },
+      {},
+    );
+    engines.push(engine);
+    const toolbox = div();
+    await engine.mount({ workspaceContainer: div(), toolboxContainer: toolbox });
+
+    const text = (type: string) => toolbox.querySelector(`[data-block-type='${type}'] .morphic-element-python`)?.textContent;
+    expect(text("loop")).toBe("for i in range(3):");
+    expect(text("flag")).toBe("True");
+    expect(text("number")).toBe("0");
+  });
+});
+
 describe("tile code elements", () => {
   test("each code element is drawn from its own template", async () => {
     const engine = new MorphicBlocks(

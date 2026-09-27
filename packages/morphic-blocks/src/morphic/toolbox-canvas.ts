@@ -2,6 +2,7 @@ import * as Blockly from "blockly";
 import { getLifecycleBehavior } from "./behavior-runtime";
 import { resolveBlocklyType } from "./block-namespace";
 import { applyBlockView } from "./block-view";
+import { generateTextFromWorkspace } from "./template-codegen";
 import { applyFont, measuredFont, readCssFont, type MorphicBlockFont } from "./block-font";
 import { resolveElementType, resolveImageSize } from "./element-types";
 import {
@@ -215,6 +216,13 @@ export class MorphicToolboxCanvas {
         } else {
           el.innerHTML = renderTemplateAsHtml(parseTemplate(resolvedContent));
         }
+      } else if (isCodeElement) {
+        const text = this.createCodeText(definition, this.currentMode, elementName);
+        if (text !== null) {
+          el.textContent = text;
+        } else {
+          el.innerHTML = renderTemplateAsHtml(parseTemplate(resolvedContent));
+        }
       } else {
         el.innerHTML = renderTemplateAsHtml(parseTemplate(resolvedContent));
       }
@@ -273,6 +281,81 @@ export class MorphicToolboxCanvas {
     applyFont(ws, this.previewBase.theme, this.previewBase.font, font);
   }
 
+  /**
+   * A block for one code element of a tile, built like a workspace block,
+   * slot defaults included, in the hidden tile workspace. Not drawn yet.
+   */
+  private createPreviewBlock(
+    definition: MorphicBlockDefinition,
+    mode: MorphicModeName,
+    elementName: string,
+  ): Blockly.BlockSvg {
+    const ws = this.ensurePreviewWorkspace();
+    const block = ws.newBlock(
+      resolveBlocklyType(definition.identifier, this.definitions),
+    ) as Blockly.BlockSvg;
+
+    const color = this.blockColors.get(definition.identifier);
+    if (color) block.setColour(color);
+
+    // Each code element on the tile is drawn from its own template.
+    const view: MorphicResolvedView = {
+      mode,
+      template: definition.elements[elementName] ?? "",
+      elementName,
+      inputSlots: definition.inputSlots,
+    };
+    applyBlockView({
+      block,
+      definition,
+      view,
+      mode: "block",
+      context: "toolbox",
+      // Slot defaults too, so the tile shows the block as it will be dropped.
+      elementTypes: this.elementTypes,
+      resolveBlocklyType: (ref) => resolveBlocklyType(ref, this.definitions),
+    });
+
+    // Invoke onViewApplied to add fields (dropdowns, number inputs, etc.)
+    const lifecycle = getLifecycleBehavior(
+      this.behaviors[definition.identifier],
+    );
+    lifecycle?.onViewApplied?.(block, {
+      Blockly,
+      workspace: ws,
+      mode,
+      context: "toolbox",
+      definition,
+    });
+    return block;
+  }
+
+  /**
+   * A code element shown as text reads exactly like the codespace would
+   * write the block: field values, slot defaults and all.
+   */
+  private createCodeText(
+    definition: MorphicBlockDefinition,
+    mode: MorphicModeName,
+    elementName: string,
+  ): string | null {
+    try {
+      const block = this.createPreviewBlock(definition, mode, elementName);
+      const { code } = generateTextFromWorkspace(
+        block.workspace,
+        mode,
+        this.definitions,
+        this.elementTypes,
+        this.modes,
+        elementName,
+      );
+      block.dispose(false);
+      return code;
+    } catch {
+      return null;
+    }
+  }
+
   private createBlockPreviewSvg(
     definition: MorphicBlockDefinition,
     mode: MorphicModeName,
@@ -280,42 +363,7 @@ export class MorphicToolboxCanvas {
   ): SVGSVGElement | null {
     try {
       const ws = this.ensurePreviewWorkspace();
-      const block = ws.newBlock(
-        resolveBlocklyType(definition.identifier, this.definitions),
-      ) as Blockly.BlockSvg;
-
-      const color = this.blockColors.get(definition.identifier);
-      if (color) block.setColour(color);
-
-      // Each code element on the tile is drawn from its own template.
-      const view: MorphicResolvedView = {
-        mode,
-        template: definition.elements[elementName] ?? "",
-        elementName,
-        inputSlots: definition.inputSlots,
-      };
-      applyBlockView({
-        block,
-        definition,
-        view,
-        mode: "block",
-        context: "toolbox",
-        // Slot defaults too, so the tile shows the block as it will be dropped.
-        elementTypes: this.elementTypes,
-        resolveBlocklyType: (ref) => resolveBlocklyType(ref, this.definitions),
-      });
-
-      // Invoke onViewApplied to add fields (dropdowns, number inputs, etc.)
-      const lifecycle = getLifecycleBehavior(
-        this.behaviors[definition.identifier],
-      );
-      lifecycle?.onViewApplied?.(block, {
-        Blockly,
-        workspace: ws,
-        mode,
-        context: "toolbox",
-        definition,
-      });
+      const block = this.createPreviewBlock(definition, mode, elementName);
 
       // Slot defaults were attached before the block had an SVG, so they
       // need theirs too.
