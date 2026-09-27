@@ -125,6 +125,24 @@ function normalizePresetToolbox(toolbox: MorphicPresetToolbox): {
 const workspaceOwners = new WeakMap<Blockly.Workspace, MorphicBlocks>();
 const fallbackOwners = new Map<string, MorphicBlocks>();
 
+/**
+ * Blockly marks a block as an insertion marker (the preview drawn while
+ * dragging) only after its `init`, which already gave it default shadows.
+ * When the dragged block replaces an occupied slot, Blockly moves the old
+ * block into the marker's input, and a shadow there breaks the drag. So a
+ * marker drops its shadows the moment it becomes one.
+ */
+function dropShadowsWhenMarker(block: Blockly.BlockSvg): void {
+  const setInsertionMarker = block.setInsertionMarker;
+  block.setInsertionMarker = function (this: Blockly.BlockSvg, insertionMarker: boolean) {
+    setInsertionMarker.call(this, insertionMarker);
+    if (!insertionMarker) return;
+    for (const input of this.inputList) {
+      input.connection?.setShadowState(null);
+    }
+  };
+}
+
 export class MorphicBlocks extends EventTarget {
   private readonly definitions: Map<string, MorphicBlockDefinition>;
   private readonly behaviors: MorphicBehaviorMap;
@@ -2311,6 +2329,7 @@ export class MorphicBlocks extends EventTarget {
     const context: MorphicRenderContext = block.workspace.isFlyout ? "toolbox" : "workspace";
     const mode = this.resolveMode(context);
     this.applyView(block, definition, mode, context);
+    dropShadowsWhenMarker(block);
 
     const lifecycleBehavior = getLifecycleBehavior(this.behaviors[definition.identifier]);
     lifecycleBehavior?.init?.(block, this.createBehaviorContext(block, definition, mode, context));
