@@ -54,6 +54,15 @@ describe("tile workspace", () => {
     expect(tiles.options.theme).toBe(theme);
     expect(tiles.RTL).toBe(true);
   });
+
+  test("tile blocks keep Blockly's left to right text in a right to left page", () => {
+    document.documentElement.dir = "rtl";
+    mountWith({ rtl: true });
+
+    const svg = document.querySelector<SVGSVGElement>(".morphic-element-code svg")!;
+    expect(svg.style.direction).toBe("ltr");
+    document.documentElement.dir = "";
+  });
 });
 
 describe("tile block styles", () => {

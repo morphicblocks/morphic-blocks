@@ -406,6 +406,10 @@ export class MorphicToolboxCanvas {
       // block font) to its renderer and theme classes, which sit on the
       // workspace's injection div. The copy leaves that div, so it carries them.
       svg.setAttribute("class", `${ws.getRenderer().getClassName()} ${ws.getTheme().getClassName()}`);
+      // Blockly lays out right to left blocks itself and draws their text left
+      // to right (its container is always dir="ltr"). A tile in a right to
+      // left page would otherwise flip the text and overlap the slots.
+      svg.style.direction = "ltr";
       svg.appendChild(clone);
 
       block.dispose(false);
