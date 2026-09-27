@@ -154,7 +154,6 @@ void engine.mount({
   },
   editorTheme: editorThemeFor(currentTheme),
   previewTheme: previewThemeFor(currentTheme),
-  selectionSync: { highlightColor: "rgba(139, 172, 221, 0.48)" },
   preset: presets[0]?.name,
   onPresetApplied: handlePresetApplied,
   modesFolder: modeStyles,

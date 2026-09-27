@@ -306,7 +306,7 @@
           "name": "TEXT",
           "check": ["String", "Number", "Boolean"],
           "default": {
-            "shadow": "text",
+            "shadow": "text_value",
             "fieldValues": {
               "TEXT": "Hello, world!"
             }
