@@ -171,9 +171,6 @@ void engine.mount({
   onPresetApplied: handlePresetApplied,
   modesFolder: modeStyles,
   blockly: {
-    // Served by the app itself (scripts/copy-blockly-media.mjs), so Blockly
-    // never loads images or sounds from Google's server.
-    media: "blockly-media/",
     rtl: RTL,
     scrollbars: true,
     trashcan: true,
