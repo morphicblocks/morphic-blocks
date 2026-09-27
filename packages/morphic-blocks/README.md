@@ -34,6 +34,9 @@ you need them:
 npm i @codemirror/state @codemirror/view @codemirror/lang-javascript
 ```
 
+`@codemirror/lang-javascript` is needed only for the code editor, which shows the
+generated JavaScript.
+
 ## Quick start
 
 ```ts

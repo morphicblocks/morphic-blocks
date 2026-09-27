@@ -1119,6 +1119,7 @@ export class MorphicBlocks extends EventTarget {
       this.workspace,
       () => this.generateJavaScriptWithMetadata(),
       options,
+      true,
     );
 
     const editor = this.codeEditor;

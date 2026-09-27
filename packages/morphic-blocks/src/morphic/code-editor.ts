@@ -89,20 +89,30 @@ function isCodeAffectingEvent(event: Blockly.Events.Abstract): boolean {
   return CODE_AFFECTING_EVENTS.has(event.type);
 }
 
-/** Dynamically imports CodeMirror. Throws a helpful error if not installed. */
-async function loadCodeMirror() {
+/**
+ * Dynamically imports CodeMirror. JavaScript language support is loaded only
+ * for the code editor, which shows the generated JavaScript; codespace and
+ * preview show the developer's own languages. Throws a helpful error when a
+ * package is missing.
+ */
+async function loadCodeMirror(javascript: boolean) {
+  let view: typeof import("@codemirror/view");
+  let state: typeof import("@codemirror/state");
   try {
-    const [view, state, langJs] = await Promise.all([
-      import("@codemirror/view"),
-      import("@codemirror/state"),
-      import("@codemirror/lang-javascript"),
-    ]);
-    return { view, state, langJs };
+    [view, state] = await Promise.all([import("@codemirror/view"), import("@codemirror/state")]);
   } catch {
     throw new Error(
-      "CodeMirror is required for the code editor. Install it:\n" +
-        "  bun add codemirror @codemirror/view @codemirror/state @codemirror/lang-javascript\n" +
-        "  # or: npm install codemirror @codemirror/view @codemirror/state @codemirror/lang-javascript",
+      "CodeMirror is required for the codespace, preview and code editor. Install it:\n" +
+        "  npm install @codemirror/view @codemirror/state",
+    );
+  }
+  if (!javascript) return { view, state, langJs: undefined };
+  try {
+    return { view, state, langJs: await import("@codemirror/lang-javascript") };
+  } catch {
+    throw new Error(
+      "The code editor also needs JavaScript language support. Install it:\n" +
+        "  npm install @codemirror/lang-javascript",
     );
   }
 }
@@ -399,6 +409,8 @@ export class MorphicCodeEditor {
     workspace: Blockly.WorkspaceSvg,
     generateWithMetadata: () => MorphicCodeGenerationResult,
     options: MorphicCodeEditorOptions = {},
+    /** Use JavaScript language support; only the code editor does. */
+    private readonly javascript = false,
   ) {
     this.container = container;
     this.workspace = workspace;
@@ -408,7 +420,7 @@ export class MorphicCodeEditor {
 
   async mount(): Promise<void> {
     void ensureCodeEditorStyles();
-    this.cm = await loadCodeMirror();
+    this.cm = await loadCodeMirror(this.javascript);
     if (this.disposed) return;
     const { view: cmView, state: cmState, langJs } = this.cm;
 
@@ -546,7 +558,7 @@ export class MorphicCodeEditor {
       cmView.lineNumbers(),
       cmView.highlightSpecialChars(),
       cmState.EditorState.readOnly.of(true),
-      langJs.javascript(),
+      ...(langJs ? [langJs.javascript()] : []),
       highlightField,
       ...(showPlaceholderMarkers ? [placeholderField] : []),
       cursorListener,
