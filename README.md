@@ -13,7 +13,7 @@ syntactic mode → code-syntax block template
 code modes     → codespace (text editor) mirrors the workspace
 ```
 
-The framework makes **no external requests**: it never contacts another server, so the embedding site decides every request its visitors make. Blockly's own images and sounds come from Google's server unless `blockly.media` points to a copy on your site (see [Example Usage](#example-usage)).
+The framework makes **no external requests**: it never contacts another server, so the embedding site decides every request its visitors make. Blockly's own images and sounds load from `blockly-media/` on your site, copied there by `morphic-blocks copy-media` (see [Example Usage](#example-usage)).
 
 Workspace and toolbox can run in **different modes simultaneously**. Dragging from the toolbox to the workspace — or dropping onto the codespace — adds a block to the underlying model.
 
@@ -258,13 +258,13 @@ await engine.mount({
     // show/hide panes based on which view keys the preset uses
   },
   modesFolder: import.meta.glob("./modes/*.css", { eager: true, query: "?url" }),
-  blockly: { scrollbars: true, trashcan: true, media: "blockly-media/" },
+  blockly: { scrollbars: true, trashcan: true },
 });
 ```
 
-`blockly.media` makes Blockly load its images and sounds from your own site
-instead of Google's server; the package README shows how to copy them there,
-and the sandbox does it in `scripts/copy-blockly-media.mjs`.
+Blockly loads its images and sounds from `blockly-media/` next to the page.
+`morphic-blocks copy-media public/blockly-media` copies them there before `dev`
+and `build`, as the sandbox does; `blockly.media` points elsewhere.
 
 Every container is optional. Selection sync links the views by default
 (`selectionSync: false` turns it off), and a `codeEditorContainer` adds the
