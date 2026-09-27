@@ -273,7 +273,7 @@ These are *potential* applications, not currently deployed. They are worth keepi
 2. Follow the emoji-style Conventional Commits format defined in `.vscode/commit-instructions.md`
 3. Mark the recommended option with **(recommended)** so the user can see which one you prefer
 4. The user picks one; then commit with the chosen message
-5. Add `Co-Authored-By: Claude <noreply@anthropic.com>` unless the user says to be the main author
+5. Add Claude Code's default co-author line, which names the model (e.g. `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`), so the history shows which model built a change; leave it out only when the user says to be the main author
 
 ## Release Workflow (npm)
 
