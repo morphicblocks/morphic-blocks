@@ -13,6 +13,9 @@
   "main": "./dist/morphic-blocks.umd.cjs",
   "module": "./dist/morphic-blocks.js",
   "types": "./dist/index.d.ts",
+  "bin": {
+    "morphic-blocks": "./dist/cli.js"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -26,7 +29,7 @@
     "NOTICE"
   ],
   "scripts": {
-    "build": "vite build && tsc -p tsconfig.build.json",
+    "build": "vite build && vite build --config vite.cli.config.ts && tsc -p tsconfig.build.json && tsc -p cli",
     "test": "vitest run"
   },
   "keywords": [
@@ -45,14 +48,21 @@
     "@codemirror/view": "^6.0.0"
   },
   "peerDependenciesMeta": {
-    "@codemirror/lang-javascript": { "optional": true },
-    "@codemirror/state": { "optional": true },
-    "@codemirror/view": { "optional": true }
+    "@codemirror/lang-javascript": {
+      "optional": true
+    },
+    "@codemirror/state": {
+      "optional": true
+    },
+    "@codemirror/view": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@codemirror/lang-javascript": "^6.2.3",
     "@codemirror/state": "^6.5.2",
     "@codemirror/view": "^6.36.5",
+    "@types/node": "^26.6.3",
     "jsdom": "25.0.1",
     "typescript": "^5.8.2",
     "vite": "^6.2.0",

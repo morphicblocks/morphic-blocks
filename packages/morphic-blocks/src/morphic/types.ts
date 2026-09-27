@@ -518,7 +518,12 @@ export interface MorphicMountConfig {
    */
   modesFolder?: Record<string, unknown>;
   baseStyle?: MorphicStyleBundle;
-  /** Options passed through to Blockly's `inject` (zoom, grid, trashcan, and so on). */
+  /**
+   * Options passed through to Blockly's `inject` (zoom, grid, trashcan, and so
+   * on). `media` defaults to `"blockly-media/"` next to the page, filled by
+   * `npx morphic-blocks copy-media`, so Blockly never loads from another server
+   * unless the host sets it.
+   */
   blockly?: Blockly.BlocklyOptions;
   javascript?: MorphicJavaScriptConfig;
   /**

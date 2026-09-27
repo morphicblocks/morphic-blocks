@@ -39,6 +39,13 @@ describe("tile workspace", () => {
     expect(tiles.options.pathToMedia).toBe("/blockly-media/");
   });
 
+  test("Blockly's media comes from the app itself by default", () => {
+    const { main, tiles } = mountWith({});
+
+    expect(main.options.pathToMedia).toBe("blockly-media/");
+    expect(tiles.options.pathToMedia).toBe("blockly-media/");
+  });
+
   test("never loads sounds, since it only draws tiles", () => {
     const { main, tiles } = mountWith({});
 

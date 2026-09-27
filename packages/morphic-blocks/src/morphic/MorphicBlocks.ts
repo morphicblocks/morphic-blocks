@@ -123,6 +123,9 @@ function normalizePresetToolbox(toolbox: MorphicPresetToolbox): {
  * engine build it, so several editors can share a page. A workspace no engine
  * has claimed falls back to the engine that registered the type most recently.
  */
+/** Where Blockly's media is loaded from unless the host sets `blockly.media`. */
+const DEFAULT_BLOCKLY_MEDIA = "blockly-media/";
+
 const workspaceOwners = new WeakMap<Blockly.Workspace, MorphicBlocks>();
 const fallbackOwners = new Map<string, MorphicBlocks>();
 
@@ -330,6 +333,10 @@ export class MorphicBlocks extends EventTarget {
 
     this.workspace = Blockly.inject(resolvedConfig.workspaceHost, {
       ...blocklyOptions,
+      // Without a folder of its own, Blockly loads its images and sounds from
+      // Google's server. The default is the app's own copy next to the page
+      // (`npx morphic-blocks copy-media`); a host sets `media` to choose.
+      media: blocklyOptions.media ?? DEFAULT_BLOCKLY_MEDIA,
       ...(resolvedConfig.canvasToolbox ? {} : { toolbox: this.toolboxDefinition }),
     });
     this.workspace.addChangeListener(this.onWorkspaceChange);
