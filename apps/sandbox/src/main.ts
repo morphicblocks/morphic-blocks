@@ -134,7 +134,15 @@ themeSelect.addEventListener("change", () => {
 
 // ── Engine Setup ───────────────────────────────────────
 
-const engine = new MorphicBlocks(definitions, behaviors);
+// Open the sandbox with ?rtl to try a right to left page and workspace.
+const RTL = new URLSearchParams(location.search).has("rtl");
+if (RTL) document.documentElement.dir = "rtl";
+
+// The Arabic test block only shows in the right to left sandbox.
+const format = RTL
+  ? definitions
+  : { ...definitions, blocks: definitions.blocks.filter((block) => block.identifier !== "rtl_test") };
+const engine = new MorphicBlocks(format, behaviors);
 
 // Remembered codespace width (px) from a divider drag; re-applied across
 // presets since a preset switch otherwise resets the codespace flex.
@@ -161,6 +169,7 @@ void engine.mount({
     // Served by the app itself (scripts/copy-blockly-media.mjs), so Blockly
     // never loads images or sounds from Google's server.
     media: "blockly-media/",
+    rtl: RTL,
     scrollbars: true,
     trashcan: true,
     zoom: {

@@ -622,6 +622,35 @@
         }
       },
       "output": true
+    },
+    {
+      "identifier": "rtl_test",
+      "category": "Output",
+      "elements": {
+        "icon": "icons/text_print.svg",
+        "title": "اطبع",
+        "description": "يطبع قيمة في وحدة التحكم",
+        "concept": "اطبع %1 مرة %2",
+        "python": "print(%1 * %2)",
+        "javascript": "console.log(%1.repeat(%2));",
+        "go": "fmt.Println(strings.Repeat(%1, %2))"
+      },
+      "inputSlots": {
+        "1": {
+          "kind": "value",
+          "name": "TEXT",
+          "check": "String",
+          "default": { "shadow": "text_value", "fieldValues": { "TEXT": "مرحبا" } }
+        },
+        "2": {
+          "kind": "value",
+          "name": "TIMES",
+          "check": "Number",
+          "default": { "shadow": "math_number", "fieldValues": { "NUM": "2" } }
+        }
+      },
+      "shape": "statement",
+      "inputsInline": true
     }
   ]
 }

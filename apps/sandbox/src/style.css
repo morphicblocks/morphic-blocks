@@ -464,10 +464,10 @@ body {
 .morphic-block {
   display: block;
   width: 100%;
-  text-align: left;
+  text-align: start;
   background: var(--block-bg);
   border: 1px solid transparent;
-  border-left: 3px solid var(--morphic-block-color, #666);
+  border-inline-start: 3px solid var(--morphic-block-color, #666);
   padding: 10px 12px;
   margin-bottom: 6px;
   border-radius: 4px;
@@ -480,7 +480,7 @@ body {
 .morphic-block:hover {
   background: var(--block-bg-hover);
   border-color: var(--block-border-hover);
-  border-left-color: var(--morphic-block-color, #666);
+  border-inline-start-color: var(--morphic-block-color, #666);
 }
 
 .morphic-block:active {

@@ -7,6 +7,11 @@ export const behaviors: MorphicBehaviorMap = {
     return `console.log(${proxy.inputs.TEXT || "undefined"});\n`;
   },
 
+  // Arabic labels, to try right to left (open the sandbox with ?rtl).
+  rtl_test(proxy) {
+    return `console.log(String(${proxy.inputs.TEXT || '""'}).repeat(${proxy.inputs.TIMES || "1"}));\n`;
+  },
+
   // ── Control ─────────────────────────────────────────────
 
   logic_if(proxy) {
