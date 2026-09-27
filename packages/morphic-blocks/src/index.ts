@@ -63,6 +63,7 @@ export type {
   MorphicToolboxCategory,
   MorphicToolboxConfig,
   MorphicToolboxLayout,
+  MorphicToolboxModeLabel,
   MorphicBlockElements,
   MorphicModeDefinition,
   MorphicPresetDefinition,

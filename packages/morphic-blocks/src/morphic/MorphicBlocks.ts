@@ -611,11 +611,14 @@ export class MorphicBlocks extends EventTarget {
       this.workspace.updateToolbox({ kind: "flyoutToolbox", contents: [] });
     }
 
-    // Inherit categories from the resolved mount config (which already carries
-    // the format's categories) when the call doesn't supply its own.
+    // Inherit the mount config's toolbox settings (categories already carry
+    // the format's) when the call doesn't supply its own.
+    const toolbox = this.mountConfig.toolbox;
     const canvasOptions: MorphicToolboxCanvasOptions = {
       ...options,
-      categories: options?.categories ?? this.mountConfig.toolbox?.categories,
+      blocks: options?.blocks ?? toolbox?.blocks,
+      categories: options?.categories ?? toolbox?.categories,
+      modeLabel: options?.modeLabel ?? toolbox?.modeLabel,
     };
 
     this.toolboxCanvas = new MorphicToolboxCanvas({

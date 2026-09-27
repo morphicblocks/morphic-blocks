@@ -401,14 +401,24 @@ export type MorphicToolboxLayout = "flyout" | "category";
 
 export interface MorphicToolboxConfig {
   kind?: "flyoutToolbox" | "categoryToolbox";
+  /** Show only these blocks, in the HTML toolbox and in Blockly's own. */
   blocks?: string[];
   categories?: MorphicToolboxCategory[];
+  /** Header of the HTML toolbox; see {@link MorphicToolboxModeLabel}. */
+  modeLabel?: MorphicToolboxModeLabel;
 }
+
+/**
+ * Header of the HTML toolbox: `true` shows "Mode: <name>" (the default),
+ * `false` none, a string that text, and a function the text it returns for
+ * the active mode (`(mode) => mode` shows the bare name).
+ */
+export type MorphicToolboxModeLabel = boolean | string | ((mode: string) => string);
 
 /** Options for the custom HTML toolbox canvas (mountToolbox). */
 export interface MorphicToolboxCanvasOptions {
-  /** Render a "Mode: <name>" header at the top of the toolbox. Defaults to true. */
-  modeLabel?: boolean;
+  /** Header of the toolbox; see {@link MorphicToolboxModeLabel}. Defaults to "Mode: <name>". */
+  modeLabel?: MorphicToolboxModeLabel;
   /** Show only a subset of blocks. Defaults to all blocks in definitions. */
   blocks?: string[];
   /**
