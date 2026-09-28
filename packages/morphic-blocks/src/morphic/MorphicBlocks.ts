@@ -19,6 +19,7 @@ import { applyBlockShapes, createDefinitionMap, expandDefaultElements } from "./
 import { applyFont, measuredFont, readCssFont, remeasureBlocks, type MorphicBlockFont } from "./block-font";
 import { validateDefinitions } from "./validate-definitions";
 import { withCodeSettings } from "./element-types";
+import { formatValue } from "./value-format";
 import { MorphicStyleManager, type MorphicModeStyle } from "./styles";
 import { toModeClassToken } from "./template";
 import { DRAG_DATA_KEY, MorphicToolboxCanvas } from "./toolbox-canvas";
@@ -892,9 +893,13 @@ export class MorphicBlocks extends EventTarget {
     // console only when `logToConsole` is set.
     const output: MorphicRunOutputLine[] = [];
     const target = options?.console ?? (options?.logToConsole ? console : undefined);
+    // Lines read like the language the codespace shows; a host console still
+    // gets the values themselves.
+    const element = this.getActivePrimarySourceElement();
+    const format = element ? this.mountConfig?.code?.[element]?.values : undefined;
     const capture = (level: MorphicRunOutputLine["level"]) =>
       (...args: unknown[]): void => {
-        output.push({ level, text: args.map(String).join(" ") });
+        output.push({ level, text: args.map((arg) => formatValue(arg, format)).join(" ") });
         if (target) (target[level] ?? target.log).apply(target, args);
       };
     const capturingConsole = { log: capture("log"), warn: capture("warn"), error: capture("error") };

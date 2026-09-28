@@ -97,6 +97,28 @@ export interface MorphicCodeElementConfig {
   emptyStatement?: string;
   /** Token highlighting for the codespace and preview showing this element. */
   highlighting?: MorphicHighlightDefinition;
+  /**
+   * How `runJavaScript()` writes printed values while the codespace shows this
+   * element. Programs run as JavaScript, so values otherwise read like it.
+   */
+  values?: MorphicValueFormat;
+}
+
+/**
+ * Printed values in a language's own spelling, e.g. Python:
+ * `{ "true": "True", "false": "False", "null": "None", "list": { "quote": "'" } }`.
+ * Each entry replaces JavaScript's text for that value; left out, it stays.
+ */
+export interface MorphicValueFormat {
+  true?: string;
+  false?: string;
+  null?: string;
+  undefined?: string;
+  NaN?: string;
+  Infinity?: string;
+  "-Infinity"?: string;
+  /** Lists: brackets, separator and quotes around texts in them. Left out, lists read `1,2,3`. */
+  list?: { open?: string; close?: string; separator?: string; quote?: string };
 }
 
 export type MorphicElementTypeEntry = MorphicElementType | MorphicElementTypeConfig;

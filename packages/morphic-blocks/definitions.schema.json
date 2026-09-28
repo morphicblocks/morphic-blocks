@@ -77,7 +77,31 @@
           "description": "Written into an empty statement slot where an empty body is invalid, e.g. \"pass\" for Python.",
           "type": "string"
         },
-        "highlighting": { "$ref": "#/$defs/highlight" }
+        "highlighting": { "$ref": "#/$defs/highlight" },
+        "values": {
+          "description": "How printed values are written while this element is shown, e.g. Python's True, None and ['a', 'b'].",
+          "type": "object",
+          "properties": {
+            "true": { "type": "string" },
+            "false": { "type": "string" },
+            "null": { "type": "string" },
+            "undefined": { "type": "string" },
+            "NaN": { "type": "string" },
+            "Infinity": { "type": "string" },
+            "-Infinity": { "type": "string" },
+            "list": {
+              "type": "object",
+              "properties": {
+                "open": { "type": "string" },
+                "close": { "type": "string" },
+                "separator": { "type": "string" },
+                "quote": { "type": "string" }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
       },
       "additionalProperties": false
     },
