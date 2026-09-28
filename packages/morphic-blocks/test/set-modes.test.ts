@@ -122,3 +122,35 @@ describe("text view mode classes", () => {
     expect(codespaceContainer.classList).not.toContain("morphic-mode-one");
   });
 });
+
+test("a field a mode leaves out keeps its value for the modes that show it", async () => {
+  const engine = new MorphicBlocks(
+    {
+      elementTypes: { java: "code", python: "code" },
+      modes: [
+        { name: "java", elements: ["java"] },
+        { name: "python", elements: ["python"] },
+      ],
+      blocks: [
+        {
+          identifier: "declare",
+          elements: { java: "%TYPE x = 1;", python: "x = 1" },
+          fields: { TYPE: { type: "dropdown", options: ["int", "String"], default: "int" } },
+          shape: "statement",
+        },
+      ],
+    },
+    {},
+  );
+  engines.push(engine);
+  await engine.mount({ workspaceContainer: div() });
+  const block = engine.getWorkspace()!.newBlock("morphic:declare");
+  block.setFieldValue("String", "TYPE");
+
+  engine.setModes({ workspaceMode: "python" });
+  expect(block.getField("TYPE")).toBeNull();
+
+  engine.setModes({ workspaceMode: "java" });
+  expect(block.getFieldValue("TYPE")).toBe("String");
+});
+

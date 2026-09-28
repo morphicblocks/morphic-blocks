@@ -9,6 +9,7 @@ import {
   applyTextViewModeClass,
   captureFieldValues,
   restoreFieldValues,
+  type MorphicManagedBlock,
 } from "./block-view";
 import { BLOCK_ID_DRAG_KEY, MorphicCodeEditor, getActiveGripDragSourceId, setActiveGripDragSourceId } from "./code-editor";
 import { resolveBlocklyType, toBlocklyType, toCleanId } from "./block-namespace";
@@ -3000,7 +3001,8 @@ export class MorphicBlocks extends EventTarget {
     }
 
     // Preserve user-added field values (dropdowns, text inputs, etc.) across re-renders
-    const savedFieldValues = captureFieldValues(block);
+    const fieldMemory = ((block as MorphicManagedBlock).__morphicFieldMemory ??= new Map<string, unknown>());
+    for (const [name, value] of captureFieldValues(block)) fieldMemory.set(name, value);
 
     const view = resolveBlockView(definition, mode, this.elementTypes, this.mountConfig?.modes ?? []);
     // Empty-default shadows should only attach on the engine's main editing
@@ -3044,7 +3046,7 @@ export class MorphicBlocks extends EventTarget {
     );
 
     // Restore field values after onViewApplied has recreated the fields
-    restoreFieldValues(block, savedFieldValues);
+    restoreFieldValues(block, fieldMemory);
   }
 
   private applyTextViewClasses(): void {

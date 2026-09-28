@@ -38,6 +38,12 @@ export type MorphicManagedBlock = Blockly.BlockSvg & {
    * lifecycle and restores them by design.
    */
   __morphicPlaceholderSlots?: Set<string>;
+  /**
+   * Every field value the block has had, by field name. A mode whose template
+   * leaves a field out rebuilds the block without it; the value waits here
+   * until a mode that shows the field again restores it.
+   */
+  __morphicFieldMemory?: Map<string, unknown>;
 };
 
 export interface MorphicApplyBlockViewParams {
