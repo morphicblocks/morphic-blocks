@@ -5,8 +5,13 @@
     "title": "text",
     "description": "text",
     "icon": "image",
+    "concept": "code",
+    "python": "code",
+    "javascript": "code",
+    "go": "code"
+  },
+  "code": {
     "concept": {
-      "type": "code",
       "empty": {
         "Number": {
           "shadow": "math_number",
@@ -26,10 +31,14 @@
             "BOOL": "true"
           }
         }
+      },
+      "highlighting": {
+        "keywords": ["if", "else", "while", "repeat", "for", "Output", "اطبع"],
+        "strings": ["\""],
+        "comment": "//"
       }
     },
     "python": {
-      "type": "code",
       "stringQuote": "\"",
       "empty": {
         "Number": {
@@ -49,11 +58,38 @@
           "fieldValues": {
             "BOOL": "true"
           }
+        }
+      },
+      "highlighting": {
+        "keywords": [
+          "if",
+          "elif",
+          "else",
+          "for",
+          "while",
+          "in",
+          "and",
+          "or",
+          "not",
+          "True",
+          "False",
+          "None",
+          "def",
+          "return",
+          "print",
+          "range"
+        ],
+        "strings": ["\"", "'"],
+        "comment": "#",
+        "colors": {
+          "keyword": "#cc7832",
+          "string": "#6a8759",
+          "number": "#6897bb",
+          "comment": "#808080"
         }
       }
     },
     "javascript": {
-      "type": "code",
       "stringQuote": "\"",
       "empty": {
         "Number": {
@@ -74,10 +110,36 @@
             "BOOL": "true"
           }
         }
+      },
+      "highlighting": {
+        "keywords": [
+          "if",
+          "else",
+          "for",
+          "while",
+          "do",
+          "function",
+          "return",
+          "var",
+          "let",
+          "const",
+          "true",
+          "false",
+          "null",
+          "undefined",
+          "console"
+        ],
+        "strings": ["\"", "'", "`"],
+        "comment": "//",
+        "colors": {
+          "keyword": "#569cd6",
+          "string": "#ce9178",
+          "number": "#b5cea8",
+          "comment": "#6a9955"
+        }
       }
     },
     "go": {
-      "type": "code",
       "stringQuote": "\"",
       "empty": {
         "Number": {
@@ -97,6 +159,32 @@
           "fieldValues": {
             "BOOL": "true"
           }
+        }
+      },
+      "highlighting": {
+        "keywords": [
+          "if",
+          "else",
+          "for",
+          "range",
+          "func",
+          "return",
+          "var",
+          "const",
+          "true",
+          "false",
+          "nil",
+          "package",
+          "import",
+          "fmt"
+        ],
+        "strings": ["\"", "`"],
+        "comment": "//",
+        "colors": {
+          "keyword": "#00acd7",
+          "string": "#dcdcaa",
+          "number": "#b5cea8",
+          "comment": "#6a9955"
         }
       }
     }
@@ -184,94 +272,6 @@
       "codespace": "pseudo"
     }
   ],
-  "highlighting": {
-    "concept": {
-      "keywords": ["if", "else", "while", "repeat", "for", "Output", "اطبع"],
-      "strings": ["\""],
-      "comment": "//"
-    },
-    "python": {
-      "keywords": [
-        "if",
-        "elif",
-        "else",
-        "for",
-        "while",
-        "in",
-        "and",
-        "or",
-        "not",
-        "True",
-        "False",
-        "None",
-        "def",
-        "return",
-        "print",
-        "range"
-      ],
-      "strings": ["\"", "'"],
-      "comment": "#",
-      "colors": {
-        "keyword": "#cc7832",
-        "string": "#6a8759",
-        "number": "#6897bb",
-        "comment": "#808080"
-      }
-    },
-    "javascript": {
-      "keywords": [
-        "if",
-        "else",
-        "for",
-        "while",
-        "do",
-        "function",
-        "return",
-        "var",
-        "let",
-        "const",
-        "true",
-        "false",
-        "null",
-        "undefined",
-        "console"
-      ],
-      "strings": ["\"", "'", "`"],
-      "comment": "//",
-      "colors": {
-        "keyword": "#569cd6",
-        "string": "#ce9178",
-        "number": "#b5cea8",
-        "comment": "#6a9955"
-      }
-    },
-    "go": {
-      "keywords": [
-        "if",
-        "else",
-        "for",
-        "range",
-        "func",
-        "return",
-        "var",
-        "const",
-        "true",
-        "false",
-        "nil",
-        "package",
-        "import",
-        "fmt"
-      ],
-      "strings": ["\"", "`"],
-      "comment": "//",
-      "colors": {
-        "keyword": "#00acd7",
-        "string": "#dcdcaa",
-        "number": "#b5cea8",
-        "comment": "#6a9955"
-      }
-    }
-  },
   "categories": [
     {
       "name": "Output",
