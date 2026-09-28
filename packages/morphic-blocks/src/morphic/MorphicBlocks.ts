@@ -937,6 +937,10 @@ export class MorphicBlocks extends EventTarget {
     if (view?.kind === "preview") {
       return view.editor?.getValue() ?? "";
     }
+    // An added workspace copies the program as its own mode writes it.
+    if (view?.kind === "workspace" && view.readOnly) {
+      return this.generateModeText(view.mode).code;
+    }
     // Workspace: derive text from the codespace if mounted, else generate via JS codegen.
     if (this.codespace) return this.codespace.getValue();
     try {

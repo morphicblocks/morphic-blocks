@@ -105,4 +105,17 @@ describe("added workspaces", () => {
     expect(engine.getViewMode("mirror")).toBeUndefined();
   });
 
+  test("copy the program as their own mode writes it", async () => {
+    const { engine, first } = await setUp();
+    let copied = "";
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText: async (text: string) => void (copied = text) },
+      configurable: true,
+    });
+    Blockly.common.setSelected(first);
+
+    engine.copyActiveBlock("mirror");
+
+    expect(copied).toBe("log hi");
+  });
 });
