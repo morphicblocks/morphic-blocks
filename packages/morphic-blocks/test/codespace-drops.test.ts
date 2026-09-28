@@ -27,7 +27,7 @@ const format: MorphicBlocksFormat = {
 };
 
 type Target =
-  | { kind: "statement"; targetBlockId: string; position: "before" | "after" }
+  | { kind: "statement"; targetBlockId: string; position: "before" | "after"; topIndex?: number }
   | { kind: "value-slot"; parentBlockId: string; inputName: string };
 
 const engines: MorphicBlocks[] = [];
@@ -86,5 +86,62 @@ test("a refused drop leaves the chain as it was", async () => {
 
   expect(select.getNextBlock()).toBe(where);
   expect(draw.getParent()).toBeNull();
+});
+
+test("a block that fits goes into a top level chain, as in the workspace", async () => {
+  const { create, move } = await setUp();
+  const select = create("select");
+  const where = create("where");
+  select.nextConnection!.connect(where.previousConnection!);
+  const print = create("print");
+
+  move(print, { kind: "statement", targetBlockId: select.id, position: "after", topIndex: 0 });
+
+  expect(select.getNextBlock()).toBe(print);
+  expect(print.getNextBlock()).toBe(where);
+});
+
+test("a block that does not fit a top level chain lands as its own stack", async () => {
+  const { create, move } = await setUp();
+  const select = create("select");
+  const draw = create("draw");
+
+  move(draw, { kind: "statement", targetBlockId: select.id, position: "after", topIndex: 1 });
+
+  expect(select.getNextBlock()).toBeNull();
+  expect(draw.getParent()).toBeNull();
+  expect(draw.workspace.getTopBlocks(true)).toContain(draw);
+});
+
+test("a line of a top level chain is a place to connect", async () => {
+  const engine = new MorphicBlocks(format, {});
+  engines.push(engine);
+  const div = () => document.body.appendChild(document.createElement("div"));
+  await engine.mount({ workspaceContainer: div(), codespaceContainer: div() });
+  const workspace = engine.getWorkspace()!;
+  const select = workspace.newBlock("morphic:select") as Blockly.BlockSvg;
+  const where = workspace.newBlock("morphic:where") as Blockly.BlockSvg;
+  select.nextConnection!.connect(where.previousConnection!);
+  // The codespace writes the blocks after a short debounce.
+  await new Promise((resolve) => setTimeout(resolve, 300));
+
+  // jsdom lays nothing out, so the pointer is placed on line 2 (WHERE), upper half.
+  const internals = engine as unknown as {
+    codespace: Record<string, unknown>;
+    computeCodespaceDrop(x: number, y: number): { target: Target } | null;
+  };
+  Object.assign(internals.codespace, {
+    isBelowLastLine: () => false,
+    getLineAtCoords: () => 2,
+    charAtCoords: () => null,
+    isInLowerHalfOfLine: () => false,
+  });
+
+  expect(internals.computeCodespaceDrop(0, 0)?.target).toEqual({
+    kind: "statement",
+    targetBlockId: where.id,
+    position: "before",
+    topIndex: 0,
+  });
 });
 

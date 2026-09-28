@@ -1277,8 +1277,8 @@ export class MorphicBlocks extends EventTarget {
       this.codespace?.hideDropIndicator();
       this.codespace?.hideValueSlotHighlight();
 
-      const drop = this.computeCodespaceDrop(e.clientX, e.clientY);
-      if (!drop) return;
+      const aimed = this.computeCodespaceDrop(e.clientX, e.clientY);
+      if (!aimed) return;
 
       const blockType = e.dataTransfer?.getData(DRAG_DATA_KEY);
       const sourceId = e.dataTransfer?.getData(BLOCK_ID_DRAG_KEY);
@@ -1295,8 +1295,10 @@ export class MorphicBlocks extends EventTarget {
         return;
       }
 
-      // Refused before anything changes, like a drop the workspace refuses.
-      if (!this.codespaceDropAllowed(workspace, block, drop.target)) {
+      // A drop that does not fit changes nothing, like in the workspace; in a
+      // top level chain the block lands as its own stack instead.
+      const drop = this.fitOrLoose(workspace, block, aimed);
+      if (!drop) {
         if (blockType) block.dispose(false);
         return;
       }
@@ -1567,7 +1569,8 @@ export class MorphicBlocks extends EventTarget {
     drop: ReturnType<MorphicBlocks["computeCodespaceDrop"]>,
   ): void {
     if (!drop) return;
-    if (!this.codespaceDropAllowed(workspace, block, drop.target)) return;
+    drop = this.fitOrLoose(workspace, block, drop);
+    if (!drop) return;
     let placed = false;
     Blockly.Events.setGroup(true);
     try {
@@ -1630,7 +1633,13 @@ export class MorphicBlocks extends EventTarget {
       | { kind: "value-slot"; from: number; to: number };
     target:
       | { kind: "top"; index: number }
-      | { kind: "statement"; targetBlockId: string; position: "before" | "after" }
+      | {
+          kind: "statement";
+          targetBlockId: string;
+          position: "before" | "after";
+          /** Set in a top level chain: where the block lands as its own stack if it does not fit. */
+          topIndex?: number;
+        }
       | { kind: "into-slot"; parentBlockId: string; inputName: string }
       | { kind: "value-slot"; parentBlockId: string; inputName: string };
   } | null {
@@ -1754,24 +1763,32 @@ export class MorphicBlocks extends EventTarget {
       }
     }
 
-    // Fall through to top-level placement based on which top block holds the line.
+    // Top level: every block of a top level chain is a place to connect,
+    // like a child in a slot; one that does not fit lands as its own stack.
+    const dragSourceId = getActiveGripDragSourceId();
     for (let i = 0; i < tops.length; i++) {
-      const pos = meta.get(tops[i]!.id);
-      if (!pos) continue;
-      if (line < pos.startLine || line > pos.endLine) continue;
+      for (let member: Blockly.Block | null = tops[i]!; member; member = member.getNextBlock()) {
+        if (member.id === dragSourceId) continue;
+        const pos = meta.get(member.id);
+        if (!pos) continue;
+        if (line < pos.startLine || line > pos.endLine) continue;
 
-      const onLastLine = line === pos.endLine;
-      const lowerHalf = this.codespace.isInLowerHalfOfLine(line, clientY);
-      if (onLastLine && lowerHalf) {
+        const onLastLine = line === pos.endLine;
+        const lowerHalf = this.codespace.isInLowerHalfOfLine(line, clientY);
+        const after = onLastLine && lowerHalf;
+        const isLast = after && !member.getNextBlock();
         return {
-          indicator: { kind: "line", line: pos.endLine, position: "below" },
-          target: { kind: "top", index: i + 1 },
+          indicator: after
+            ? { kind: "line", line: pos.endLine, position: "below" }
+            : { kind: "line", line: pos.startLine, position: "above" },
+          target: {
+            kind: "statement",
+            targetBlockId: member.id,
+            position: after ? "after" : "before",
+            topIndex: isLast ? i + 1 : i,
+          },
         };
       }
-      return {
-        indicator: { kind: "line", line: pos.startLine, position: "above" },
-        target: { kind: "top", index: i },
-      };
     }
 
     const lastPos = meta.get(tops[tops.length - 1]!.id);
@@ -1821,6 +1838,22 @@ export class MorphicBlocks extends EventTarget {
    * Connects to the slot directly when the slot is empty; otherwise walks to
    * the chain's tail and connects there.
    */
+  /**
+   * The drop as it will happen: unchanged when its connections fit, turned into
+   * its own stack when it was aimed into a top level chain, `null` otherwise.
+   */
+  private fitOrLoose(
+    workspace: Blockly.WorkspaceSvg,
+    block: Blockly.BlockSvg,
+    drop: NonNullable<ReturnType<MorphicBlocks["computeCodespaceDrop"]>>,
+  ): NonNullable<ReturnType<MorphicBlocks["computeCodespaceDrop"]>> | null {
+    if (this.codespaceDropAllowed(workspace, block, drop.target)) return drop;
+    if (drop.target.kind === "statement" && drop.target.topIndex !== undefined) {
+      return { ...drop, target: { kind: "top", index: drop.target.topIndex } };
+    }
+    return null;
+  }
+
   /**
    * Whether a codespace drop makes only connections the workspace would make:
    * every connection it plans passes Blockly's connection checker, and no
@@ -2107,6 +2140,9 @@ export class MorphicBlocks extends EventTarget {
 
       if (upstream) {
         upstream.connect(source.previousConnection);
+      } else {
+        // Above the first block of a stack: take the stack's place.
+        source.moveTo(target.getRelativeToSurfaceXY());
       }
       if (source.nextConnection && target.previousConnection) {
         source.nextConnection.connect(target.previousConnection);
