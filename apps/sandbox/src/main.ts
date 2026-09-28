@@ -54,6 +54,7 @@ const previewToolbarEl = document.getElementById("preview-toolbar")!;
 const outputEl = document.getElementById("output")!;
 const preview2Pane = document.getElementById("preview2-pane")!;
 const preview2Container = document.getElementById("preview2-container")!;
+const preview2Toolbar = document.getElementById("preview2-toolbar")!;
 // The second preview the Texts preset adds with engine.addView().
 let addedPreview: MorphicViewHandle | undefined;
 const modeButtonsContainer = document.getElementById("mode-buttons")!;
@@ -211,6 +212,7 @@ function showAddedPreview(show: boolean): void {
       container: preview2Container,
       mode: "syntax-js",
       theme: previewThemeFor(currentTheme),
+      toolbar: { container: preview2Toolbar },
     });
   } else if (!show && addedPreview) {
     addedPreview.dispose();
