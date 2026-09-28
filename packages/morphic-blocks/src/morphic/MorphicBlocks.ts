@@ -1295,6 +1295,12 @@ export class MorphicBlocks extends EventTarget {
         return;
       }
 
+      // Refused before anything changes, like a drop the workspace refuses.
+      if (!this.codespaceDropAllowed(workspace, block, drop.target)) {
+        if (blockType) block.dispose(false);
+        return;
+      }
+
       let placed = false;
       Blockly.Events.setGroup(true);
       try {
@@ -1561,6 +1567,7 @@ export class MorphicBlocks extends EventTarget {
     drop: ReturnType<MorphicBlocks["computeCodespaceDrop"]>,
   ): void {
     if (!drop) return;
+    if (!this.codespaceDropAllowed(workspace, block, drop.target)) return;
     let placed = false;
     Blockly.Events.setGroup(true);
     try {
@@ -1814,6 +1821,44 @@ export class MorphicBlocks extends EventTarget {
    * Connects to the slot directly when the slot is empty; otherwise walks to
    * the chain's tail and connects there.
    */
+  /**
+   * Whether a codespace drop makes only connections the workspace would make:
+   * every connection it plans passes Blockly's connection checker, and no
+   * block is left behind outside the chain. Checked before anything changes,
+   * so a refused drop leaves the program as it was.
+   */
+  private codespaceDropAllowed(
+    workspace: Blockly.WorkspaceSvg,
+    block: Blockly.BlockSvg,
+    target: NonNullable<ReturnType<MorphicBlocks["computeCodespaceDrop"]>>["target"],
+  ): boolean {
+    const fits = (a: Blockly.Connection | null | undefined, b: Blockly.Connection | null | undefined) =>
+      !!a && !!b && workspace.connectionChecker.canConnect(a, b, false);
+    if (target.kind === "top") return true;
+    if (target.kind === "value-slot") {
+      const parent = workspace.getBlockById(target.parentBlockId);
+      return fits(parent?.getInput(target.inputName)?.connection, block.outputConnection);
+    }
+    if (target.kind === "into-slot") {
+      const parent = workspace.getBlockById(target.parentBlockId);
+      const slot = parent?.getInput(target.inputName)?.connection;
+      let tail = slot?.targetBlock();
+      while (tail?.getNextBlock() && tail.getNextBlock() !== block) tail = tail.getNextBlock();
+      return tail && tail !== block ? fits(tail.nextConnection, block.previousConnection) : fits(slot, block.previousConnection);
+    }
+    const anchor = workspace.getBlockById(target.targetBlockId);
+    if (!anchor || anchor === block) return false;
+    if (target.position === "before") {
+      const upstream = anchor.previousConnection?.targetConnection;
+      if (upstream && upstream.getSourceBlock() !== block && !fits(upstream, block.previousConnection)) return false;
+      // Without a connection below, the block would push the rest out of the chain.
+      return fits(block.nextConnection, anchor.previousConnection);
+    }
+    const next = anchor.getNextBlock();
+    if (!fits(anchor.nextConnection, block.previousConnection)) return false;
+    return !next || next === block || fits(block.nextConnection, next.previousConnection);
+  }
+
   private connectIntoSlot(
     source: Blockly.BlockSvg,
     parent: Blockly.BlockSvg,
@@ -2004,15 +2049,8 @@ export class MorphicBlocks extends EventTarget {
       // last top block instead.
       this.placeOrphanBelowTops(existing!);
     }
-    // The codespace is a text surface: types aren't visually distinguished and
-    // the user expects "any value goes anywhere" semantics (a Number into a
-    // String slot still produces valid Python/JS at runtime). Temporarily
-    // clear the slot's check so any output type connects; restore it after
-    // the connect so Blockly's workspace-side connection logic isn't
-    // permanently weakened.
-    const checkRef = conn as unknown as { check_: string[] | null };
-    const savedCheck = checkRef.check_;
-    conn.setCheck(null);
+    // The slot's check applies as in the workspace; `codespaceDropAllowed`
+    // has refused a value it does not accept.
     try {
       conn.connect(source.outputConnection);
       return true;
@@ -2025,8 +2063,6 @@ export class MorphicBlocks extends EventTarget {
         }
       }
       return false;
-    } finally {
-      conn.setCheck(savedCheck);
     }
   }
 
