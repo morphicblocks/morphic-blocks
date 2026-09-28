@@ -1,12 +1,12 @@
 import * as Blockly from "blockly";
 import { toCleanId } from "./block-namespace";
 import { parseTemplate, type MorphicTemplateToken } from "./template";
+import type { MorphicElementTypeWithCode } from "./element-types";
 import { resolveBlockView } from "./view-resolver";
 import type {
   MorphicBlockDefinition,
   MorphicCodeBlockPosition,
   MorphicCodeGenerationResult,
-  MorphicElementTypeConfig,
   MorphicElementTypeEntry,
   MorphicInputSlotDefinition,
   MorphicModeDefinition,
@@ -494,7 +494,7 @@ function resolveStringQuote(
   const checkStr = Array.isArray(slot.check) ? slot.check[0] : slot.check;
   if (checkStr !== "String") return undefined;
   if (!elementEntry || typeof elementEntry === "string") return undefined;
-  return (elementEntry as MorphicElementTypeConfig).stringQuote;
+  return (elementEntry as MorphicElementTypeWithCode).stringQuote;
 }
 
 function fieldEditTarget(

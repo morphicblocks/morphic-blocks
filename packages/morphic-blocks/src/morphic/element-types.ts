@@ -1,4 +1,5 @@
 import type {
+  MorphicCodeElementConfig,
   MorphicElementType,
   MorphicElementTypeConfig,
   MorphicElementTypeEntry,
@@ -12,6 +13,32 @@ export function resolveElementType(
 ): MorphicElementType | undefined {
   if (entry === undefined) return undefined;
   return typeof entry === "string" ? entry : entry.type;
+}
+
+/**
+ * An element type entry with its code element's settings from the `code`
+ * section folded in. Internal: the renderers read the settings from the entry
+ * they already hold for the element.
+ */
+export type MorphicElementTypeWithCode = MorphicElementTypeConfig &
+  Pick<MorphicCodeElementConfig, "empty" | "stringQuote">;
+
+/** `elementTypes` with each code element's `code` settings folded in. */
+export function withCodeSettings(
+  elementTypes: Record<string, MorphicElementTypeEntry>,
+  code: Record<string, MorphicCodeElementConfig> | undefined,
+): Record<string, MorphicElementTypeEntry> {
+  const merged = { ...elementTypes };
+  for (const [name, settings] of Object.entries(code ?? {})) {
+    const entry = elementTypes[name];
+    if (resolveElementType(entry) !== "code") continue;
+    const { empty, stringQuote } = settings;
+    if (empty === undefined && stringQuote === undefined) continue;
+    const base = typeof entry === "string" ? { type: entry } : entry!;
+    const withCode: MorphicElementTypeWithCode = { ...base, empty, stringQuote };
+    merged[name] = withCode;
+  }
+  return merged;
 }
 
 const DEFAULT_IMAGE_SIZE = 16;
@@ -45,8 +72,8 @@ export function resolveImageSize(
 
 /**
  * Resolve the empty-state default config for a value slot. Honours the
- * priority chain: per-slot `default` (highest) → elementType `empty[check]` →
- * elementType `empty.default` (catch-all, also used when the slot has no
+ * priority chain: per-slot `default` (highest) → the code element's
+ * `empty[check]` → its `empty.default` (catch-all, also used when the slot has no
  * `check`). Returns undefined when nothing is configured — callers should treat
  * that as "show the codespace marker / empty workspace socket."
  */
@@ -56,7 +83,7 @@ export function resolveDefaultConfig(
 ): MorphicEmptyDefaultConfig | undefined {
   if (slot?.default) return slot.default;
   if (!elementEntry || typeof elementEntry === "string") return undefined;
-  const empty = (elementEntry as MorphicElementTypeConfig).empty;
+  const empty = (elementEntry as MorphicElementTypeWithCode).empty;
   if (!empty) return undefined;
   const checkStr = slot?.check
     ? Array.isArray(slot.check)

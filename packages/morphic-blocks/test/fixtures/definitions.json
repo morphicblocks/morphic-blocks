@@ -1,7 +1,14 @@
 {
   "elementTypes": {
     "title": "text",
-    "code": { "type": "code", "stringQuote": "\"", "empty": { "Number": { "shadow": "math_number", "fieldValues": { "NUM": "0" } } } }
+    "code": "code"
+  },
+  "code": {
+    "code": {
+      "stringQuote": "\"",
+      "empty": { "Number": { "shadow": "math_number", "fieldValues": { "NUM": "0" } } },
+      "highlighting": { "keywords": ["print"], "strings": ["\"", ["„", "“"]] }
+    }
   },
   "modes": [{ "name": "only", "elements": ["title", "code"] }],
   "presets": [

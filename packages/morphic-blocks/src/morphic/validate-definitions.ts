@@ -6,9 +6,8 @@ import { parseTemplate } from "./template";
 import type {
   MorphicBehaviorMap,
   MorphicBlockDefinition,
-  MorphicElementTypeConfig,
+  MorphicCodeElementConfig,
   MorphicElementTypeEntry,
-  MorphicHighlightDefinition,
   MorphicModeDefinition,
   MorphicPresetDefinition,
   MorphicToolboxCategory,
@@ -17,7 +16,7 @@ import type {
 /**
  * Inputs for a definitions validation pass. Everything is optional except the
  * definitions + elementTypes (available at construction); the cross-reference
- * data (modes / highlighting / categories) arrives from the mount config.
+ * data (modes / code / categories) arrives from the mount config.
  */
 export interface ValidateDefinitionsArgs {
   definitions: ReadonlyMap<string, MorphicBlockDefinition>;
@@ -25,7 +24,7 @@ export interface ValidateDefinitionsArgs {
   behaviors: MorphicBehaviorMap;
   modes?: MorphicModeDefinition[];
   presets?: MorphicPresetDefinition[];
-  highlighting?: Record<string, MorphicHighlightDefinition>;
+  code?: Record<string, MorphicCodeElementConfig>;
   categories?: MorphicToolboxCategory[];
 }
 
@@ -48,7 +47,7 @@ export interface DefinitionValidationResult {
 export function validateDefinitions(
   args: ValidateDefinitionsArgs,
 ): DefinitionValidationResult {
-  const { definitions, elementTypes, behaviors, modes, presets, highlighting, categories } = args;
+  const { definitions, elementTypes, behaviors, modes, presets, code, categories } = args;
   const errors: string[] = [];
   const warnings: string[] = [];
 
@@ -257,20 +256,17 @@ export function validateDefinitions(
     }
   }
 
-  // (7) elementType-level empty defaults must resolve (global, shared across blocks).
-  for (const [name, entry] of Object.entries(elementTypes)) {
-    if (typeof entry === "string") continue;
-    const empty = (entry as MorphicElementTypeConfig).empty;
-    if (!empty) continue;
-    for (const [check, cfg] of Object.entries(empty)) {
-      checkRef(cfg.shadow, `elementTypes.${name}.empty.${check}.shadow`);
-      checkRef(cfg.placeholder, `elementTypes.${name}.empty.${check}.placeholder`);
+  // (7) The code section's empty defaults must resolve (global, shared across blocks).
+  for (const [name, settings] of Object.entries(code ?? {})) {
+    for (const [check, cfg] of Object.entries(settings.empty ?? {})) {
+      checkRef(cfg.shadow, `code.${name}.empty.${check}.shadow`);
+      checkRef(cfg.placeholder, `code.${name}.empty.${check}.placeholder`);
     }
   }
 
-  // (7b) Config fields on the wrong element type are silently ignored — warn so
-  // a misplacement isn't mistaken for "the setting doesn't work". `empty` /
-  // `stringQuote` apply to code elements; `size` applies to image elements.
+  // (7b) Config fields in the wrong place are silently ignored. `size` applies
+  // to image elements. `empty` and `stringQuote` moved from elementTypes into
+  // the code section in 0.3.0, so an old file fails with directions.
   for (const [name, entry] of Object.entries(elementTypes)) {
     if (typeof entry === "string") continue;
     const type = entry.type;
@@ -279,15 +275,12 @@ export function validateDefinitions(
         `elementTypes."${name}": "size" applies only to image elements — ignored for a ${type} element.`,
       );
     }
-    if (entry.stringQuote !== undefined && type !== "code") {
-      warnings.push(
-        `elementTypes."${name}": "stringQuote" applies only to code elements — ignored for a ${type} element.`,
-      );
-    }
-    if (entry.empty !== undefined && type !== "code") {
-      warnings.push(
-        `elementTypes."${name}": "empty" applies only to code elements — ignored for a ${type} element.`,
-      );
+    for (const field of ["empty", "stringQuote"]) {
+      if (field in entry) {
+        errors.push(
+          `elementTypes."${name}": "${field}" moved into the "code" section: "code": { "${name}": { "${field}": … } }.`,
+        );
+      }
     }
   }
 
@@ -302,11 +295,11 @@ export function validateDefinitions(
     }
   }
 
-  // (9) Highlighting keys must be code elements or the rules never apply.
-  for (const key of Object.keys(highlighting ?? {})) {
+  // (9) Code section keys must be code elements or their settings never apply.
+  for (const key of Object.keys(code ?? {})) {
     if (!codeElementNames.has(key)) {
       warnings.push(
-        `highlighting["${key}"] is not a code element — its rules will never apply.`,
+        `code["${key}"] is not a code element — its settings will never apply.`,
       );
     }
   }

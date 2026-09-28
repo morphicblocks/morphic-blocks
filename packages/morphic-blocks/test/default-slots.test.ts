@@ -11,8 +11,9 @@ import type { MorphicBlocksFormat } from "../src/morphic/types";
  */
 
 const format: MorphicBlocksFormat = {
-  elementTypes: {
-    code: { type: "code", empty: { Number: { shadow: "math_number", fieldValues: { NUM: "1" } } } },
+  elementTypes: { code: "code" },
+  code: {
+    code: { empty: { Number: { shadow: "math_number", fieldValues: { NUM: "1" } } } },
   },
   modes: [
     { name: "one", elements: ["code"] },

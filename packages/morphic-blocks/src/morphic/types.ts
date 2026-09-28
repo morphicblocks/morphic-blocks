@@ -12,7 +12,7 @@ export type MorphicElementType = "text" | "code" | "image";
 
 /**
  * Configuration for a value slot's empty-state default. Keyed by slot
- * `check` in `elementTypes[name].empty[check]`, or set per-slot via
+ * `check` in `code[element].empty[check]`, or set per-slot via
  * `inputSlot.default`. Both `shadow` and `placeholder` are optional; when
  * both are configured, the placeholder is created first and Blockly's
  * native shadow restoration brings the shadow up if the user removes the
@@ -45,11 +45,31 @@ export interface MorphicEmptyDefaultConfig {
 
 /**
  * Optional per-element configuration. Used in place of a bare type string in
- * `elementTypes` when the developer needs to declare extras (e.g. shadows /
- * placeholders for empty value slots).
+ * `elementTypes` when an image element needs its display `size`. How a code
+ * element's language is written lives in the `code` section instead.
  */
 export interface MorphicElementTypeConfig {
   type: MorphicElementType;
+  /**
+   * Display size for `type: "image"` elements. Used when the element value is
+   * a file path (e.g. `"assets/icon.svg"`) and the framework auto-wraps it as
+   * an `<img>` tag. Accepted formats:
+   *   - number: square, e.g. `32` → 32×32
+   *   - `"32"`: square
+   *   - `"32x32"`: explicit width × height
+   * Defaults to 16×16 if omitted. Ignored for non-image element types and for
+   * values that are already `<img>` HTML.
+   */
+  size?: number | string;
+}
+
+/** Either a bare type or a config object with extras. */
+/**
+ * How one code element's language is written, in the `code` section keyed by
+ * element name: the literals the framework writes into empty slots and how
+ * the codespace and preview colour it.
+ */
+export interface MorphicCodeElementConfig {
   /**
    * Per-slot-check defaults for empty value inputs. Keys are the slot's
    * `check` string (e.g. `"Number"`, `"String"`, or any developer-defined
@@ -69,20 +89,10 @@ export interface MorphicElementTypeConfig {
    * Language-specific (`"\""` for most languages); omit to disable quoting.
    */
   stringQuote?: string;
-  /**
-   * Display size for `type: "image"` elements. Used when the element value is
-   * a file path (e.g. `"assets/icon.svg"`) and the framework auto-wraps it as
-   * an `<img>` tag. Accepted formats:
-   *   - number: square, e.g. `32` → 32×32
-   *   - `"32"`: square
-   *   - `"32x32"`: explicit width × height
-   * Defaults to 16×16 if omitted. Ignored for non-image element types and for
-   * values that are already `<img>` HTML.
-   */
-  size?: number | string;
+  /** Token highlighting for the codespace and preview showing this element. */
+  highlighting?: MorphicHighlightDefinition;
 }
 
-/** Either a bare type or a config object with extras. */
 export type MorphicElementTypeEntry = MorphicElementType | MorphicElementTypeConfig;
 export type MorphicConnectionSpec = boolean | string | string[];
 
@@ -305,7 +315,7 @@ export interface MorphicBlocksFormat {
   /**
    * Global element type registry.
    * Maps each element name to either a bare type ("text" | "code" | "image")
-   * or a config object (`{ type, empty? }`). Declared once here; per-block
+   * or a config object (`{ type, size? }`). Declared once here; per-block
    * elements remain plain name→content strings.
    */
   elementTypes?: Record<string, MorphicElementTypeEntry>;
@@ -314,10 +324,10 @@ export interface MorphicBlocksFormat {
   /** Named per-view mode configurations. Used as the mount default for `presets`. */
   presets?: MorphicPresetDefinition[];
   /**
-   * Per-element highlight rules, keyed by element name. The codespace and
-   * preview modes' source elements look up entries here for their editors.
+   * How each code element's language is written, keyed by element name:
+   * string quotes, empty slot defaults and highlighting.
    */
-  highlighting?: Record<string, MorphicHighlightDefinition>;
+  code?: Record<string, MorphicCodeElementConfig>;
   /** Optional category metadata. Blocks reference categories by name. */
   categories?: MorphicToolboxCategory[];
   /** Flat array of block definitions. */
@@ -527,11 +537,10 @@ export interface MorphicMountConfig {
   blockly?: Blockly.BlocklyOptions;
   javascript?: MorphicJavaScriptConfig;
   /**
-   * Per-element highlight rules, keyed by element name. The codespace and
-   * preview modes' source elements are used to look up entries here for
-   * their editors. Optional — when absent, editors render plain text.
+   * How each code element's language is written, keyed by element name.
+   * Defaults to the definitions' `code` section.
    */
-  highlighting?: Record<string, MorphicHighlightDefinition>;
+  code?: Record<string, MorphicCodeElementConfig>;
 }
 
 /**

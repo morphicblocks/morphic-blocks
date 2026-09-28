@@ -25,10 +25,10 @@
       "type": "array",
       "items": { "$ref": "#/$defs/preset" }
     },
-    "highlighting": {
-      "description": "Token-level highlight rules, keyed by code-element name.",
+    "code": {
+      "description": "How each code element's language is written, keyed by code element name.",
       "type": "object",
-      "additionalProperties": { "$ref": "#/$defs/highlight" }
+      "additionalProperties": { "$ref": "#/$defs/codeElement" }
     },
     "categories": {
       "type": "array",
@@ -52,15 +52,6 @@
           "required": ["type"],
           "properties": {
             "type": { "$ref": "#/$defs/elementType" },
-            "empty": {
-              "description": "Per-check empty-slot defaults, keyed by the slot's check (e.g. Number, String, Boolean).",
-              "type": "object",
-              "additionalProperties": { "$ref": "#/$defs/emptyDefault" }
-            },
-            "stringQuote": {
-              "description": "Delimiter wrapped around framework-supplied literals in String slots (code elements).",
-              "type": "string"
-            },
             "size": {
               "description": "Display size for image elements: a number, \"32\", or \"32x32\".",
               "type": ["number", "string"]
@@ -69,6 +60,22 @@
           "additionalProperties": false
         }
       ]
+    },
+    "codeElement": {
+      "type": "object",
+      "properties": {
+        "stringQuote": {
+          "description": "Delimiter wrapped around framework-supplied literals in String slots.",
+          "type": "string"
+        },
+        "empty": {
+          "description": "Per-check empty-slot defaults, keyed by the slot's check (e.g. Number, String, Boolean).",
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/emptyDefault" }
+        },
+        "highlighting": { "$ref": "#/$defs/highlight" }
+      },
+      "additionalProperties": false
     },
     "emptyDefault": {
       "type": "object",
@@ -128,7 +135,16 @@
       "type": "object",
       "properties": {
         "keywords": { "type": "array", "items": { "type": "string" } },
-        "strings": { "type": "array", "items": { "type": "string" } },
+        "strings": {
+          "description": "A mark that opens and closes, or an [open, close] pair.",
+          "type": "array",
+          "items": {
+            "oneOf": [
+              { "type": "string" },
+              { "type": "array", "items": { "type": "string" }, "minItems": 2, "maxItems": 2 }
+            ]
+          }
+        },
         "comment": { "type": "string" },
         "numbers": { "type": "boolean" },
         "colors": {

@@ -34,6 +34,7 @@ export type {
   MorphicBlockShape,
   MorphicBlocksFormat,
   MorphicBlocksFormatJson,
+  MorphicCodeElementConfig,
   MorphicCodeBehavior,
   MorphicCodeBlockPosition,
   MorphicCodeEditorOptions,

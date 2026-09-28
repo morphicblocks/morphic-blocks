@@ -18,6 +18,7 @@ import { MorphicSelectionSync } from "./selection-sync";
 import { applyBlockShapes, createDefinitionMap, expandDefaultElements } from "./definitions";
 import { applyFont, measuredFont, readCssFont, remeasureBlocks, type MorphicBlockFont } from "./block-font";
 import { validateDefinitions } from "./validate-definitions";
+import { withCodeSettings } from "./element-types";
 import { MorphicStyleManager, type MorphicModeStyle } from "./styles";
 import { toModeClassToken } from "./template";
 import { DRAG_DATA_KEY, MorphicToolboxCanvas } from "./toolbox-canvas";
@@ -34,6 +35,7 @@ import type {
   MorphicCodeEditorOptions,
   MorphicCodeEditorTheme,
   MorphicCodeGenerationResult,
+  MorphicCodeElementConfig,
   MorphicElementTypeEntry,
   MorphicHighlightDefinition,
   MorphicModeDefinition,
@@ -172,7 +174,9 @@ function dropShadowsWhenMarker(block: Blockly.BlockSvg): void {
 export class MorphicBlocks extends EventTarget {
   private readonly definitions: Map<string, MorphicBlockDefinition>;
   private readonly behaviors: MorphicBehaviorMap;
-  private readonly elementTypes: Record<string, MorphicElementTypeEntry>;
+  /** Element types with the mounted `code` settings folded in (see withCodeSettings). */
+  private elementTypes: Record<string, MorphicElementTypeEntry>;
+  private readonly formatElementTypes: Record<string, MorphicElementTypeEntry>;
   private readonly styles = new MorphicStyleManager();
   private readonly registeredBlockTypes = new Set<string>();
   private readonly toolbars = new Set<MorphicToolbarHandle>();
@@ -217,7 +221,9 @@ export class MorphicBlocks extends EventTarget {
    * runtime `mount()` call only carries DOM / runtime concerns. */
   private readonly formatModes?: MorphicModeDefinition[];
   private readonly formatPresets?: MorphicPresetDefinition[];
-  private readonly formatHighlighting?: Record<string, MorphicHighlightDefinition>;
+  private readonly formatCode?: Record<string, MorphicCodeElementConfig>;
+  /** The definitions still use the old top level `highlighting` map. */
+  private readonly formatHasHighlighting: boolean;
   private readonly formatCategories?: MorphicToolboxCategory[];
 
   /**
@@ -237,10 +243,12 @@ export class MorphicBlocks extends EventTarget {
       applyBlockShapes(expandDefaultElements(format.blocks, format.elementTypes ?? {})),
     );
     this.behaviors = behaviors;
-    this.elementTypes = format.elementTypes ?? {};
+    this.formatElementTypes = format.elementTypes ?? {};
+    this.elementTypes = withCodeSettings(this.formatElementTypes, format.code);
     this.formatModes = format.modes;
     this.formatPresets = format.presets;
-    this.formatHighlighting = format.highlighting;
+    this.formatCode = format.code;
+    this.formatHasHighlighting = "highlighting" in format;
     this.formatCategories = format.categories;
   }
 
@@ -260,7 +268,7 @@ export class MorphicBlocks extends EventTarget {
       // A copy, so changing a mode's elements at runtime leaves the host's own list alone.
       modes: (inputConfig.modes ?? this.formatModes)?.slice(),
       presets: inputConfig.presets ?? this.formatPresets,
-      highlighting: inputConfig.highlighting ?? this.formatHighlighting,
+      code: inputConfig.code ?? this.formatCode,
       toolbox:
         inputConfig.toolbox || this.formatCategories
           ? {
@@ -281,6 +289,9 @@ export class MorphicBlocks extends EventTarget {
         .filter(([mode]) => !folderStyles.some((f) => f.mode === mode))
         .map(([mode, source]) => modeStyleFrom(mode, source)),
     ];
+
+    // The mounted code settings reach the renderers through the element types.
+    this.elementTypes = withCodeSettings(this.formatElementTypes, config.code);
 
     // Definitions: static cross-field validation (silent-failure guards).
     this.validateDefinitions(config);
@@ -485,13 +496,19 @@ export class MorphicBlocks extends EventTarget {
   private validateDefinitions(config: MorphicMountConfig): void {
     const { errors, warnings } = validateDefinitions({
       definitions: this.definitions,
-      elementTypes: this.elementTypes,
+      elementTypes: this.formatElementTypes,
       behaviors: this.behaviors,
       modes: config.modes,
       presets: config.presets,
-      highlighting: config.highlighting,
+      code: config.code,
       categories: config.toolbox?.categories,
     });
+    // Moved in 0.3.0: named here so an upgrade fails with directions.
+    if (this.formatHasHighlighting || "highlighting" in config) {
+      errors.push(
+        'The top level "highlighting" map moved into the "code" section: "code": { "<element>": { "highlighting": { … } } }.',
+      );
+    }
     if (warnings.length > 0) {
       console.warn(
         `[MorphicBlocks] Definition warnings:\n- ${warnings.join("\n- ")}`,
@@ -1104,7 +1121,7 @@ export class MorphicBlocks extends EventTarget {
         ? this.getActivePrimarySourceElement()
         : this.getActivePreviewElement();
     if (!elementName) return undefined;
-    return this.mountConfig.highlighting?.[elementName];
+    return this.mountConfig.code?.[elementName]?.highlighting;
   }
 
   public generateJavaScript(): string {

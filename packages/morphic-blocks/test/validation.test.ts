@@ -47,3 +47,16 @@ describe("validation of values JSON cannot type check", () => {
     );
   });
 });
+
+describe("settings moved into the code section in 0.3.0", () => {
+  test("string quotes and empty defaults in elementTypes are reported with directions", () => {
+    const old = { elementTypes: { code: { type: "code", stringQuote: '"', empty: {} } }, blocks: [block] };
+    expect(mountWith(old)).toThrow(/elementTypes."code": "stringQuote" moved into the "code" section/);
+    expect(mountWith(old)).toThrow(/elementTypes."code": "empty" moved into the "code" section/);
+  });
+
+  test("the top level highlighting map is reported with directions", () => {
+    const old = { elementTypes: { code: "code" }, highlighting: { code: { keywords: ["say"] } }, blocks: [block] };
+    expect(mountWith(old)).toThrow(/"highlighting" map moved into the "code" section/);
+  });
+});

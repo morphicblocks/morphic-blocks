@@ -11,9 +11,9 @@ const format: MorphicBlocksFormat = {
     { name: "js", elements: ["javascript"] },
   ],
   blocks: [{ identifier: "say", elements: { python: "print()", javascript: "log()" }, shape: "statement" }],
-  highlighting: {
-    python: { keywords: ["print"], colors: { keyword: "#123456" } },
-    javascript: { keywords: ["log"] },
+  code: {
+    python: { highlighting: { keywords: ["print"], colors: { keyword: "#123456" } } },
+    javascript: { highlighting: { keywords: ["log"] } },
   },
 };
 
@@ -57,7 +57,7 @@ describe("highlighted words and strings", () => {
         elementTypes: { ar: "code" },
         modes: [{ name: "ar", elements: ["ar"] }],
         blocks: [{ identifier: "say", elements: { ar: "اطبع „مرحبا“ إذا" }, shape: "statement" }],
-        highlighting: { ar: { keywords: ["اطبع"], strings: [["„", "“"]] } },
+        code: { ar: { highlighting: { keywords: ["اطبع"], strings: [["„", "“"]] } } },
       },
       { say: () => "" },
     );
