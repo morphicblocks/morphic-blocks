@@ -2220,9 +2220,15 @@ export class MorphicBlocks extends EventTarget {
       if (eventsDisabled) Blockly.Events.enable();
     }
     Blockly.svgResize(workspace);
+    this.refreshTextViews();
+  }
+
+  /** Write every text view again, added views included. */
+  private refreshTextViews(): void {
     this.codespace?.refresh();
     this.previewEditor?.refresh();
     this.codeEditor?.refresh();
+    for (const view of this.views) view.editor.refresh();
   }
 
   /**

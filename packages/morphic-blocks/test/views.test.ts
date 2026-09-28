@@ -179,3 +179,35 @@ describe("toolbars on added views", () => {
   });
 });
 
+test("added previews follow blocks reordered with events off", async () => {
+  const engine = new MorphicBlocks(
+    {
+      ...format,
+      blocks: [
+        ...format.blocks,
+        { identifier: "wait", elements: { title: "Wait", python: "wait()", javascript: "wait();" }, shape: "statement" },
+      ],
+    },
+    { say: () => "", wait: () => "" },
+  );
+  engines.push(engine);
+  await engine.mount({ workspaceContainer: div() });
+  const workspace = engine.getWorkspace()!;
+  const say = workspace.newBlock("morphic:say");
+  const wait = workspace.newBlock("morphic:wait");
+  say.moveBy(0, 0);
+  wait.moveBy(0, 100);
+  const container = div();
+  await engine.addView({ kind: "preview", container, mode: "js" }).ready;
+  await settle();
+  expect(text(container)).toBe("console.log();wait();");
+
+  // What a reorder of top level lines in the codespace does.
+  (engine as unknown as { applyTopBlockOrder(ws: unknown, ids: string[]): void }).applyTopBlockOrder(workspace, [
+    wait.id,
+    say.id,
+  ]);
+
+  expect(text(container)).toBe("wait();console.log();");
+});
+
