@@ -100,7 +100,7 @@ morphic-blocks/
 │           ├── template-codegen.ts    # Text rendering from templates (codespace/preview)
 │           ├── code-editor.ts         # CodeMirror wrapper (codespace/preview/code editor)
 │           ├── codegen.ts             # JavaScript code generation (behaviors)
-│           ├── element-types.ts       # elementTypes helpers (type, size, empty defaults)
+│           ├── element-types.ts       # elementTypes helpers (type, size, code settings, empty defaults)
 │           ├── validate-definitions.ts# Mount-time definitions validation
 │           ├── syntax-highlight.ts    # Definition-driven highlighting (CodeMirror)
 │           ├── toolbox-canvas.ts      # Custom HTML toolbox (drag source)
@@ -124,13 +124,16 @@ shipped schema for editor autocomplete and inline validation.
     "title":      "text",
     "description":"text",
     "concept":    "code",
+    "python":     "code"
+  },
+  "code": {
     "python": {
-      "type": "code",
       "stringQuote": "\"",
       "empty": {
         "Number": { "shadow": "math_number", "fieldValues": { "NUM": "42" } },
         "String": { "shadow": "text", "fieldValues": { "TEXT": "world" } }
-      }
+      },
+      "highlighting": { "keywords": ["print", "if", "for"], "strings": ["\"", "'"], "comment": "#" }
     }
   },
   "modes": [
@@ -146,9 +149,6 @@ shipped schema for editor autocomplete and inline validation.
   "categories": [
     { "name": "Output", "color": "#5C81A6" }
   ],
-  "highlighting": {
-    "python": { "keywords": ["print", "if", "for"], "strings": ["\"", "'"], "comment": "#" }
-  },
   "blocks": [
     {
       "identifier": "text_print",
@@ -181,11 +181,11 @@ shipped schema for editor autocomplete and inline validation.
 ```
 
 - `$schema` / `version` — optional. `$schema` (relative path or URL) gives editors autocomplete + validation; `version` marks the format revision. Both are ignored at runtime.
-- `elementTypes` — global registry mapping element names to a bare type string (`"text" | "code" | "image"`) or a config object `{ type, empty?, stringQuote?, size? }`. `empty` gives per-language defaults for empty value slots, keyed by the slot's `check`; each entry is `{ shadow?, placeholder?, fieldValues? }` (a `shadow` is a ghosted, auto-restored block; a `placeholder` is a real, deletable one — placeholder wins when both are set). `stringQuote` wraps framework-supplied literals in `String` slots (`print("hello")` not `print(hello)`); `size` sets the display size for path-valued `image` elements.
+- `elementTypes` — global registry mapping element names to a bare type string (`"text" | "code" | "image"`) or a config object `{ type, size? }`; `size` sets the display size for path-valued `image` elements.
+- `code` — how each code element's language is written, keyed by element name: `empty` gives defaults for empty value slots, keyed by the slot's `check`, each `{ shadow?, placeholder?, fieldValues? }` (a `shadow` is a ghosted, auto-restored block; a `placeholder` is a real, deletable one — placeholder wins when both are set); `stringQuote` wraps framework-supplied literals in `String` slots (`print("hello")` not `print(hello)`); `highlighting` colors the codespace/preview showing that element.
 - `modes` — mode definitions (`{ name, elements }`); `elements` render on the toolbox tile in list order.
 - `presets` — named per-view mode configurations (toolbox / workspace / codespace / preview).
 - `categories` — optional toolbox groupings (`{ name, color }`).
-- `highlighting` — optional per-element syntax-highlighting rules for the codespace/preview.
 - `blocks` — flat array of block definitions.
 
 ### Block fields
@@ -272,7 +272,7 @@ generated JavaScript view, hidden until `engine.showCodeEditor()`. The separate
 `mountToolbox()`, `mountCodespace()`, `mountPreview()`, `mountCodeEditor()` and
 `mountToolbar()` methods remain for setting a view up later.
 
-Modes, presets, categories, and highlighting all come from the definitions
+Modes, presets, categories, and code settings all come from the definitions
 passed to the constructor — `mount()` only takes runtime wiring.
 
 Switch presets or modes at runtime:
@@ -328,7 +328,7 @@ fail silently at render time — throwing on structural breakage (mismatched `%N
 sets across a block's code elements, a `%FIELDNAME` with no field and no
 behavior, an unresolvable `shadow` / `placeholder`) and warning on degraded
 config (a `%N` with no `inputSlots` entry, an undeclared element name, a
-`highlighting` key that isn't a code element, a config field on the wrong
+`code` key that isn't a code element, a config field on the wrong
 element type, a name reused across element / mode / preset). Call the exported
 `validateDefinitions(...)` to check a file before mounting.
 
@@ -374,7 +374,7 @@ Block colours can be driven from CSS via a custom property:
 - ✅ Declarable inline fields (`fields` map: dropdown / text / number / checkbox) — field-only blocks need no behavior for display
 - ✅ Inline field edits for atomic placeholders (text / number / dropdown), shadow auto-materialises on first edit
 - ✅ Per-element empty-slot defaults; empty slots render a `[TYPE]` marker when no default is set
-- ✅ Definition-driven syntax highlighting — per-element `highlighting` rules, runtime-swapped on `setModes()`
+- ✅ Definition-driven syntax highlighting — per-element `code.<element>.highlighting` rules, runtime-swapped on `setModes()`
 - ✅ Multi-editor selection sync — block ↔ code editor ↔ codespace ↔ preview
 - ✅ One-file constructor + mount-time validation + shipped JSON Schema (`$schema` / `version`)
 - ✅ Per-mode field rendering — a dropdown option's `display` map (keyed by element name) makes the shown text mode-aware (`True`/`true`, `and`/`&&`) while the stored value drives execution and codegen
