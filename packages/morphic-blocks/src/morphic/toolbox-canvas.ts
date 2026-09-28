@@ -357,6 +357,8 @@ export class MorphicToolboxCanvas {
         this.elementTypes,
         this.modes,
         elementName,
+        // A tile shows the block, not runnable code, so an empty body stays empty.
+        { emptyStatements: false },
       );
       block.dispose(false);
       return code;

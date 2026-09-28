@@ -26,6 +26,8 @@ interface RenderContext {
    * a specific element regardless of the active mode's primary source.
    */
   elementOverride?: string;
+  /** Write each element's `emptyStatement` into empty statement slots. */
+  emptyStatements: boolean;
 }
 
 interface RenderState {
@@ -74,9 +76,18 @@ export function generateTextFromWorkspace(
   elementTypes: Record<string, MorphicElementTypeEntry>,
   modeDefs: MorphicModeDefinition[],
   elementOverride?: string,
+  /** `emptyStatements: false` leaves empty statement slots empty (toolbox tiles). */
+  options: { emptyStatements?: boolean } = {},
 ): MorphicCodeGenerationResult {
   const state: RenderState = { output: "", metadata: new Map(), placeholders: [], indent: "" };
-  const ctx: RenderContext = { mode, definitions, elementTypes, modeDefs, elementOverride };
+  const ctx: RenderContext = {
+    mode,
+    definitions,
+    elementTypes,
+    modeDefs,
+    elementOverride,
+    emptyStatements: options.emptyStatements !== false,
+  };
 
   let first = true;
   for (const block of workspace.getTopBlocks(true)) {
@@ -275,7 +286,9 @@ function renderBlock(
         // An empty body is invalid in some languages (Python needs `pass`), so
         // the element's placeholder is written, shown as a default.
         const emptyStatement =
-          typeof elementEntry === "object" ? (elementEntry as MorphicElementTypeWithCode).emptyStatement : undefined;
+          ctx.emptyStatements && typeof elementEntry === "object"
+            ? (elementEntry as MorphicElementTypeWithCode).emptyStatement
+            : undefined;
         if (emptyStatement) {
           const placeholderStart = state.output.length;
           appendText(state, emptyStatement);

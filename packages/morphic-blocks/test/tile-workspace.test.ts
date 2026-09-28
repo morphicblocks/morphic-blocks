@@ -122,11 +122,18 @@ describe("text rendered tiles", () => {
         elementTypes: { python: "code" },
         modes: [{ name: "py", elements: ["python"] }],
         presets: [{ name: "text", toolbox: { mode: "py", render: { python: "text" } }, workspace: "py" }],
+        code: { python: { emptyStatement: "pass" } },
         blocks: [
           {
             identifier: "loop",
             elements: { python: "for i in range(%1):" },
             inputSlots: { "1": { kind: "value", name: "TIMES", default: { shadow: "number", fieldValues: { NUM: "3" } } } },
+            shape: "statement",
+          },
+          {
+            identifier: "loop2",
+            elements: { python: "while True:\n    %1" },
+            inputSlots: { "1": { kind: "statement", name: "DO" } },
             shape: "statement",
           },
           {
@@ -153,6 +160,8 @@ describe("text rendered tiles", () => {
 
     const text = (type: string) => toolbox.querySelector(`[data-block-type='${type}'] .morphic-element-python`)?.textContent;
     expect(text("loop")).toBe("for i in range(3):");
+    // The codespace writes `pass` into the empty body; a tile does not.
+    expect(text("loop2")).toBe("while True:\n    ");
     expect(text("flag")).toBe("True");
     expect(text("number")).toBe("0");
   });
