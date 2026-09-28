@@ -270,6 +270,19 @@ export const toolbarItems = {
     };
   },
 
+  /** Items for a view that shows the program but cannot change it. */
+  readOnlyDefaults(): MorphicToolbarItem[] {
+    return [
+      toolbarItems.modeLabel(),
+      toolbarItems.spacer(),
+      toolbarItems.copy(),
+      toolbarItems.zoomIn(),
+      toolbarItems.zoomOut(),
+      toolbarItems.zoomFit(),
+      toolbarItems.readOnlyBadge(),
+    ];
+  },
+
   defaultsFor(pane: MorphicToolbarPane): MorphicToolbarItem[] {
     switch (pane) {
       case "workspace":

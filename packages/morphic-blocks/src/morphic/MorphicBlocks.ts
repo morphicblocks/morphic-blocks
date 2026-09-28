@@ -25,7 +25,7 @@ import { toModeClassToken } from "./template";
 import { DRAG_DATA_KEY, MorphicToolboxCanvas } from "./toolbox-canvas";
 import { buildToolboxDefinition } from "./toolbox";
 import { resolveBlockView, resolveModeSourceElement } from "./view-resolver";
-import { renderToolbar, type MorphicToolbarHandle } from "./toolbar";
+import { renderToolbar, toolbarItems, type MorphicToolbarHandle } from "./toolbar";
 import type {
   MorphicBehaviorContext,
   MorphicBehaviorMap,
@@ -136,7 +136,12 @@ interface AddedView {
   name: string;
   container: HTMLElement;
   mode: MorphicModeName;
-  editor: MorphicCodeEditor;
+  /** A preview's text editor. */
+  editor?: MorphicCodeEditor;
+  /** A workspace view's own, read only Blockly workspace. */
+  workspace?: Blockly.WorkspaceSvg;
+  /** Removes what the view set up besides its editor or workspace. */
+  teardown?: () => void;
 }
 
 /**
@@ -151,6 +156,10 @@ interface ResolvedView {
   mode: MorphicModeName | undefined;
   /** The text editor of a codespace or preview. */
   editor?: MorphicCodeEditor;
+  /** The Blockly workspace of a workspace view. */
+  workspace?: Blockly.WorkspaceSvg;
+  /** Shows the program but cannot change it. */
+  readOnly: boolean;
 }
 
 /** Where Blockly's media is loaded from unless the host sets `blockly.media`. */
@@ -222,6 +231,8 @@ export class MorphicBlocks extends EventTarget {
   private previewEditor?: MorphicCodeEditor;
   /** Views added with `addView()`, beside the ones `mount()` sets up. */
   private readonly views = new Set<AddedView>();
+  /** The mode of each added workspace, read when its blocks are built. */
+  private readonly viewWorkspaceModes = new WeakMap<Blockly.Workspace, MorphicModeName>();
   /** Numbers added views that are not given a name. */
   private viewCount = 0;
   private selectionSync?: MorphicSelectionSync;
@@ -637,7 +648,7 @@ export class MorphicBlocks extends EventTarget {
     this.previewEditor = undefined;
     this.previewHost = undefined;
 
-    for (const view of this.views) view.editor.dispose();
+    for (const view of this.views) this.disposeView(view);
     this.views.clear();
 
     this.toolboxCanvas?.dispose();
@@ -734,6 +745,11 @@ export class MorphicBlocks extends EventTarget {
     if (!this.workspace || !this.mountConfig) return;
     this.syncWorkspaceFont();
     remeasureBlocks(this.workspace);
+    for (const view of this.views) {
+      if (!view.workspace) continue;
+      this.syncFontOf(view.workspace, view.container);
+      remeasureBlocks(view.workspace);
+    }
     this.toolboxCanvas?.rerender(this.mountConfig.toolboxMode, this.mountConfig.toolboxRender);
   }
 
@@ -820,8 +836,12 @@ export class MorphicBlocks extends EventTarget {
     this.previewEditor?.refresh();
     for (const view of this.views) {
       if (view.mode !== mode) continue;
-      view.editor.setHighlightRules(this.highlightRulesFor(view.mode));
-      view.editor.refresh();
+      if (view.workspace) {
+        this.styleWorkspaceView(view);
+        this.renderWorkspaceView(view);
+      }
+      view.editor?.setHighlightRules(this.highlightRulesFor(view.mode));
+      view.editor?.refresh();
     }
   }
 
@@ -869,11 +889,14 @@ export class MorphicBlocks extends EventTarget {
     const viewName = config.view ?? config.pane;
     if (!viewName) throw new Error("mountToolbar: set `view` (or `pane`).");
     const builtIn = ["workspace", "codespace", "preview"] as const;
-    const kind =
-      this.resolveView(viewName)?.kind ?? builtIn.find((name) => name === viewName);
+    const resolved = this.resolveView(viewName);
+    const kind = resolved?.kind ?? builtIn.find((name) => name === viewName);
     if (!kind) throw new Error(`mountToolbar: no view named "${viewName}".`);
     void this.styles.ensureToolbarStyles();
-    const handle = renderToolbar(container, config, {
+    // An added workspace shows the program but cannot change it.
+    const items =
+      config.items ?? (kind === "workspace" && resolved?.readOnly ? toolbarItems.readOnlyDefaults() : undefined);
+    const handle = renderToolbar(container, { ...config, items }, {
       engine: this,
       pane: kind,
       view: viewName,
@@ -1047,14 +1070,15 @@ export class MorphicBlocks extends EventTarget {
    * `zoomToFit()`. For a text view it scales the editor's font-size.
    */
   public zoomPane(view: string, direction: "in" | "out" | "fit"): void {
-    if (view === "workspace") {
-      if (!this.workspace) return;
-      if (direction === "in") this.workspace.zoomCenter(1);
-      else if (direction === "out") this.workspace.zoomCenter(-1);
-      else this.workspace.zoomToFit();
+    const resolved = this.resolveView(view);
+    const workspace = resolved?.workspace;
+    if (workspace) {
+      if (direction === "in") workspace.zoomCenter(1);
+      else if (direction === "out") workspace.zoomCenter(-1);
+      else workspace.zoomToFit();
       return;
     }
-    this.resolveView(view)?.editor?.adjustZoom(direction);
+    resolved?.editor?.adjustZoom(direction);
   }
 
   private ensureToolbarBlocklyListener(): void {
@@ -2228,7 +2252,7 @@ export class MorphicBlocks extends EventTarget {
     this.codespace?.refresh();
     this.previewEditor?.refresh();
     this.codeEditor?.refresh();
-    for (const view of this.views) view.editor.refresh();
+    for (const view of this.views) view.editor?.refresh();
   }
 
   /**
@@ -2308,12 +2332,16 @@ export class MorphicBlocks extends EventTarget {
     if (!this.workspace || !this.mountConfig) {
       throw new Error("MorphicBlocks must be mounted before addView can be used.");
     }
-    if (options.kind !== "preview") {
+    if (options.kind !== "preview" && options.kind !== "workspace") {
       throw new Error(`addView: unknown view kind "${String(options.kind)}".`);
+    }
+    if (options.kind === "workspace" && (options.editable as boolean | undefined) === true) {
+      throw new Error("addView: an added workspace is read only for now (editable: false).");
     }
     if (options.name !== undefined && this.resolveView(options.name)) {
       throw new Error(`addView: a view named "${options.name}" already exists.`);
     }
+    if (options.kind === "workspace") return this.addWorkspaceView(options);
     this.checkTextViewMode("addView", options.mode);
 
     const editor = new MorphicCodeEditor(
@@ -2373,6 +2401,151 @@ export class MorphicBlocks extends EventTarget {
   }
 
   /**
+   * A read only Blockly workspace in its own mode that mirrors the main one:
+   * it starts from a copy of the program and replays every change, the way
+   * Blockly mirrors workspaces. Selection runs both ways through the main
+   * workspace, so the text views follow a click in the mirror too.
+   */
+  private addWorkspaceView(options: MorphicViewOptions): MorphicViewHandle {
+    const main = this.workspace!;
+    if (!this.modeDef(options.mode)) throw new Error(`addView: unknown mode "${options.mode}".`);
+    let name = options.name;
+    while (name === undefined || this.resolveView(name)) name = `view-${++this.viewCount}`;
+
+    // Drawn like the main workspace, never loading from elsewhere or playing sounds.
+    const host = main.options;
+    const mirror = Blockly.inject(options.container, {
+      readOnly: true,
+      media: host.pathToMedia,
+      sounds: false,
+      renderer: host.renderer,
+      rendererOverrides: host.rendererOverrides ?? undefined,
+      theme: this.baseTheme ?? host.theme,
+      rtl: host.RTL,
+      move: { scrollbars: true, drag: true, wheel: true },
+    });
+    workspaceOwners.set(mirror, this);
+    this.viewWorkspaceModes.set(mirror, options.mode);
+    const view: AddedView = {
+      kind: "workspace",
+      name,
+      container: options.container,
+      mode: options.mode,
+      workspace: mirror,
+    };
+    this.views.add(view);
+    this.styleWorkspaceView(view);
+
+    Blockly.Events.disable();
+    try {
+      Blockly.serialization.workspaces.load(Blockly.serialization.workspaces.save(main), mirror);
+    } finally {
+      Blockly.Events.enable();
+    }
+    this.renderWorkspaceView(view);
+
+    const replay = (event: Blockly.Events.Abstract): void => {
+      if (event.workspaceId !== main.id) return;
+      if (event.type === Blockly.Events.SELECTED) {
+        const selected = event as Blockly.Events.Selected;
+        (mirror.getBlockById(selected.oldElementId ?? "") as Blockly.BlockSvg | null)?.unselect();
+        (mirror.getBlockById(selected.newElementId ?? "") as Blockly.BlockSvg | null)?.select();
+        return;
+      }
+      if (event.isUiEvent) return;
+      // The copy the mirror started from may already hold a block whose create
+      // event was still on its way; creating it again would duplicate it.
+      if (event.type === Blockly.Events.BLOCK_CREATE) {
+        const ids = (event as Blockly.Events.BlockCreate).ids ?? [];
+        if (ids.some((id) => mirror.getBlockById(id))) return;
+      }
+      Blockly.Events.disable();
+      try {
+        Blockly.Events.fromJson(event.toJson(), mirror).run(true);
+      } finally {
+        Blockly.Events.enable();
+      }
+      // Blocks built by the replay get their mode's look once they have an SVG.
+      if (event.type === Blockly.Events.BLOCK_CREATE) {
+        for (const id of (event as Blockly.Events.BlockCreate).ids ?? []) {
+          const block = mirror.getBlockById(id) as Blockly.BlockSvg | null;
+          const definition = block && this.definitions.get(toCleanId(block.type));
+          if (block && definition) this.applyView(block, definition, view.mode, "workspace");
+        }
+      }
+    };
+    main.addChangeListener(replay);
+
+    // A click in the mirror selects the same block in the main workspace.
+    const followClick = (event: Blockly.Events.Abstract): void => {
+      if (event.type !== Blockly.Events.SELECTED) return;
+      const id = (event as Blockly.Events.Selected).newElementId;
+      const block = id ? main.getBlockById(id) : null;
+      if (block) Blockly.common.setSelected(block as Blockly.BlockSvg);
+    };
+    mirror.addChangeListener(followClick);
+
+    const resize = typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => Blockly.svgResize(mirror)) : undefined;
+    resize?.observe(options.container);
+
+    const toolbar = options.toolbar
+      ? this.mountToolbar(options.toolbar.container, {
+          view: name,
+          items: options.toolbar.items,
+          display: options.toolbar.display,
+        })
+      : undefined;
+    view.teardown = () => {
+      main.removeChangeListener(replay);
+      resize?.disconnect();
+      toolbar?.dispose();
+    };
+
+    return {
+      kind: "workspace",
+      name,
+      ready: Promise.resolve(),
+      getMode: () => view.mode,
+      setMode: (mode) => {
+        if (!this.views.has(view)) return;
+        if (!this.modeDef(mode)) throw new Error(`setMode: unknown mode "${mode}".`);
+        view.mode = mode;
+        this.viewWorkspaceModes.set(mirror, mode);
+        this.styleWorkspaceView(view);
+        this.renderWorkspaceView(view);
+        for (const handle of this.toolbars) handle.refresh();
+      },
+      setTheme: () => {},
+      dispose: () => {
+        if (!this.views.delete(view)) return;
+        this.disposeView(view);
+      },
+    };
+  }
+
+  /** The mode's classes and block font on an added workspace. */
+  private styleWorkspaceView(view: AddedView): void {
+    if (!view.workspace) return;
+    applyRootModeClasses(view.container, view.mode, "workspace", "morphic-workspace-root");
+    this.syncFontOf(view.workspace, view.container);
+  }
+
+  /** Draw every block of an added workspace in the view's mode. */
+  private renderWorkspaceView(view: AddedView): void {
+    for (const block of view.workspace?.getAllBlocks(false) ?? []) {
+      const definition = this.definitions.get(toCleanId(block.type));
+      if (definition) this.applyView(block as Blockly.BlockSvg, definition, view.mode, "workspace");
+    }
+  }
+
+  /** Remove an added view and everything it set up. */
+  private disposeView(view: AddedView): void {
+    view.teardown?.();
+    view.editor?.dispose();
+    view.workspace?.dispose();
+  }
+
+  /**
    * Take a ready added view into selection sync: relink an active sync, or
    * start one now that more than one view is shown, as `mount()` would have,
    * unless the host turned it off.
@@ -2390,20 +2563,24 @@ export class MorphicBlocks extends EventTarget {
   /** A view by name, built in or added; `undefined` when there is none. */
   private resolveView(name: string): ResolvedView | undefined {
     if (name === "workspace") {
-      return this.workspace ? { name, kind: "workspace", mode: this.mountConfig?.workspaceMode } : undefined;
+      return this.workspace
+        ? { name, kind: "workspace", mode: this.mountConfig?.workspaceMode, workspace: this.workspace, readOnly: false }
+        : undefined;
     }
     if (name === "codespace") {
       return this.mountConfig?.codespaceContainer
-        ? { name, kind: "codespace", mode: this.getCodespaceMode(), editor: this.codespace }
+        ? { name, kind: "codespace", mode: this.getCodespaceMode(), editor: this.codespace, readOnly: false }
         : undefined;
     }
     if (name === "preview") {
       return this.previewHost
-        ? { name, kind: "preview", mode: this.mountConfig?.previewMode, editor: this.previewEditor }
+        ? { name, kind: "preview", mode: this.mountConfig?.previewMode, editor: this.previewEditor, readOnly: true }
         : undefined;
     }
     for (const view of this.views) {
-      if (view.name === name) return { name, kind: view.kind, mode: view.mode, editor: view.editor };
+      if (view.name === name) {
+        return { name, kind: view.kind, mode: view.mode, editor: view.editor, workspace: view.workspace, readOnly: true };
+      }
     }
     return undefined;
   }
@@ -2591,7 +2768,8 @@ export class MorphicBlocks extends EventTarget {
    */
   private refreshSelectionSync(): void {
     if (!this.selectionSync) return;
-    const anyEditor = this.codeEditor || this.codespace || this.previewEditor || this.views.size > 0;
+    const anyEditor =
+      this.codeEditor || this.codespace || this.previewEditor || [...this.views].some((view) => view.editor);
     if (anyEditor) this.enableSelectionSync(this.selectionSyncOptions);
     else this.disableSelectionSync();
   }
@@ -2711,7 +2889,7 @@ export class MorphicBlocks extends EventTarget {
       return;
     }
     const context: MorphicRenderContext = block.workspace.isFlyout ? "toolbox" : "workspace";
-    const mode = this.resolveMode(context);
+    const mode = this.viewWorkspaceModes.get(block.workspace) ?? this.resolveMode(context);
     this.applyView(block, definition, mode, context);
     dropShadowsWhenMarker(block);
 
@@ -2860,9 +3038,12 @@ export class MorphicBlocks extends EventTarget {
    * overrides it, exactly like real block text.
    */
   private syncWorkspaceFont(): void {
-    const workspace = this.workspace;
-    const host = this.mountConfig?.workspaceHost;
-    if (!workspace || !host || !this.baseTheme || !this.baseFont) return;
+    if (this.workspace && this.mountConfig?.workspaceHost) this.syncFontOf(this.workspace, this.mountConfig.workspaceHost);
+  }
+
+  /** Measure a workspace's blocks with the font its host's mode CSS sets. */
+  private syncFontOf(workspace: Blockly.WorkspaceSvg, host: HTMLElement): void {
+    if (!this.baseTheme || !this.baseFont) return;
     const font = readCssFont(
       host,
       [[workspace.getRenderer().getClassName(), this.baseTheme.getClassName()]],

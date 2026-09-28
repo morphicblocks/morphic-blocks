@@ -685,7 +685,7 @@ export interface MorphicCodeEditorTheme {
 }
 
 /** Kinds of view `addView()` adds beside the ones `mount()` sets up. */
-export type MorphicViewKind = "preview";
+export type MorphicViewKind = "preview" | "workspace";
 
 /** A view added with `engine.addView()`. */
 export interface MorphicViewOptions {
@@ -696,6 +696,12 @@ export interface MorphicViewOptions {
   mode: MorphicModeName;
   /** Unique among the engine's added views. */
   name?: string;
+  /**
+   * An added workspace shows the program as blocks in its own mode and follows
+   * every change of the main workspace. It is read only: `false` is the only
+   * value for now, and the default.
+   */
+  editable?: false;
   /** Colours of a text view, like `previewTheme`. */
   theme?: MorphicCodeEditorTheme;
   /** A toolbar for this view, removed with it. Items default to its kind's. */
@@ -715,7 +721,7 @@ export interface MorphicViewHandle {
   readonly ready: Promise<void>;
   getMode(): MorphicModeName;
   setMode(mode: MorphicModeName): void;
-  /** Colours of a text view, e.g. when the app switches between light and dark. */
+  /** Colours of a text view, e.g. when the app switches between light and dark. No effect on a workspace. */
   setTheme(theme: MorphicCodeEditorTheme): void;
   /** Removes the view. `mount()` again removes every added view too. */
   dispose(): void;
