@@ -7,6 +7,18 @@ export const behaviors: MorphicBehaviorMap = {
     return `console.log(${proxy.inputs.TEXT || "undefined"});\n`;
   },
 
+  // Query clauses only chain with each other (connection checks), to try
+  // statement drops in the codespace. They generate comments, so Run ignores them.
+  query_select() {
+    return "// SELECT * FROM items\n";
+  },
+  query_where(proxy) {
+    return `// WHERE price > ${proxy.inputs.PRICE || "0"}\n`;
+  },
+  query_limit(proxy) {
+    return `// LIMIT ${proxy.inputs.COUNT || "0"}\n`;
+  },
+
   // Arabic labels, to try right to left (open the sandbox with ?rtl).
   rtl_test(proxy) {
     return `console.log(String(${proxy.inputs.TEXT || '""'}).repeat(${proxy.inputs.TIMES || "1"}));\n`;

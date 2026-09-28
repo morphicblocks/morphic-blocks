@@ -294,6 +294,10 @@
     {
       "name": "Variables",
       "color": "#e65a6f"
+    },
+    {
+      "name": "Query",
+      "color": "#4a8fd4"
     }
   ],
   "blocks": [
@@ -631,6 +635,60 @@
         }
       },
       "output": true
+    },
+    {
+      "identifier": "query_select",
+      "category": "Query",
+      "elements": {
+        "icon": "icons/var_declare.svg",
+        "title": "Select",
+        "description": "Starts a query; only query clauses go below it",
+        "concept": "SELECT * FROM items",
+        "python": "SELECT * FROM items",
+        "javascript": "SELECT * FROM items",
+        "go": "SELECT * FROM items"
+      },
+      "previousStatement": false,
+      "nextStatement": "Clause",
+      "inputsInline": true
+    },
+    {
+      "identifier": "query_where",
+      "category": "Query",
+      "elements": {
+        "icon": "icons/var_declare.svg",
+        "title": "Where",
+        "description": "Filters the rows; goes between query clauses",
+        "concept": "WHERE price > %1",
+        "python": "WHERE price > %1",
+        "javascript": "WHERE price > %1",
+        "go": "WHERE price > %1"
+      },
+      "inputSlots": {
+        "1": { "kind": "value", "name": "PRICE", "check": "Number", "default": { "shadow": "math_number", "fieldValues": { "NUM": "10" } } }
+      },
+      "previousStatement": "Clause",
+      "nextStatement": "Clause",
+      "inputsInline": true
+    },
+    {
+      "identifier": "query_limit",
+      "category": "Query",
+      "elements": {
+        "icon": "icons/var_declare.svg",
+        "title": "Limit",
+        "description": "Ends a query with a row limit",
+        "concept": "LIMIT %1",
+        "python": "LIMIT %1",
+        "javascript": "LIMIT %1",
+        "go": "LIMIT %1"
+      },
+      "inputSlots": {
+        "1": { "kind": "value", "name": "COUNT", "check": "Number", "default": { "shadow": "math_number", "fieldValues": { "NUM": "10" } } }
+      },
+      "previousStatement": "Clause",
+      "nextStatement": false,
+      "inputsInline": true
     },
     {
       "identifier": "rtl_test",
