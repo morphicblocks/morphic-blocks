@@ -54,7 +54,7 @@ const previewToolbarEl = document.getElementById("preview-toolbar")!;
 const outputEl = document.getElementById("output")!;
 // Views added with engine.addView(): a preset shows the ones it names in its
 // `views` and sets their modes; the others are removed.
-const addedViewKinds = { second: "preview", mirror1: "workspace", mirror2: "workspace" } as const;
+const addedViewKinds = { code2: "codespace", second: "preview", mirror1: "workspace", mirror2: "workspace" } as const;
 const addedViews = new Map<string, MorphicViewHandle>();
 const modeButtonsContainer = document.getElementById("mode-buttons")!;
 const runBtn = document.getElementById("run-btn")!;
@@ -140,7 +140,9 @@ function applyTheme(theme: ThemeName, syncEditors: boolean): void {
     engine.setCodeEditorTheme(editorThemeFor(theme));
     engine.setCodespaceTheme(editorThemeFor(theme));
     engine.setPreviewTheme(previewThemeFor(theme));
-    for (const view of addedViews.values()) view.setTheme(previewThemeFor(theme));
+    for (const view of addedViews.values()) {
+      view.setTheme(view.kind === "codespace" ? editorThemeFor(theme) : previewThemeFor(theme));
+    }
   }
   localStorage.setItem(THEME_STORAGE_KEY, theme);
 }
@@ -215,7 +217,7 @@ function showAddedViews(preset: MorphicPresetDefinition): void {
           mode,
           container: document.getElementById(`${name}-container`)!,
           toolbar: { container: document.getElementById(`${name}-toolbar`)! },
-          theme: previewThemeFor(currentTheme),
+          theme: kind === "codespace" ? editorThemeFor(currentTheme) : previewThemeFor(currentTheme),
         }),
       );
     } else if (!mode && existing) {
@@ -235,7 +237,7 @@ function handlePresetApplied(preset: MorphicPresetDefinition): void {
   codespacePane.style.display = showCodespace ? "" : "none";
   codespacePane.style.flex =
     showCodespace && !showWorkspace
-      ? "1 1 auto"
+      ? "1 1 0"
       : codespaceBasisPx != null
         ? `0 0 ${codespaceBasisPx}px`
         : "";

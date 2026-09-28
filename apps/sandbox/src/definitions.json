@@ -282,7 +282,7 @@
       "toolbox": "pseudo",
       "codespace": "syntax-py",
       "preview": "syntax-py",
-      "views": { "second": "syntax-js" }
+      "views": { "code2": "syntax-js", "second": "syntax-js" }
     },
     {
       "name": "mirror",

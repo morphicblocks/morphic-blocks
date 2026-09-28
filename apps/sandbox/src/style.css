@@ -365,8 +365,13 @@ body {
 }
 
 #preview-container .cm-editor,
-#second-container .cm-editor {
+#second-container .cm-editor,
+#code2-container .cm-editor {
   height: 100%;
+}
+
+#code2-container {
+  background: var(--bg-deep);
 }
 
 /* Views added with engine.addView(), shown by the presets that name them */
