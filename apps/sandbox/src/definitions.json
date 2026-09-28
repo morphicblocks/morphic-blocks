@@ -40,6 +40,7 @@
     },
     "python": {
       "stringQuote": "\"",
+      "emptyStatement": "pass",
       "empty": {
         "Number": {
           "shadow": "math_number",
@@ -77,7 +78,8 @@
           "def",
           "return",
           "print",
-          "range"
+          "range",
+          "pass"
         ],
         "strings": ["\"", "'"],
         "comment": "#",
