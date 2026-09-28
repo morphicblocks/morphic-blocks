@@ -150,7 +150,7 @@ A **mode** declares which elements are visible and, by scanning for the first `t
 - `elementTypes` — global registry mapping element names to their type (`text`, `code`, `image`)
 - `modes` — explicit mode definitions; mode names are arbitrary (no coupling to element names)
 - `presets` — named per-view mode configurations (see below)
-- `code` — how each code element's language is written, keyed by element name: `stringQuote`, `empty` (defaults for empty value slots, keyed by `check`), `emptyStatement` (written into empty statement slots, e.g. `pass`) and `highlighting`. Internally folded onto the element entries (`withCodeSettings` in `element-types.ts`)
+- `code` — how each code element's language is written, keyed by element name: `stringQuote`, `empty` (defaults for empty value slots, keyed by `check`), `emptyStatement` (written into empty statement slots, e.g. `pass`), `highlighting` and `values` (how `runJavaScript()` output writes printed values while the element is shown; `value-format.ts`). Internally folded onto the element entries (`withCodeSettings` in `element-types.ts`)
 - `categories` — optional metadata (name, color); blocks reference them by name
 - `blocks` — flat array; per-block `elements` are plain `name: content` strings
 
