@@ -865,12 +865,20 @@ export class MorphicBlocks extends EventTarget {
         "MorphicBlocks must be mounted before mountToolbar can be used.",
       );
     }
+    // A built-in view's toolbar may be set up before its view is.
+    const viewName = config.view ?? config.pane;
+    if (!viewName) throw new Error("mountToolbar: set `view` (or `pane`).");
+    const builtIn = ["workspace", "codespace", "preview"] as const;
+    const kind =
+      this.resolveView(viewName)?.kind ?? builtIn.find((name) => name === viewName);
+    if (!kind) throw new Error(`mountToolbar: no view named "${viewName}".`);
     void this.styles.ensureToolbarStyles();
     const handle = renderToolbar(container, config, {
       engine: this,
-      pane: config.pane,
-      getText: () => this.toolbarTextFor(config.pane),
-      refresh: () => this.toolbarRefreshFor(config.pane),
+      pane: kind,
+      view: viewName,
+      getText: () => this.toolbarTextFor(viewName),
+      refresh: () => this.toolbarRefreshFor(viewName),
     });
 
     this.toolbars.add(handle);
@@ -2324,6 +2332,13 @@ export class MorphicBlocks extends EventTarget {
     };
     this.views.add(view);
     applyTextViewModeClass(view.container, view.mode, "morphic-preview-root");
+    const toolbar = options.toolbar
+      ? this.mountToolbar(options.toolbar.container, {
+          view: name,
+          items: options.toolbar.items,
+          display: options.toolbar.display,
+        })
+      : undefined;
 
     return {
       kind: view.kind,
@@ -2339,10 +2354,12 @@ export class MorphicBlocks extends EventTarget {
         applyTextViewModeClass(view.container, mode, "morphic-preview-root");
         editor.setHighlightRules(this.highlightRulesFor(mode));
         editor.refresh();
+        for (const handle of this.toolbars) handle.refresh();
       },
       setTheme: (theme) => editor.setTheme(theme),
       dispose: () => {
         if (!this.views.delete(view)) return;
+        toolbar?.dispose();
         editor.dispose();
         this.refreshSelectionSync();
       },

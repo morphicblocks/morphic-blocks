@@ -147,3 +147,35 @@ describe("views by name", () => {
   });
 });
 
+describe("toolbars on added views", () => {
+  test("an added view brings its own toolbar, acting on that view", async () => {
+    const engine = await mountEngine();
+    const toolbar = div();
+    const view = engine.addView({ kind: "preview", container: div(), mode: "js", name: "right", toolbar: { container: toolbar } });
+    await view.ready;
+
+    expect(toolbar.dataset.morphicView).toBe("right");
+    expect(toolbar.querySelector(".morphic-toolbar-label")?.textContent).toBe("Mode: js");
+
+    view.setMode("py");
+    expect(toolbar.querySelector(".morphic-toolbar-label")?.textContent).toBe("Mode: py");
+
+    view.dispose();
+    expect(toolbar.childElementCount).toBe(0);
+  });
+
+  test("each toolbar can have its own items", async () => {
+    const engine = await mountEngine();
+    const toolbar = div();
+    engine.addView({ kind: "preview", container: div(), mode: "js", toolbar: { container: toolbar, items: [] } });
+
+    expect(toolbar.querySelector("[data-toolbar-id]")).toBeNull();
+  });
+
+  test("a toolbar for a view that does not exist is refused", async () => {
+    const engine = await mountEngine();
+
+    expect(() => engine.mountToolbar(div(), { view: "nothing" })).toThrow(/no view named "nothing"/);
+  });
+});
+

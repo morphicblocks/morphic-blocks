@@ -698,6 +698,12 @@ export interface MorphicViewOptions {
   name?: string;
   /** Colours of a text view, like `previewTheme`. */
   theme?: MorphicCodeEditorTheme;
+  /** A toolbar for this view, removed with it. Items default to its kind's. */
+  toolbar?: {
+    container: HTMLElement;
+    items?: MorphicToolbarItem[];
+    display?: MorphicToolbarDisplay;
+  };
 }
 
 /** Controls a view added with `engine.addView()`. */
@@ -778,7 +784,10 @@ export type MorphicToolbarDisplay = "icon" | "label" | "both";
  */
 export interface MorphicToolbarCtx {
   engine: import("./MorphicBlocks").MorphicBlocks;
+  /** The kind of view the toolbar acts on. */
   pane: MorphicToolbarPane;
+  /** The name of the view the toolbar acts on; pass it to engine methods such as `zoomPane`. */
+  view: string;
   /** Current rendered text for the bound pane. Empty for workspace pane unless
    * the engine has a codespace/preview mounted to derive text from. */
   getText: () => string;
@@ -816,10 +825,12 @@ export interface MorphicToolbarItem {
 
 /** Configuration for `engine.mountToolbar(container, config)`. */
 export interface MorphicToolbarConfig {
-  /** Which pane this toolbar reflects. */
-  pane: MorphicToolbarPane;
+  /** The view this toolbar acts on, by name: `workspace`, `codespace`, `preview`, or an added view's. */
+  view?: string;
+  /** Same as `view` for the views `mount()` sets up. One of `view` and `pane` is required. */
+  pane?: MorphicToolbarPane;
   /** Items to render. When omitted, the framework uses
-   * `toolbarItems.defaultsFor(pane)`. To render no items, pass `[]`. */
+   * `toolbarItems.defaultsFor(<kind of view>)`. To render no items, pass `[]`. */
   items?: MorphicToolbarItem[];
   /** Display mode for items that have both icon and label. Defaults to "icon". */
   display?: MorphicToolbarDisplay;

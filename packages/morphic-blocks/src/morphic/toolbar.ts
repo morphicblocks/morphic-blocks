@@ -27,7 +27,10 @@ export type MorphicRunEventDetail = MorphicRunResult;
 export interface MorphicToolbarHandle {
   refresh: () => void;
   dispose: () => void;
+  /** The kind of view the toolbar acts on. */
   pane: MorphicToolbarPane;
+  /** The name of the view the toolbar acts on. */
+  view: string;
 }
 
 export const toolbarItems = {
@@ -56,7 +59,7 @@ export const toolbarItems = {
       title: "Copy block",
       icon: ICON_COPY,
       onClick: (ctx) => {
-        ctx.engine.copyActiveBlock(ctx.pane);
+        ctx.engine.copyActiveBlock(ctx.view);
       },
     };
   },
@@ -69,7 +72,7 @@ export const toolbarItems = {
       icon: ICON_PASTE,
       disabled: (ctx) => !ctx.engine.hasClipboardContents(),
       onClick: (ctx) => {
-        ctx.engine.pasteActiveBlock(ctx.pane);
+        ctx.engine.pasteActiveBlock(ctx.view);
       },
     };
   },
@@ -106,7 +109,7 @@ export const toolbarItems = {
       label: "Zoom in",
       title: "Zoom in",
       icon: ICON_ZOOM_IN,
-      onClick: (ctx) => ctx.engine.zoomPane(ctx.pane, "in"),
+      onClick: (ctx) => ctx.engine.zoomPane(ctx.view, "in"),
     };
   },
 
@@ -116,7 +119,7 @@ export const toolbarItems = {
       label: "Zoom out",
       title: "Zoom out",
       icon: ICON_ZOOM_OUT,
-      onClick: (ctx) => ctx.engine.zoomPane(ctx.pane, "out"),
+      onClick: (ctx) => ctx.engine.zoomPane(ctx.view, "out"),
     };
   },
 
@@ -126,7 +129,7 @@ export const toolbarItems = {
       label: "Fit",
       title: "Reset zoom",
       icon: ICON_ZOOM_FIT,
-      onClick: (ctx) => ctx.engine.zoomPane(ctx.pane, "fit"),
+      onClick: (ctx) => ctx.engine.zoomPane(ctx.view, "fit"),
     };
   },
 
@@ -298,13 +301,7 @@ export const toolbarItems = {
 };
 
 function readModeLabel(ctx: MorphicToolbarCtx): string {
-  const engine = ctx.engine;
-  const name =
-    ctx.pane === "workspace"
-      ? engine.getWorkspaceMode()
-      : ctx.pane === "codespace"
-        ? engine.getCodespaceMode()
-        : engine.getPreviewMode();
+  const name = ctx.engine.getViewMode(ctx.view);
   return name ? `Mode: ${name}` : "";
 }
 
@@ -313,11 +310,12 @@ export function renderToolbar(
   config: MorphicToolbarConfig,
   ctx: MorphicToolbarCtx,
 ): MorphicToolbarHandle {
-  const items = config.items ?? toolbarItems.defaultsFor(config.pane);
+  const items = config.items ?? toolbarItems.defaultsFor(ctx.pane);
   const display: MorphicToolbarDisplay = config.display ?? "icon";
 
   container.classList.add("morphic-toolbar");
-  container.setAttribute("data-morphic-pane", config.pane);
+  container.setAttribute("data-morphic-pane", ctx.pane);
+  container.setAttribute("data-morphic-view", ctx.view);
 
   const leftGroup = document.createElement("div");
   leftGroup.className = "morphic-toolbar-left";
@@ -345,7 +343,7 @@ export function renderToolbar(
   container.replaceChildren(leftGroup, rightGroup);
   refresh();
 
-  return { refresh, pane: config.pane, dispose: () => container.replaceChildren() };
+  return { refresh, pane: ctx.pane, view: ctx.view, dispose: () => container.replaceChildren() };
 }
 
 function renderItem(
