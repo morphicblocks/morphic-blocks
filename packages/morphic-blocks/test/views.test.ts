@@ -60,6 +60,8 @@ describe("added previews", () => {
     expect(text(container)).toBe("console.log();");
     expect(view.getMode()).toBe("js");
 
+    expect(() => view.setTheme({ background: "#ffffff" })).not.toThrow();
+
     view.dispose();
     expect(container.querySelector(".cm-editor")).toBeNull();
   });
@@ -85,3 +87,41 @@ describe("added previews", () => {
     expect(() => engine.addView({ kind: "preview", container: div(), mode: "plain" })).toThrow(/no code element/);
   });
 });
+
+describe("added previews and the rest of the engine", () => {
+  const editorsInSync = (engine: MorphicBlocks) =>
+    (engine as unknown as { selectionSync?: { editors: unknown[] } }).selectionSync?.editors.length ?? 0;
+
+  test("an added preview joins selection sync, and leaves it when removed", async () => {
+    const engine = await mountEngine();
+
+    const first = engine.addView({ kind: "preview", container: div(), mode: "py" });
+    await first.ready;
+    expect(editorsInSync(engine)).toBe(1);
+
+    const second = engine.addView({ kind: "preview", container: div(), mode: "js" });
+    await second.ready;
+    expect(editorsInSync(engine)).toBe(2);
+
+    second.dispose();
+    expect(editorsInSync(engine)).toBe(1);
+  });
+
+  test("selection sync stays off when the host turned it off", async () => {
+    const engine = new MorphicBlocks(format, { say: () => "" });
+    engines.push(engine);
+    await engine.mount({ workspaceContainer: div(), selectionSync: false });
+
+    await engine.addView({ kind: "preview", container: div(), mode: "py" }).ready;
+
+    expect(editorsInSync(engine)).toBe(0);
+  });
+
+  test("a mode an added preview shows keeps a code element", async () => {
+    const engine = await mountEngine();
+    engine.addView({ kind: "preview", container: div(), mode: "js" });
+
+    expect(() => engine.setModeElements("js", ["title"])).toThrow(/needs a code element/);
+  });
+});
+

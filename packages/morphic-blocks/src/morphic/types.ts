@@ -708,6 +708,8 @@ export interface MorphicViewHandle {
   readonly ready: Promise<void>;
   getMode(): MorphicModeName;
   setMode(mode: MorphicModeName): void;
+  /** Colours of a text view, e.g. when the app switches between light and dark. */
+  setTheme(theme: MorphicCodeEditorTheme): void;
   /** Removes the view. `mount()` again removes every added view too. */
   dispose(): void;
 }

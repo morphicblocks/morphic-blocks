@@ -774,7 +774,8 @@ export class MorphicBlocks extends EventTarget {
     const updated: MorphicModeDefinition = { ...modes[index]!, elements: [...elements] };
     const renderedAsText =
       (!!this.mountConfig.codespaceContainer && mode === this.getCodespaceMode()) ||
-      mode === this.mountConfig.previewMode;
+      mode === this.mountConfig.previewMode ||
+      [...this.views].some((view) => view.mode === mode);
     if (renderedAsText && resolveModeSourceElement(updated, this.elementTypes) === undefined) {
       throw new Error(
         `setModeElements: mode "${mode}" is shown in a codespace or preview and needs a code element.`,
@@ -800,6 +801,11 @@ export class MorphicBlocks extends EventTarget {
     this.previewEditor?.setHighlightRules(this.resolveHighlightRules("preview"));
     this.codespace?.refresh();
     this.previewEditor?.refresh();
+    for (const view of this.views) {
+      if (view.mode !== mode) continue;
+      view.editor.setHighlightRules(this.highlightRulesFor(view.mode));
+      view.editor.refresh();
+    }
   }
 
   /** Mode definition by name, or `undefined`. */
@@ -2316,7 +2322,9 @@ export class MorphicBlocks extends EventTarget {
     return {
       kind: view.kind,
       name: view.name,
-      ready: editor.mount(),
+      ready: editor.mount().then(() => {
+        if (this.views.has(view)) this.linkAddedView();
+      }),
       getMode: () => view.mode,
       setMode: (mode) => {
         if (!this.views.has(view)) return;
@@ -2326,11 +2334,28 @@ export class MorphicBlocks extends EventTarget {
         editor.setHighlightRules(this.highlightRulesFor(mode));
         editor.refresh();
       },
+      setTheme: (theme) => editor.setTheme(theme),
       dispose: () => {
         if (!this.views.delete(view)) return;
         editor.dispose();
+        this.refreshSelectionSync();
       },
     };
+  }
+
+  /**
+   * Take a ready added view into selection sync: relink an active sync, or
+   * start one now that more than one view is shown, as `mount()` would have,
+   * unless the host turned it off.
+   */
+  private linkAddedView(): void {
+    if (this.selectionSync) {
+      this.refreshSelectionSync();
+      return;
+    }
+    const wanted = this.mountConfig?.selectionSync;
+    if (wanted === false || !this.mountConfig?.workspaceContainer) return;
+    this.enableSelectionSync(typeof wanted === "object" ? wanted : undefined);
   }
 
   /** A text view's mode must exist and have a code element to render. */
@@ -2482,9 +2507,12 @@ export class MorphicBlocks extends EventTarget {
       );
     }
 
-    const editors = [this.codeEditor, this.codespace, this.previewEditor].filter(
-      (e): e is MorphicCodeEditor => e !== undefined,
-    );
+    const editors = [
+      this.codeEditor,
+      this.codespace,
+      this.previewEditor,
+      ...[...this.views].map((view) => view.editor),
+    ].filter((e): e is MorphicCodeEditor => e !== undefined);
 
     if (editors.length === 0) {
       throw new Error(
@@ -2507,7 +2535,10 @@ export class MorphicBlocks extends EventTarget {
    * links the current editors rather than a disposed one.
    */
   private refreshSelectionSync(): void {
-    if (this.selectionSync) this.enableSelectionSync(this.selectionSyncOptions);
+    if (!this.selectionSync) return;
+    const anyEditor = this.codeEditor || this.codespace || this.previewEditor || this.views.size > 0;
+    if (anyEditor) this.enableSelectionSync(this.selectionSyncOptions);
+    else this.disableSelectionSync();
   }
 
   /** Disable selection sync and clear any active highlights. */
