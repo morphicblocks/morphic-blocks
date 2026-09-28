@@ -271,6 +271,16 @@ function renderBlock(
       state.indent = /^[ \t]*/.exec(state.output.slice(lineStart))?.[0] ?? "";
       if (target) {
         renderStatementChain(target, ctx, state);
+      } else {
+        // An empty body is invalid in some languages (Python needs `pass`), so
+        // the element's placeholder is written, shown as a default.
+        const emptyStatement =
+          typeof elementEntry === "object" ? (elementEntry as MorphicElementTypeWithCode).emptyStatement : undefined;
+        if (emptyStatement) {
+          const placeholderStart = state.output.length;
+          appendText(state, emptyStatement);
+          recordPlaceholder(state, placeholderStart, "default");
+        }
       }
       state.indent = prevIndent;
       const rawSlotEnd = currentLine(state.output);

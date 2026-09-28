@@ -89,6 +89,12 @@ export interface MorphicCodeElementConfig {
    * Language-specific (`"\""` for most languages); omit to disable quoting.
    */
   stringQuote?: string;
+  /**
+   * Written by the codespace and preview into an empty statement slot, for
+   * languages where an empty body is invalid (`"pass"` for Python). Omit to
+   * leave empty bodies empty.
+   */
+  emptyStatement?: string;
   /** Token highlighting for the codespace and preview showing this element. */
   highlighting?: MorphicHighlightDefinition;
 }

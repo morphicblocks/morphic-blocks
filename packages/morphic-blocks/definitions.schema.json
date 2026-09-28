@@ -73,6 +73,10 @@
           "type": "object",
           "additionalProperties": { "$ref": "#/$defs/emptyDefault" }
         },
+        "emptyStatement": {
+          "description": "Written into an empty statement slot where an empty body is invalid, e.g. \"pass\" for Python.",
+          "type": "string"
+        },
         "highlighting": { "$ref": "#/$defs/highlight" }
       },
       "additionalProperties": false

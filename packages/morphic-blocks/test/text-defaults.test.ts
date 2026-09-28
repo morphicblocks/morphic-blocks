@@ -2,6 +2,7 @@ import { afterEach, expect, test } from "vitest";
 import type * as Blockly from "blockly";
 import { MorphicBlocks } from "../src";
 import { applyBlockShapes, createDefinitionMap, expandDefaultElements } from "../src/morphic/definitions";
+import { withCodeSettings } from "../src/morphic/element-types";
 import { generateTextFromWorkspace } from "../src/morphic/template-codegen";
 import type { MorphicBlocksFormat } from "../src/morphic/types";
 
@@ -124,5 +125,37 @@ test("a dropdown in a text view lists options as that view writes them", async (
     ["True", "true"],
     ["False", "false"],
   ]);
+});
+
+test("an empty statement slot writes the element's placeholder", async () => {
+  const loopFormat: MorphicBlocksFormat = {
+    elementTypes: { python: "code" },
+    code: { python: { emptyStatement: "pass" } },
+    modes: [{ name: "py", elements: ["python"] }],
+    blocks: [
+      {
+        identifier: "loop",
+        elements: { python: "for i in range(3):\n    %1" },
+        inputSlots: { "1": { kind: "statement", name: "DO" } },
+        shape: "statement",
+      },
+    ],
+  };
+  const engine = new MorphicBlocks(loopFormat, {});
+  engines.push(engine);
+  await engine.mount({ workspaceContainer: document.body.appendChild(document.createElement("div")) });
+  const workspace = engine.getWorkspace()!;
+  workspace.newBlock("morphic:loop");
+
+  const { code, placeholders } = generateTextFromWorkspace(
+    workspace,
+    "py",
+    createDefinitionMap(applyBlockShapes(expandDefaultElements(loopFormat.blocks, loopFormat.elementTypes ?? {}))),
+    withCodeSettings(loopFormat.elementTypes ?? {}, loopFormat.code),
+    loopFormat.modes ?? [],
+  );
+
+  expect(code).toBe("for i in range(3):\n    pass");
+  expect(placeholders.map((range) => [code.slice(range.start, range.end), range.kind])).toEqual([["pass", "default"]]);
 });
 
