@@ -41,6 +41,16 @@
     "python": {
       "stringQuote": "\"",
       "emptyStatement": "pass",
+      "values": {
+        "true": "True",
+        "false": "False",
+        "null": "None",
+        "undefined": "None",
+        "NaN": "nan",
+        "Infinity": "inf",
+        "-Infinity": "-inf",
+        "list": { "open": "[", "close": "]", "separator": ", ", "quote": "'" }
+      },
       "empty": {
         "Number": {
           "shadow": "math_number",
