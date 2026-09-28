@@ -52,11 +52,10 @@ const workspaceToolbarEl = document.getElementById("workspace-toolbar")!;
 const codespaceToolbarEl = document.getElementById("codespace-toolbar")!;
 const previewToolbarEl = document.getElementById("preview-toolbar")!;
 const outputEl = document.getElementById("output")!;
-const preview2Pane = document.getElementById("preview2-pane")!;
-const preview2Container = document.getElementById("preview2-container")!;
-const preview2Toolbar = document.getElementById("preview2-toolbar")!;
-// The second preview the Texts preset adds with engine.addView().
-let addedPreview: MorphicViewHandle | undefined;
+// Views added with engine.addView(): a preset shows the ones it names in its
+// `views` and sets their modes; the others are removed.
+const addedViewKinds = { second: "preview", mirror1: "workspace", mirror2: "workspace" } as const;
+const addedViews = new Map<string, MorphicViewHandle>();
 const modeButtonsContainer = document.getElementById("mode-buttons")!;
 const runBtn = document.getElementById("run-btn")!;
 const codeBtn = document.getElementById("code-btn")!;
@@ -141,7 +140,7 @@ function applyTheme(theme: ThemeName, syncEditors: boolean): void {
     engine.setCodeEditorTheme(editorThemeFor(theme));
     engine.setCodespaceTheme(editorThemeFor(theme));
     engine.setPreviewTheme(previewThemeFor(theme));
-    addedPreview?.setTheme(previewThemeFor(theme));
+    for (const view of addedViews.values()) view.setTheme(previewThemeFor(theme));
   }
   localStorage.setItem(THEME_STORAGE_KEY, theme);
 }
@@ -199,24 +198,30 @@ void engine.mount({
 });
 
 
-// ── Added view (to try engine.addView) ─────────────────
-// The Texts preset shows a second preview in JavaScript next to the Python one.
+// ── Added views (to try engine.addView) ────────────────
+// Texts adds a second preview, Mirror two read only workspaces.
 
-
-function showAddedPreview(show: boolean): void {
-  preview2Pane.style.display = show ? "" : "none";
-  if (show && !addedPreview) {
-    addedPreview = engine.addView({
-      kind: "preview",
-      name: "second",
-      container: preview2Container,
-      mode: "syntax-js",
-      theme: previewThemeFor(currentTheme),
-      toolbar: { container: preview2Toolbar },
-    });
-  } else if (!show && addedPreview) {
-    addedPreview.dispose();
-    addedPreview = undefined;
+function showAddedViews(preset: MorphicPresetDefinition): void {
+  for (const [name, kind] of Object.entries(addedViewKinds)) {
+    const mode = preset.views?.[name];
+    document.getElementById(`${name}-pane`)!.style.display = mode ? "" : "none";
+    const existing = addedViews.get(name);
+    if (mode && !existing) {
+      addedViews.set(
+        name,
+        engine.addView({
+          kind,
+          name,
+          mode,
+          container: document.getElementById(`${name}-container`)!,
+          toolbar: { container: document.getElementById(`${name}-toolbar`)! },
+          theme: previewThemeFor(currentTheme),
+        }),
+      );
+    } else if (!mode && existing) {
+      existing.dispose();
+      addedViews.delete(name);
+    }
   }
 }
 
@@ -235,7 +240,7 @@ function handlePresetApplied(preset: MorphicPresetDefinition): void {
         ? `0 0 ${codespaceBasisPx}px`
         : "";
   previewPane.style.display = showPreview ? "" : "none";
-  showAddedPreview(preset.name === "texts");
+  showAddedViews(preset);
 
   if (RESIZABLE_PANES) {
     gutterCodespace.hidden = !(showWorkspace && showCodespace);

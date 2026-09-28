@@ -281,7 +281,15 @@
       "label": "Texts",
       "toolbox": "pseudo",
       "codespace": "syntax-py",
-      "preview": "syntax-py"
+      "preview": "syntax-py",
+      "views": { "second": "syntax-js" }
+    },
+    {
+      "name": "mirror",
+      "label": "Mirror",
+      "toolbox": "pseudo",
+      "workspace": "pseudo",
+      "views": { "mirror1": "syntax-py", "mirror2": "syntax-js" }
     },
     {
       "name": "arabic",

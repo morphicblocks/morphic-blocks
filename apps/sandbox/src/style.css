@@ -365,16 +365,17 @@ body {
 }
 
 #preview-container .cm-editor,
-#preview2-container .cm-editor {
+#second-container .cm-editor {
   height: 100%;
 }
 
-#preview2-pane {
-  flex: 0 0 25%;
+/* Views added with engine.addView(), shown by the presets that name them */
+.added-pane {
+  flex: 1 1 0;
   min-width: 180px;
 }
 
-#preview2-container {
+#second-container {
   background: var(--bg-preview);
 }
 
