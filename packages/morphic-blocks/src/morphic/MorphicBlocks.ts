@@ -1283,15 +1283,7 @@ export class MorphicBlocks extends EventTarget {
     const mergedOptions: MorphicCodeEditorOptions = {
       ...options,
       onDelete: options?.onDelete ?? ((line) => this.codespace && this.deleteBlockAtCodespaceLine(this.codespace, line)),
-      canDragBlock:
-        options?.canDragBlock ??
-        ((blockId) => {
-          const block = this.workspace?.getBlockById(blockId);
-          // Allow grip-dragging both statement blocks (previousConnection)
-          // and value blocks (outputConnection) so the codespace mirrors
-          // Blockly's full set of moveable blocks.
-          return !!(block?.previousConnection || block?.outputConnection);
-        }),
+      canDragBlock: options?.canDragBlock ?? ((blockId) => this.canMoveInCodespace(blockId)),
       highlightRules: options?.highlightRules ?? this.resolveHighlightRules("codespace"),
       onPlaceholderApply:
         options?.onPlaceholderApply ?? ((edit, newValue) => this.applyPlaceholderEdit(edit, newValue)),
@@ -2350,7 +2342,7 @@ export class MorphicBlocks extends EventTarget {
     if (!this.workspace || !this.mountConfig) {
       throw new Error("MorphicBlocks must be mounted before addView can be used.");
     }
-    if (options.kind !== "preview" && options.kind !== "workspace") {
+    if (options.kind !== "preview" && options.kind !== "codespace" && options.kind !== "workspace") {
       throw new Error(`addView: unknown view kind "${String(options.kind)}".`);
     }
     if (options.kind === "workspace" && (options.editable as boolean | undefined) === true) {
@@ -2362,17 +2354,27 @@ export class MorphicBlocks extends EventTarget {
     if (options.kind === "workspace") return this.addWorkspaceView(options);
     this.checkTextViewMode("addView", options.mode);
 
-    const editor = new MorphicCodeEditor(
+    // A codespace edits the program like the one `mount()` sets up; a
+    // preview is read only, so the editing marker would mislead there.
+    const editing = options.kind === "codespace";
+    const editor: MorphicCodeEditor = new MorphicCodeEditor(
       options.container,
       this.workspace,
       () => this.generateModeText(view.mode),
       {
         theme: options.theme,
         highlightRules: this.highlightRulesFor(options.mode),
-        // Read only like the preview: the editing marker would mislead.
-        showPlaceholderMarkers: false,
+        ...(editing
+          ? {
+              onDelete: (line: number) => this.deleteBlockAtCodespaceLine(editor, line),
+              canDragBlock: (blockId: string) => this.canMoveInCodespace(blockId),
+              onPlaceholderApply: (edit: MorphicPlaceholderEditTarget, value: string) =>
+                this.applyPlaceholderEdit(edit, value),
+            }
+          : { showPlaceholderMarkers: false }),
       },
     );
+    const rootClass = editing ? "morphic-codespace-root" : "morphic-preview-root";
     let name = options.name;
     while (name === undefined || this.resolveView(name)) name = `view-${++this.viewCount}`;
     const view: AddedView = {
@@ -2383,7 +2385,7 @@ export class MorphicBlocks extends EventTarget {
       editor,
     };
     this.views.add(view);
-    applyTextViewModeClass(view.container, view.mode, "morphic-preview-root");
+    applyTextViewModeClass(view.container, view.mode, rootClass);
     const toolbar = options.toolbar
       ? this.mountToolbar(options.toolbar.container, {
           view: name,
@@ -2396,14 +2398,18 @@ export class MorphicBlocks extends EventTarget {
       kind: view.kind,
       name: view.name,
       ready: editor.mount().then(() => {
-        if (this.views.has(view)) this.linkAddedView();
+        if (!this.views.has(view)) return;
+        if (editing && this.workspace) {
+          view.teardown = this.attachCodespaceDropTarget(editor, view.container, this.workspace);
+        }
+        this.linkAddedView();
       }),
       getMode: () => view.mode,
       setMode: (mode) => {
         if (!this.views.has(view)) return;
         this.checkTextViewMode("setMode", mode);
         view.mode = mode;
-        applyTextViewModeClass(view.container, mode, "morphic-preview-root");
+        applyTextViewModeClass(view.container, mode, rootClass);
         editor.setHighlightRules(this.highlightRulesFor(mode));
         editor.refresh();
         for (const handle of this.toolbars) handle.refresh();
@@ -2412,6 +2418,7 @@ export class MorphicBlocks extends EventTarget {
       dispose: () => {
         if (!this.views.delete(view)) return;
         toolbar?.dispose();
+        view.teardown?.();
         editor.dispose();
         this.refreshSelectionSync();
       },
@@ -2608,7 +2615,14 @@ export class MorphicBlocks extends EventTarget {
     }
     for (const view of this.views) {
       if (view.name === name) {
-        return { name, kind: view.kind, mode: view.mode, editor: view.editor, workspace: view.workspace, readOnly: true };
+        return {
+          name,
+          kind: view.kind,
+          mode: view.mode,
+          editor: view.editor,
+          workspace: view.workspace,
+          readOnly: view.kind !== "codespace",
+        };
       }
     }
     return undefined;
@@ -2682,6 +2696,16 @@ export class MorphicBlocks extends EventTarget {
       const parentSvg = parent as Blockly.BlockSvg;
       if (parentSvg.rendered && typeof parentSvg.render === "function") parentSvg.render();
     }
+  }
+
+  /**
+   * Whether a codespace grip may move the block: statement blocks
+   * (previousConnection) and value blocks (outputConnection), so the
+   * codespace mirrors Blockly's full set of moveable blocks.
+   */
+  private canMoveInCodespace(blockId: string): boolean {
+    const block = this.workspace?.getBlockById(blockId);
+    return !!(block?.previousConnection || block?.outputConnection);
   }
 
   private deleteBlockAtCodespaceLine(editor: MorphicCodeEditor, line: number): void {

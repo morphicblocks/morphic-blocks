@@ -691,7 +691,7 @@ export interface MorphicCodeEditorTheme {
 }
 
 /** Kinds of view `addView()` adds beside the ones `mount()` sets up. */
-export type MorphicViewKind = "preview" | "workspace";
+export type MorphicViewKind = "preview" | "codespace" | "workspace";
 
 /** A view added with `engine.addView()`. */
 export interface MorphicViewOptions {

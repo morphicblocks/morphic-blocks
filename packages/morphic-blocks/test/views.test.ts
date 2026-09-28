@@ -244,3 +244,51 @@ describe("presets and added views", () => {
   });
 });
 
+describe("added codespaces", () => {
+  type Editor = { metadata: Map<string, unknown> };
+  const addedEditor = (engine: MorphicBlocks, name: string) =>
+    [...(engine as unknown as { views: Set<{ name: string; editor: Editor }> }).views].find((view) => view.name === name)!
+      .editor;
+
+  test("an added codespace edits the program in its own mode, and every view follows", async () => {
+    const engine = await mountEngine();
+    const python = div();
+    const javascript = div();
+    await engine.addView({ kind: "codespace", container: python, mode: "py", name: "left" }).ready;
+    await engine.addView({ kind: "preview", container: javascript, mode: "js" }).ready;
+    expect(python.classList).toContain("morphic-codespace-root");
+    expect(text(python)).toBe("print()");
+
+    // What the delete key or the gutter's ✕ on line 1 of the added codespace does.
+    (engine as unknown as { deleteBlockAtCodespaceLine(editor: Editor, line: number): void }).deleteBlockAtCodespaceLine(
+      addedEditor(engine, "left"),
+      1,
+    );
+    await settle();
+
+    expect(engine.getWorkspace()!.getAllBlocks(false)).toHaveLength(0);
+    expect(text(python)).toBe("");
+    expect(text(javascript)).toBe("");
+  });
+
+  test("drops are resolved against the codespace they land in", async () => {
+    const engine = await mountEngine();
+    await engine.addView({ kind: "codespace", container: div(), mode: "js", name: "left" }).ready;
+    const editor = addedEditor(engine, "left");
+    // jsdom lays nothing out, so the pointer is placed on line 1, lower half.
+    Object.assign(editor, {
+      isBelowLastLine: () => false,
+      getLineAtCoords: () => 1,
+      charAtCoords: () => null,
+      isInLowerHalfOfLine: () => true,
+    });
+    const say = engine.getWorkspace()!.getAllBlocks(false)[0]!;
+
+    const drop = (engine as unknown as {
+      computeCodespaceDrop(editor: Editor, x: number, y: number): { target: unknown } | null;
+    }).computeCodespaceDrop(editor, 0, 0);
+
+    expect(drop?.target).toEqual({ kind: "statement", targetBlockId: say.id, position: "after", topIndex: 1 });
+  });
+});
+
