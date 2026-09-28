@@ -371,8 +371,10 @@ export class MorphicCodeEditor {
     // that opened us, so focus would land on the editor instead of the input
     // (especially noticeable right after a drag-in, when Blockly's drag
     // sequence is still settling). One requestAnimationFrame is enough.
+    // Without `preventScroll`, focusing an input near the edge of a narrow
+    // view scrolls it, and the scroll handler above closes the editor again.
     requestAnimationFrame(() => {
-      inputEl.focus();
+      inputEl.focus({ preventScroll: true });
       if (inputEl instanceof HTMLInputElement) inputEl.select();
     });
   }

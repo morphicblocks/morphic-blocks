@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import { MorphicBlocks } from "../src";
 import type { MorphicBlocksFormat } from "../src/morphic/types";
 
@@ -290,5 +290,21 @@ describe("added codespaces", () => {
 
     expect(drop?.target).toEqual({ kind: "statement", targetBlockId: say.id, position: "after", topIndex: 1 });
   });
+});
+
+test("the inline value editor takes focus without scrolling its view", async () => {
+  const engine = await mountEngine();
+  await engine.addView({ kind: "codespace", container: div(), mode: "py", name: "left" }).ready;
+  const editor = (engine as unknown as {
+    views: Set<{ name: string; editor: { openPlaceholderEditor(range: unknown): void; editorView: { coordsAtPos(): unknown } } }>;
+  }).views.values().next().value!.editor;
+  // jsdom has no layout; any position will do.
+  editor.editorView.coordsAtPos = () => ({ left: 0, right: 10, top: 0, bottom: 10 });
+  const focus = vi.spyOn(HTMLElement.prototype, "focus");
+
+  editor.openPlaceholderEditor({ start: 0, end: 1, kind: "default", edit: { blockId: "x", fieldName: "X", fieldType: "text" } });
+  await new Promise((resolve) => requestAnimationFrame(resolve));
+
+  expect(focus).toHaveBeenCalledWith({ preventScroll: true });
 });
 
