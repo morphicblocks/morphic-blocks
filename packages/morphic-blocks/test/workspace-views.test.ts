@@ -23,8 +23,8 @@ const format: MorphicBlocksFormat = {
 
 const engines: MorphicBlocks[] = [];
 const div = () => document.body.appendChild(document.createElement("div"));
-// Blockly fires change events after a tick.
-const tick = () => new Promise((resolve) => setTimeout(resolve, 10));
+// Blockly fires change events after a tick, and the mirror copies one tick later.
+const tick = () => new Promise((resolve) => setTimeout(resolve, 50));
 const labels = (block: Blockly.Block | null) =>
   block?.inputList.flatMap((input) => input.fieldRow.map((field) => field.getText())).join(" ");
 
@@ -104,4 +104,5 @@ describe("added workspaces", () => {
     await tick();
     expect(engine.getViewMode("mirror")).toBeUndefined();
   });
+
 });

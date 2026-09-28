@@ -2450,43 +2450,43 @@ export class MorphicBlocks extends EventTarget {
     this.views.add(view);
     this.styleWorkspaceView(view);
 
-    Blockly.Events.disable();
-    try {
-      Blockly.serialization.workspaces.load(Blockly.serialization.workspaces.save(main), mirror);
-    } finally {
-      Blockly.Events.enable();
-    }
-    this.renderWorkspaceView(view);
-
-    const replay = (event: Blockly.Events.Abstract): void => {
-      if (event.workspaceId !== main.id) return;
-      if (event.type === Blockly.Events.SELECTED) {
-        const selected = event as Blockly.Events.Selected;
-        (mirror.getBlockById(selected.oldElementId ?? "") as Blockly.BlockSvg | null)?.unselect();
-        (mirror.getBlockById(selected.newElementId ?? "") as Blockly.BlockSvg | null)?.select();
-        return;
-      }
-      if (event.isUiEvent) return;
-      // The copy the mirror started from may already hold a block whose create
-      // event was still on its way; creating it again would duplicate it.
-      if (event.type === Blockly.Events.BLOCK_CREATE) {
-        const ids = (event as Blockly.Events.BlockCreate).ids ?? [];
-        if (ids.some((id) => mirror.getBlockById(id))) return;
-      }
+    // A fresh copy of the program, drawn in the view's mode.
+    const copyProgram = (): void => {
       Blockly.Events.disable();
       try {
-        Blockly.Events.fromJson(event.toJson(), mirror).run(true);
+        Blockly.serialization.workspaces.load(Blockly.serialization.workspaces.save(main), mirror);
       } finally {
         Blockly.Events.enable();
       }
-      // Blocks built by the replay get their mode's look once they have an SVG.
-      if (event.type === Blockly.Events.BLOCK_CREATE) {
-        for (const id of (event as Blockly.Events.BlockCreate).ids ?? []) {
-          const block = mirror.getBlockById(id) as Blockly.BlockSvg | null;
-          const definition = block && this.definitions.get(toCleanId(block.type));
-          if (block && definition) this.applyView(block, definition, view.mode, "workspace");
-        }
+      this.renderWorkspaceView(view);
+    };
+    copyProgram();
+
+    // Replaying single events cannot follow how the engine redraws blocks
+    // (a slot default is removed and made again, and Blockly's events do not
+    // say which block it belongs to). So after each batch of changes the
+    // mirror takes a fresh copy, once, and shows the main selection again.
+    let selectedId: string | null = null;
+    let copyPending = false;
+    const showSelection = (): void => {
+      for (const block of mirror.getAllBlocks(false)) (block as Blockly.BlockSvg).unselect();
+      (mirror.getBlockById(selectedId ?? "") as Blockly.BlockSvg | null)?.select();
+    };
+    const replay = (event: Blockly.Events.Abstract): void => {
+      if (event.workspaceId !== main.id) return;
+      if (event.type === Blockly.Events.SELECTED) {
+        selectedId = (event as Blockly.Events.Selected).newElementId ?? null;
+        showSelection();
+        return;
       }
+      if (event.isUiEvent || copyPending) return;
+      copyPending = true;
+      setTimeout(() => {
+        copyPending = false;
+        if (!this.views.has(view)) return;
+        copyProgram();
+        showSelection();
+      }, 0);
     };
     main.addChangeListener(replay);
 
