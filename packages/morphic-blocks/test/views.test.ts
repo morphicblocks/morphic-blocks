@@ -125,3 +125,25 @@ describe("added previews and the rest of the engine", () => {
   });
 });
 
+describe("views by name", () => {
+  test("built in and added views are found by name", async () => {
+    const engine = new MorphicBlocks(format, { say: () => "" });
+    engines.push(engine);
+    await engine.mount({ workspaceContainer: div(), previewContainer: div() });
+    engine.setModes({ workspaceMode: "py", previewMode: "js" });
+
+    const named = engine.addView({ kind: "preview", container: div(), mode: "py", name: "right" });
+    const unnamed = engine.addView({ kind: "preview", container: div(), mode: "js" });
+
+    expect(engine.getViewMode("workspace")).toBe("py");
+    expect(engine.getViewMode("preview")).toBe("js");
+    expect(named.name).toBe("right");
+    expect(unnamed.name).toBe("view-1");
+    expect(engine.getViewMode("view-1")).toBe("js");
+    expect(engine.getViewMode("nothing")).toBeUndefined();
+    expect(() => engine.addView({ kind: "preview", container: div(), mode: "py", name: "preview" })).toThrow(
+      /named "preview" already exists/,
+    );
+  });
+});
+

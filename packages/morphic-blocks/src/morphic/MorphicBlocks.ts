@@ -132,10 +132,25 @@ function normalizePresetToolbox(toolbox: MorphicPresetToolbox): {
 /** A view added with `addView()`, as the engine keeps it. */
 interface AddedView {
   kind: MorphicViewKind;
-  name?: string;
+  /** The given name, or one the engine made up. */
+  name: string;
   container: HTMLElement;
   mode: MorphicModeName;
   editor: MorphicCodeEditor;
+}
+
+/**
+ * Any view by name: the ones `mount()` sets up are named `workspace`,
+ * `codespace` and `preview`; added views carry their own name. Features that
+ * act on "a view" (toolbars, zoom, copy) look it up here, so they work for
+ * every view alike.
+ */
+interface ResolvedView {
+  name: string;
+  kind: "workspace" | "codespace" | "preview";
+  mode: MorphicModeName | undefined;
+  /** The text editor of a codespace or preview. */
+  editor?: MorphicCodeEditor;
 }
 
 /** Where Blockly's media is loaded from unless the host sets `blockly.media`. */
@@ -207,6 +222,8 @@ export class MorphicBlocks extends EventTarget {
   private previewEditor?: MorphicCodeEditor;
   /** Views added with `addView()`, beside the ones `mount()` sets up. */
   private readonly views = new Set<AddedView>();
+  /** Numbers added views that are not given a name. */
+  private viewCount = 0;
   private selectionSync?: MorphicSelectionSync;
   private toolboxDefinition?: NonNullable<Blockly.BlocklyOptions["toolbox"]>;
   /** Container the preview editor was mounted into. */
@@ -869,12 +886,13 @@ export class MorphicBlocks extends EventTarget {
     return handle;
   }
 
-  private toolbarTextFor(pane: "workspace" | "codespace" | "preview"): string {
-    if (pane === "codespace") {
-      return this.codespace?.getValue() ?? this.generateCodespaceText().code;
+  private toolbarTextFor(viewName: string): string {
+    const view = this.resolveView(viewName);
+    if (view?.kind === "codespace") {
+      return view.editor?.getValue() ?? this.generateCodespaceText().code;
     }
-    if (pane === "preview") {
-      return this.previewEditor?.getValue() ?? "";
+    if (view?.kind === "preview") {
+      return view.editor?.getValue() ?? "";
     }
     // Workspace: derive text from the codespace if mounted, else generate via JS codegen.
     if (this.codespace) return this.codespace.getValue();
@@ -885,10 +903,9 @@ export class MorphicBlocks extends EventTarget {
     }
   }
 
-  private toolbarRefreshFor(pane: "workspace" | "codespace" | "preview"): void {
-    if (pane === "codespace") this.codespace?.refresh();
-    else if (pane === "preview") this.previewEditor?.refresh();
+  private toolbarRefreshFor(viewName: string): void {
     // Workspace has no separate refresh — Blockly redraws on its own events.
+    this.resolveView(viewName)?.editor?.refresh();
   }
 
   /**
@@ -949,15 +966,15 @@ export class MorphicBlocks extends EventTarget {
    * (1) Blockly's selected block, (2) for codespace/preview, the deepest block
    * enclosing the active line. Returns true when something was copied.
    */
-  public copyActiveBlock(pane: "workspace" | "codespace" | "preview"): boolean {
-    const block = this.resolveActiveBlock(pane);
+  public copyActiveBlock(view: string): boolean {
+    const block = this.resolveActiveBlock(view);
     if (!block) return false;
     const data = block.toCopyData();
     if (!data) return false;
     this.lastCopyData = data;
     // Mirror to system clipboard as code text — best-effort, fire-and-forget.
     try {
-      const text = this.toolbarTextFor(pane === "workspace" ? "codespace" : pane);
+      const text = this.toolbarTextFor(view === "workspace" ? "codespace" : view);
       if (text) void navigator.clipboard?.writeText(text);
     } catch {
       // ignored
@@ -974,42 +991,33 @@ export class MorphicBlocks extends EventTarget {
    * specific slot is deferred; the current behaviour matches Ctrl+V in
    * standard Blockly.) Returns true if something was pasted.
    */
-  public pasteActiveBlock(_pane: "workspace" | "codespace" | "preview"): boolean {
+  public pasteActiveBlock(_view: string): boolean {
     if (!this.lastCopyData || !this.workspace) return false;
     const pasted = Blockly.clipboard.paste(this.lastCopyData, this.workspace);
     return pasted !== null;
   }
 
-  private resolveActiveBlock(
-    pane: "workspace" | "codespace" | "preview",
-  ): Blockly.BlockSvg | null {
+  private resolveActiveBlock(viewName: string): Blockly.BlockSvg | null {
     // 1. Whatever Blockly currently has selected — selection-sync keeps this
     //    in lockstep with codespace/preview cursor clicks.
     const selected = Blockly.common.getSelected();
     if (selected && "id" in selected && this.workspace?.getBlockById((selected as { id: string }).id)) {
       return selected as Blockly.BlockSvg;
     }
-    // 2. For codespace/preview, fall back to the block at the cursor line.
-    if (pane === "codespace" || pane === "preview") {
-      const editor = pane === "codespace" ? this.codespace : this.previewEditor;
-      if (editor) {
-        const meta = editor.metadata;
-        const cursorLine = editor.getCursorLine();
-        // Find the deepest (smallest range) block whose lines contain the cursor.
-        let best: { id: string; size: number } | null = null;
-        for (const [id, pos] of meta) {
-          if (pos.startLine <= cursorLine && pos.endLine >= cursorLine) {
-            const size = pos.endLine - pos.startLine;
-            if (!best || size < best.size) best = { id, size };
-          }
-        }
-        if (best) {
-          const block = this.workspace?.getBlockById(best.id);
-          if (block) return block as Blockly.BlockSvg;
-        }
+    // 2. For a text view, fall back to the block at the cursor line.
+    const editor = this.resolveView(viewName)?.editor;
+    if (!editor) return null;
+    const cursorLine = editor.getCursorLine();
+    // Find the deepest (smallest range) block whose lines contain the cursor.
+    let best: { id: string; size: number } | null = null;
+    for (const [id, pos] of editor.metadata) {
+      if (pos.startLine <= cursorLine && pos.endLine >= cursorLine) {
+        const size = pos.endLine - pos.startLine;
+        if (!best || size < best.size) best = { id, size };
       }
     }
-    return null;
+    const block = best ? this.workspace?.getBlockById(best.id) : null;
+    return (block as Blockly.BlockSvg | null | undefined) ?? null;
   }
 
   /** Serialize the workspace to a plain object (Blockly's native format). */
@@ -1026,23 +1034,19 @@ export class MorphicBlocks extends EventTarget {
   }
 
   /**
-   * Adjust the pane's zoom level. Direction is `"in" | "out" | "fit"`. For
-   * the workspace pane this maps to `workspace.zoomCenter(±1)` /
-   * `zoomToFit()`. For codespace/preview it scales the editor's font-size.
+   * Adjust a view's zoom level, by view name. Direction is `"in" | "out" |
+   * "fit"`. For the workspace this maps to `workspace.zoomCenter(±1)` /
+   * `zoomToFit()`. For a text view it scales the editor's font-size.
    */
-  public zoomPane(
-    pane: "workspace" | "codespace" | "preview",
-    direction: "in" | "out" | "fit",
-  ): void {
-    if (pane === "workspace") {
+  public zoomPane(view: string, direction: "in" | "out" | "fit"): void {
+    if (view === "workspace") {
       if (!this.workspace) return;
       if (direction === "in") this.workspace.zoomCenter(1);
       else if (direction === "out") this.workspace.zoomCenter(-1);
       else this.workspace.zoomToFit();
       return;
     }
-    const editor = pane === "codespace" ? this.codespace : this.previewEditor;
-    editor?.adjustZoom(direction);
+    this.resolveView(view)?.editor?.adjustZoom(direction);
   }
 
   private ensureToolbarBlocklyListener(): void {
@@ -2293,7 +2297,7 @@ export class MorphicBlocks extends EventTarget {
     if (options.kind !== "preview") {
       throw new Error(`addView: unknown view kind "${String(options.kind)}".`);
     }
-    if (options.name !== undefined && [...this.views].some((view) => view.name === options.name)) {
+    if (options.name !== undefined && this.resolveView(options.name)) {
       throw new Error(`addView: a view named "${options.name}" already exists.`);
     }
     this.checkTextViewMode("addView", options.mode);
@@ -2309,9 +2313,11 @@ export class MorphicBlocks extends EventTarget {
         showPlaceholderMarkers: false,
       },
     );
+    let name = options.name;
+    while (name === undefined || this.resolveView(name)) name = `view-${++this.viewCount}`;
     const view: AddedView = {
       kind: options.kind,
-      name: options.name,
+      name,
       container: options.container,
       mode: options.mode,
       editor,
@@ -2356,6 +2362,32 @@ export class MorphicBlocks extends EventTarget {
     const wanted = this.mountConfig?.selectionSync;
     if (wanted === false || !this.mountConfig?.workspaceContainer) return;
     this.enableSelectionSync(typeof wanted === "object" ? wanted : undefined);
+  }
+
+  /** A view by name, built in or added; `undefined` when there is none. */
+  private resolveView(name: string): ResolvedView | undefined {
+    if (name === "workspace") {
+      return this.workspace ? { name, kind: "workspace", mode: this.mountConfig?.workspaceMode } : undefined;
+    }
+    if (name === "codespace") {
+      return this.mountConfig?.codespaceContainer
+        ? { name, kind: "codespace", mode: this.getCodespaceMode(), editor: this.codespace }
+        : undefined;
+    }
+    if (name === "preview") {
+      return this.previewHost
+        ? { name, kind: "preview", mode: this.mountConfig?.previewMode, editor: this.previewEditor }
+        : undefined;
+    }
+    for (const view of this.views) {
+      if (view.name === name) return { name, kind: view.kind, mode: view.mode, editor: view.editor };
+    }
+    return undefined;
+  }
+
+  /** The mode a view shows, by name (`workspace`, `codespace`, `preview`, or an added view's). */
+  public getViewMode(name: string): MorphicModeName | undefined {
+    return this.resolveView(name)?.mode;
   }
 
   /** A text view's mode must exist and have a code element to render. */

@@ -703,7 +703,8 @@ export interface MorphicViewOptions {
 /** Controls a view added with `engine.addView()`. */
 export interface MorphicViewHandle {
   readonly kind: MorphicViewKind;
-  readonly name?: string;
+  /** The given name, or `view-1`, `view-2`, … when none was given. */
+  readonly name: string;
   /** Settles once the view is ready; text views load their editor in the background. */
   readonly ready: Promise<void>;
   getMode(): MorphicModeName;
