@@ -118,4 +118,15 @@ describe("added workspaces", () => {
 
     expect(copied).toBe("log hi");
   });
+
+  test("a click selects the block in the main workspace, an empty spot clears it", async () => {
+    const { first, mirror } = await setUp();
+    const drawn = (mirror.getBlockById(first.id) as Blockly.BlockSvg).getSvgRoot();
+
+    drawn.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(Blockly.common.getSelected()).toBe(first);
+
+    mirror.getParentSvg().querySelector(".blocklyMainBackground")!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(Blockly.common.getSelected()).toBeNull();
+  });
 });

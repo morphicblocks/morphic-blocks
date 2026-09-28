@@ -2494,14 +2494,20 @@ export class MorphicBlocks extends EventTarget {
     };
     main.addChangeListener(replay);
 
-    // A click in the mirror selects the same block in the main workspace.
-    const followClick = (event: Blockly.Events.Abstract): void => {
-      if (event.type !== Blockly.Events.SELECTED) return;
-      const id = (event as Blockly.Events.Selected).newElementId;
-      const block = id ? main.getBlockById(id) : null;
+    // A click in the mirror selects the same block in the main workspace, so
+    // every view highlights it; a click on an empty spot clears it. Blockly selects nothing in a read only
+    // workspace, so the click is read from the drawing; a slot default stands
+    // for the block that holds it, as in Blockly.
+    const followClick = (event: MouseEvent): void => {
+      const target = event.target as Element | null;
+      const drawn = target?.closest?.("[data-id]");
+      let block = drawn ? main.getBlockById(drawn.getAttribute("data-id") ?? "") : null;
+      while (block?.isShadow()) block = block.getParent();
       if (block) Blockly.common.setSelected(block as Blockly.BlockSvg);
+      // The background clears it, as in the other views; scrollbars do not.
+      else if (target?.classList.contains("blocklyMainBackground")) Blockly.common.setSelected(null);
     };
-    mirror.addChangeListener(followClick);
+    options.container.addEventListener("click", followClick);
 
     const resize = typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => Blockly.svgResize(mirror)) : undefined;
     resize?.observe(options.container);
@@ -2515,6 +2521,7 @@ export class MorphicBlocks extends EventTarget {
       : undefined;
     view.teardown = () => {
       main.removeChangeListener(replay);
+      options.container.removeEventListener("click", followClick);
       resize?.disconnect();
       toolbar?.dispose();
     };
