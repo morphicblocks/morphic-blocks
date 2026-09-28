@@ -2,6 +2,7 @@ import {
   makeResizable,
   MorphicBlocks,
   type MorphicPresetDefinition,
+  type MorphicViewHandle,
 } from "morphic-blocks";
 import definitions from "./definitions.json";
 import { behaviors } from "./behaviors";
@@ -51,6 +52,10 @@ const workspaceToolbarEl = document.getElementById("workspace-toolbar")!;
 const codespaceToolbarEl = document.getElementById("codespace-toolbar")!;
 const previewToolbarEl = document.getElementById("preview-toolbar")!;
 const outputEl = document.getElementById("output")!;
+const preview2Pane = document.getElementById("preview2-pane")!;
+const preview2Container = document.getElementById("preview2-container")!;
+// The second preview the Texts preset adds with engine.addView().
+let addedPreview: MorphicViewHandle | undefined;
 const modeButtonsContainer = document.getElementById("mode-buttons")!;
 const runBtn = document.getElementById("run-btn")!;
 const codeBtn = document.getElementById("code-btn")!;
@@ -135,6 +140,7 @@ function applyTheme(theme: ThemeName, syncEditors: boolean): void {
     engine.setCodeEditorTheme(editorThemeFor(theme));
     engine.setCodespaceTheme(editorThemeFor(theme));
     engine.setPreviewTheme(previewThemeFor(theme));
+    addedPreview?.setTheme(previewThemeFor(theme));
   }
   localStorage.setItem(THEME_STORAGE_KEY, theme);
 }
@@ -192,6 +198,26 @@ void engine.mount({
 });
 
 
+// ── Added view (to try engine.addView) ─────────────────
+// The Texts preset shows a second preview in JavaScript next to the Python one.
+
+
+function showAddedPreview(show: boolean): void {
+  preview2Pane.style.display = show ? "" : "none";
+  if (show && !addedPreview) {
+    addedPreview = engine.addView({
+      kind: "preview",
+      name: "second",
+      container: preview2Container,
+      mode: "syntax-js",
+      theme: previewThemeFor(currentTheme),
+    });
+  } else if (!show && addedPreview) {
+    addedPreview.dispose();
+    addedPreview = undefined;
+  }
+}
+
 // ── Preset Buttons ─────────────────────────────────────
 
 function handlePresetApplied(preset: MorphicPresetDefinition): void {
@@ -207,6 +233,7 @@ function handlePresetApplied(preset: MorphicPresetDefinition): void {
         ? `0 0 ${codespaceBasisPx}px`
         : "";
   previewPane.style.display = showPreview ? "" : "none";
+  showAddedPreview(preset.name === "texts");
 
   if (RESIZABLE_PANES) {
     gutterCodespace.hidden = !(showWorkspace && showCodespace);

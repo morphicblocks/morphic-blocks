@@ -277,6 +277,13 @@
       "preview": "syntax-js"
     },
     {
+      "name": "texts",
+      "label": "Texts",
+      "toolbox": "pseudo",
+      "codespace": "syntax-py",
+      "preview": "syntax-py"
+    },
+    {
       "name": "arabic",
       "label": "Arabic",
       "toolbox": "pseudo",
