@@ -142,6 +142,8 @@ interface AddedView {
   workspace?: Blockly.WorkspaceSvg;
   /** Removes what the view set up besides its editor or workspace. */
   teardown?: () => void;
+  /** The handle's `setMode`, used when a preset switches the view. */
+  setMode?: (mode: MorphicModeName) => void;
 }
 
 /**
@@ -525,6 +527,10 @@ export class MorphicBlocks extends EventTarget {
       codespaceMode: preset.codespace ?? null,
       previewMode: preset.preview ?? null,
     });
+    for (const view of this.views) {
+      const mode = preset.views?.[view.name];
+      if (mode !== undefined && mode !== view.mode) view.setMode?.(mode);
+    }
     this.activePreset = preset;
     this.mountConfig.onPresetApplied?.(preset);
     return preset;
@@ -610,6 +616,12 @@ export class MorphicBlocks extends EventTarget {
           throw new Error(
             `Preset "${preset.name}": mode "${name}" has no code element to render in the ${view}.`,
           );
+        }
+      }
+
+      for (const [viewName, mode] of Object.entries(preset.views ?? {})) {
+        if (!modeByName.has(mode)) {
+          throw new Error(`Preset "${preset.name}": unknown mode "${mode}" for view "${viewName}".`);
         }
       }
 
@@ -2374,7 +2386,7 @@ export class MorphicBlocks extends EventTarget {
         })
       : undefined;
 
-    return {
+    const handle: MorphicViewHandle = {
       kind: view.kind,
       name: view.name,
       ready: editor.mount().then(() => {
@@ -2398,6 +2410,8 @@ export class MorphicBlocks extends EventTarget {
         this.refreshSelectionSync();
       },
     };
+    view.setMode = handle.setMode;
+    return handle;
   }
 
   /**
@@ -2501,7 +2515,7 @@ export class MorphicBlocks extends EventTarget {
       toolbar?.dispose();
     };
 
-    return {
+    const handle: MorphicViewHandle = {
       kind: "workspace",
       name,
       ready: Promise.resolve(),
@@ -2521,6 +2535,8 @@ export class MorphicBlocks extends EventTarget {
         this.disposeView(view);
       },
     };
+    view.setMode = handle.setMode;
+    return handle;
   }
 
   /** The mode's classes and block font on an added workspace. */

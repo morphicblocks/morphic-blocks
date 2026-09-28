@@ -211,3 +211,36 @@ test("added previews follow blocks reordered with events off", async () => {
   expect(text(container)).toBe("wait();console.log();");
 });
 
+describe("presets and added views", () => {
+  const withPresets: MorphicBlocksFormat = {
+    ...format,
+    presets: [
+      { name: "a", toolbox: "py", workspace: "py", views: { right: "js" } },
+      { name: "b", toolbox: "py", workspace: "py", views: { right: "py", missing: "js" } },
+    ],
+  };
+
+  test("applying a preset switches the views it names", async () => {
+    const engine = new MorphicBlocks(withPresets, { say: () => "" });
+    engines.push(engine);
+    await engine.mount({ workspaceContainer: div(), preset: "a" });
+    const view = engine.addView({ kind: "preview", container: div(), mode: "js", name: "right" });
+
+    engine.applyPreset("b");
+    expect(view.getMode()).toBe("py");
+
+    engine.applyPreset("a");
+    expect(view.getMode()).toBe("js");
+  });
+
+  test("a preset naming an unknown mode for a view is refused", () => {
+    const engine = new MorphicBlocks(
+      { ...format, presets: [{ name: "a", toolbox: "py", workspace: "py", views: { right: "nope" } }] },
+      {},
+    );
+    engines.push(engine);
+
+    expect(() => engine.mount({ workspaceContainer: div() })).toThrow(/unknown mode "nope" for view "right"/);
+  });
+});
+

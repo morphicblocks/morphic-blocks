@@ -222,6 +222,12 @@ export interface MorphicPresetDefinition {
   workspace?: MorphicModeName;
   codespace?: MorphicModeName;
   preview?: MorphicModeName;
+  /**
+   * Modes of views added with `addView()`, by view name. Applying the preset
+   * switches each listed view that exists; the app shows or hides views, as
+   * for the built-in ones.
+   */
+  views?: Record<string, MorphicModeName>;
 }
 
 /**

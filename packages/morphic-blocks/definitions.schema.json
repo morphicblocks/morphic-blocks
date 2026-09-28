@@ -155,7 +155,12 @@
         "toolbox": { "$ref": "#/$defs/presetToolbox" },
         "workspace": { "type": "string" },
         "codespace": { "type": "string" },
-        "preview": { "type": "string" }
+        "preview": { "type": "string" },
+        "views": {
+          "description": "Modes of views added with addView(), by view name.",
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
       },
       "additionalProperties": false
     },
