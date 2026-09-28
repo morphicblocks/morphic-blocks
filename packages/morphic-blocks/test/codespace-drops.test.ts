@@ -128,7 +128,7 @@ test("a line of a top level chain is a place to connect", async () => {
   // jsdom lays nothing out, so the pointer is placed on line 2 (WHERE), upper half.
   const internals = engine as unknown as {
     codespace: Record<string, unknown>;
-    computeCodespaceDrop(x: number, y: number): { target: Target } | null;
+    computeCodespaceDrop(editor: unknown, x: number, y: number): { target: Target } | null;
   };
   Object.assign(internals.codespace, {
     isBelowLastLine: () => false,
@@ -137,7 +137,7 @@ test("a line of a top level chain is a place to connect", async () => {
     isInLowerHalfOfLine: () => false,
   });
 
-  expect(internals.computeCodespaceDrop(0, 0)?.target).toEqual({
+  expect(internals.computeCodespaceDrop(internals.codespace, 0, 0)?.target).toEqual({
     kind: "statement",
     targetBlockId: where.id,
     position: "before",

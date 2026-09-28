@@ -1282,7 +1282,7 @@ export class MorphicBlocks extends EventTarget {
 
     const mergedOptions: MorphicCodeEditorOptions = {
       ...options,
-      onDelete: options?.onDelete ?? ((line) => this.deleteBlockAtCodespaceLine(line)),
+      onDelete: options?.onDelete ?? ((line) => this.codespace && this.deleteBlockAtCodespaceLine(this.codespace, line)),
       canDragBlock:
         options?.canDragBlock ??
         ((blockId) => {
@@ -1310,6 +1310,7 @@ export class MorphicBlocks extends EventTarget {
     // Disposed or replaced while CodeMirror was loading.
     if (this.codespace !== codespace) return;
     this.codespaceDropTeardown = this.attachCodespaceDropTarget(
+      codespace,
       this.mountConfig.codespaceContainer,
       this.workspace,
     );
@@ -1317,6 +1318,7 @@ export class MorphicBlocks extends EventTarget {
   }
 
   private attachCodespaceDropTarget(
+    editor: MorphicCodeEditor,
     container: HTMLElement,
     workspace: Blockly.WorkspaceSvg,
   ): () => void {
@@ -1329,35 +1331,35 @@ export class MorphicBlocks extends EventTarget {
     const onDragOver = (e: DragEvent) => {
       if (!isCodespaceDrag(e)) return;
       e.preventDefault();
-      const drop = this.computeCodespaceDrop(e.clientX, e.clientY);
+      const drop = this.computeCodespaceDrop(editor, e.clientX, e.clientY);
       if (!drop) {
-        this.codespace?.hideDropIndicator();
-        this.codespace?.hideValueSlotHighlight();
+        editor.hideDropIndicator();
+        editor.hideValueSlotHighlight();
         return;
       }
       if (drop.indicator.kind === "line") {
-        this.codespace?.showDropIndicator(drop.indicator.line, drop.indicator.position);
-        this.codespace?.hideValueSlotHighlight();
+        editor.showDropIndicator(drop.indicator.line, drop.indicator.position);
+        editor.hideValueSlotHighlight();
       } else {
-        this.codespace?.showValueSlotHighlight(drop.indicator.from, drop.indicator.to);
-        this.codespace?.hideDropIndicator();
+        editor.showValueSlotHighlight(drop.indicator.from, drop.indicator.to);
+        editor.hideDropIndicator();
       }
     };
 
     const onDragLeave = (e: DragEvent) => {
       const next = e.relatedTarget as Node | null;
       if (next && container.contains(next)) return;
-      this.codespace?.hideDropIndicator();
-      this.codespace?.hideValueSlotHighlight();
+      editor.hideDropIndicator();
+      editor.hideValueSlotHighlight();
     };
 
     const onDrop = (e: DragEvent) => {
       if (!isCodespaceDrag(e)) return;
       e.preventDefault();
-      this.codespace?.hideDropIndicator();
-      this.codespace?.hideValueSlotHighlight();
+      editor.hideDropIndicator();
+      editor.hideValueSlotHighlight();
 
-      const aimed = this.computeCodespaceDrop(e.clientX, e.clientY);
+      const aimed = this.computeCodespaceDrop(editor, e.clientX, e.clientY);
       if (!aimed) return;
 
       const blockType = e.dataTransfer?.getData(DRAG_DATA_KEY);
@@ -1466,31 +1468,31 @@ export class MorphicBlocks extends EventTarget {
         if (dx + dy < moveThreshold) return;
         rightDrag.dragging = true;
       }
-      const drop = this.computeCodespaceDrop(e.clientX, e.clientY);
+      const drop = this.computeCodespaceDrop(editor, e.clientX, e.clientY);
       if (!drop) {
-        this.codespace?.hideDropIndicator();
-        this.codespace?.hideValueSlotHighlight();
+        editor.hideDropIndicator();
+        editor.hideValueSlotHighlight();
         return;
       }
       if (drop.indicator.kind === "line") {
-        this.codespace?.showDropIndicator(drop.indicator.line, drop.indicator.position);
-        this.codespace?.hideValueSlotHighlight();
+        editor.showDropIndicator(drop.indicator.line, drop.indicator.position);
+        editor.hideValueSlotHighlight();
       } else {
-        this.codespace?.showValueSlotHighlight(drop.indicator.from, drop.indicator.to);
-        this.codespace?.hideDropIndicator();
+        editor.showValueSlotHighlight(drop.indicator.from, drop.indicator.to);
+        editor.hideDropIndicator();
       }
     };
 
     const onRightUp = (e: MouseEvent) => {
       window.removeEventListener("mousemove", onRightMove);
       window.removeEventListener("mouseup", onRightUp);
-      this.codespace?.hideDropIndicator();
-      this.codespace?.hideValueSlotHighlight();
+      editor.hideDropIndicator();
+      editor.hideValueSlotHighlight();
       const state = rightDrag;
       rightDrag = null;
       setActiveGripDragSourceId(undefined);
       if (!state?.dragging) return;
-      const drop = this.computeCodespaceDrop(e.clientX, e.clientY);
+      const drop = this.computeCodespaceDrop(editor, e.clientX, e.clientY);
       if (!drop) return;
       const block = workspace.getBlockById(state.sourceId) as Blockly.BlockSvg | null;
       if (!block) return;
@@ -1499,9 +1501,9 @@ export class MorphicBlocks extends EventTarget {
 
     const onMouseDown = (e: MouseEvent) => {
       if (!isSecondaryClick(e)) return;
-      const charOffset = this.codespace?.charAtCoords(e.clientX, e.clientY);
+      const charOffset = editor.charAtCoords(e.clientX, e.clientY);
       if (charOffset === null || charOffset === undefined) return;
-      const block = this.findInnermostBlockAtChar(charOffset);
+      const block = this.findInnermostBlockAtChar(editor, charOffset);
       if (!block) return;
       // Stop CodeMirror from processing the mousedown too — otherwise CM
       // starts its own text selection (especially for Ctrl+left-click on
@@ -1539,31 +1541,31 @@ export class MorphicBlocks extends EventTarget {
     // indicators take over then.
     const onHoverMove = (e: MouseEvent) => {
       if (rightDrag) return;
-      const charOffset = this.codespace?.charAtCoords(e.clientX, e.clientY);
+      const charOffset = editor.charAtCoords(e.clientX, e.clientY);
       if (charOffset === null || charOffset === undefined) {
-        this.codespace?.setHoverHighlight(null);
-        this.codespace?.setEditableHoverHighlight(null);
+        editor.setHoverHighlight(null);
+        editor.setEditableHoverHighlight(null);
         return;
       }
-      const ph = this.findInnermostEditablePlaceholderAtChar(charOffset);
-      this.codespace?.setEditableHoverHighlight(
+      const ph = this.findInnermostEditablePlaceholderAtChar(editor, charOffset);
+      editor.setEditableHoverHighlight(
         ph ? { from: ph.start, to: ph.end } : null,
       );
-      const block = this.findHoverBlockAtChar(charOffset);
+      const block = this.findHoverBlockAtChar(editor, charOffset);
       if (!block) {
-        this.codespace?.setHoverHighlight(null);
+        editor.setHoverHighlight(null);
         return;
       }
-      const pos = this.codespace?.metadata.get(block.id);
+      const pos = editor.metadata.get(block.id);
       if (!pos || pos.startChar === undefined || pos.endChar === undefined) {
-        this.codespace?.setHoverHighlight(null);
+        editor.setHoverHighlight(null);
         return;
       }
-      this.codespace?.setHoverHighlight({ from: pos.startChar, to: pos.endChar });
+      editor.setHoverHighlight({ from: pos.startChar, to: pos.endChar });
     };
     const onHoverLeave = () => {
-      this.codespace?.setHoverHighlight(null);
-      this.codespace?.setEditableHoverHighlight(null);
+      editor.setHoverHighlight(null);
+      editor.setEditableHoverHighlight(null);
     };
 
     container.addEventListener("dragover", onDragOver);
@@ -1588,10 +1590,10 @@ export class MorphicBlocks extends EventTarget {
   }
 
   /** Innermost (smallest-range) block in metadata whose char range contains `charOffset`. */
-  private findInnermostBlockAtChar(charOffset: number): Blockly.BlockSvg | null {
-    if (!this.workspace || !this.codespace) return null;
+  private findInnermostBlockAtChar(editor: MorphicCodeEditor, charOffset: number): Blockly.BlockSvg | null {
+    if (!this.workspace) return null;
     let best: { id: string; size: number } | null = null;
-    for (const [id, pos] of this.codespace.metadata) {
+    for (const [id, pos] of editor.metadata) {
       if (pos.startChar === undefined || pos.endChar === undefined) continue;
       if (charOffset < pos.startChar || charOffset >= pos.endChar) continue;
       const size = pos.endChar - pos.startChar;
@@ -1608,11 +1610,11 @@ export class MorphicBlocks extends EventTarget {
    * block found when only atomic blocks contain the cursor (e.g. a top-level
    * orphan number on its own line).
    */
-  private findHoverBlockAtChar(charOffset: number): Blockly.BlockSvg | null {
-    if (!this.workspace || !this.codespace) return null;
+  private findHoverBlockAtChar(editor: MorphicCodeEditor, charOffset: number): Blockly.BlockSvg | null {
+    if (!this.workspace) return null;
     let bestNonAtomic: { id: string; size: number } | null = null;
     let bestAny: { id: string; size: number } | null = null;
-    for (const [id, pos] of this.codespace.metadata) {
+    for (const [id, pos] of editor.metadata) {
       if (pos.startChar === undefined || pos.endChar === undefined) continue;
       if (charOffset < pos.startChar || charOffset >= pos.endChar) continue;
       const size = pos.endChar - pos.startChar;
@@ -1626,10 +1628,9 @@ export class MorphicBlocks extends EventTarget {
   }
 
   /** Innermost placeholder with an editable `edit` target whose range contains `charOffset`. */
-  private findInnermostEditablePlaceholderAtChar(charOffset: number) {
-    if (!this.codespace) return null;
+  private findInnermostEditablePlaceholderAtChar(editor: MorphicCodeEditor, charOffset: number) {
     let best: { ph: { start: number; end: number; edit?: unknown }; size: number } | null = null;
-    for (const ph of this.codespace.getPlaceholders()) {
+    for (const ph of editor.getPlaceholders()) {
       if (!ph.edit) continue;
       if (charOffset < ph.start || charOffset >= ph.end) continue;
       const size = ph.end - ph.start;
@@ -1705,6 +1706,7 @@ export class MorphicBlocks extends EventTarget {
    * past the last rendered line always resolves to "after all" at top level.
    */
   private computeCodespaceDrop(
+    editor: MorphicCodeEditor,
     clientX: number,
     clientY: number,
   ): {
@@ -1723,10 +1725,10 @@ export class MorphicBlocks extends EventTarget {
       | { kind: "into-slot"; parentBlockId: string; inputName: string }
       | { kind: "value-slot"; parentBlockId: string; inputName: string };
   } | null {
-    if (!this.workspace || !this.codespace) return null;
+    if (!this.workspace) return null;
     const tops = this.workspace.getTopBlocks(true);
-    const meta = this.codespace.metadata;
-    const lineCount = this.codespace.getLineCount();
+    const meta = editor.metadata;
+    const lineCount = editor.getLineCount();
 
     if (tops.length === 0) {
       return {
@@ -1735,7 +1737,7 @@ export class MorphicBlocks extends EventTarget {
       };
     }
 
-    if (this.codespace.isBelowLastLine(clientY)) {
+    if (editor.isBelowLastLine(clientY)) {
       const lastPos = meta.get(tops[tops.length - 1]!.id);
       return {
         indicator: { kind: "line", line: lastPos?.endLine ?? lineCount, position: "below" },
@@ -1743,7 +1745,7 @@ export class MorphicBlocks extends EventTarget {
       };
     }
 
-    const line = this.codespace.getLineAtCoords(clientX, clientY);
+    const line = editor.getLineAtCoords(clientX, clientY);
     if (line === null) {
       const firstPos = meta.get(tops[0]!.id);
       return {
@@ -1755,9 +1757,9 @@ export class MorphicBlocks extends EventTarget {
     // Value-slot detection runs first: an empty slot (covered by a placeholder
     // range) or an occupied slot (the inner value child's char range) is
     // strictly narrower than any statement-slot match, so char-precision wins.
-    const charOffset = this.codespace.charAtCoords(clientX, clientY);
+    const charOffset = editor.charAtCoords(clientX, clientY);
     if (charOffset !== null) {
-      const valueSlot = this.findValueSlotDropAtChar(charOffset);
+      const valueSlot = this.findValueSlotDropAtChar(editor, charOffset);
       if (valueSlot) {
         return {
           indicator: {
@@ -1805,7 +1807,7 @@ export class MorphicBlocks extends EventTarget {
           if (line < cpos.startLine || line > cpos.endLine) continue;
 
           const onLastLine = line === cpos.endLine;
-          const lowerHalf = this.codespace.isInLowerHalfOfLine(line, clientY);
+          const lowerHalf = editor.isInLowerHalfOfLine(line, clientY);
           if (onLastLine && lowerHalf) {
             return {
               indicator: { kind: "line", line: cpos.endLine, position: "below" },
@@ -1854,7 +1856,7 @@ export class MorphicBlocks extends EventTarget {
         if (line < pos.startLine || line > pos.endLine) continue;
 
         const onLastLine = line === pos.endLine;
-        const lowerHalf = this.codespace.isInLowerHalfOfLine(line, clientY);
+        const lowerHalf = editor.isInLowerHalfOfLine(line, clientY);
         const after = onLastLine && lowerHalf;
         const isLast = after && !member.getNextBlock();
         return {
@@ -2011,16 +2013,16 @@ export class MorphicBlocks extends EventTarget {
    * Excludes the active grip-drag source so dragging a value block onto its
    * own rendered range is a no-op rather than a self-replace.
    */
-  private findValueSlotDropAtChar(charOffset: number): {
+  private findValueSlotDropAtChar(editor: MorphicCodeEditor, charOffset: number): {
     parentBlockId: string;
     inputName: string;
     highlight: { from: number; to: number };
   } | null {
-    if (!this.workspace || !this.codespace) return null;
+    if (!this.workspace) return null;
     const dragSourceId = getActiveGripDragSourceId();
 
     // 1. Empty value slots — placeholder ranges for a slot with no block in it.
-    for (const ph of this.codespace.getPlaceholders()) {
+    for (const ph of editor.getPlaceholders()) {
       if (charOffset < ph.start || charOffset >= ph.end) continue;
       // 1a. Truly empty slot ([TYPE] marker): the range carries its own
       //     parent + input, since there's no child block to walk up from.
@@ -2053,7 +2055,7 @@ export class MorphicBlocks extends EventTarget {
       from: number;
       to: number;
     } | null = null;
-    for (const [id, pos] of this.codespace.metadata) {
+    for (const [id, pos] of editor.metadata) {
       if (pos.startChar === undefined || pos.endChar === undefined) continue;
       if (charOffset < pos.startChar || charOffset >= pos.endChar) continue;
       if (id === dragSourceId) continue;
@@ -2682,8 +2684,8 @@ export class MorphicBlocks extends EventTarget {
     }
   }
 
-  private deleteBlockAtCodespaceLine(line: number): void {
-    const meta = this.codespace?.metadata;
+  private deleteBlockAtCodespaceLine(editor: MorphicCodeEditor, line: number): void {
+    const meta = editor.metadata;
     if (!this.workspace || !meta || meta.size === 0) return;
 
     // Pick the innermost block whose range contains the line.
