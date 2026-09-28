@@ -53,6 +53,9 @@ import type {
   MorphicToolbarConfig,
   MorphicToolboxCanvasOptions,
   MorphicToolboxCategory,
+  MorphicViewHandle,
+  MorphicViewKind,
+  MorphicViewOptions,
 } from "./types";
 
 /**
@@ -126,6 +129,15 @@ function normalizePresetToolbox(toolbox: MorphicPresetToolbox): {
  * engine build it, so several editors can share a page. A workspace no engine
  * has claimed falls back to the engine that registered the type most recently.
  */
+/** A view added with `addView()`, as the engine keeps it. */
+interface AddedView {
+  kind: MorphicViewKind;
+  name?: string;
+  container: HTMLElement;
+  mode: MorphicModeName;
+  editor: MorphicCodeEditor;
+}
+
 /** Where Blockly's media is loaded from unless the host sets `blockly.media`. */
 const DEFAULT_BLOCKLY_MEDIA = "blockly-media/";
 
@@ -193,6 +205,8 @@ export class MorphicBlocks extends EventTarget {
   private codeEditor?: MorphicCodeEditor;
   private codespace?: MorphicCodeEditor;
   private previewEditor?: MorphicCodeEditor;
+  /** Views added with `addView()`, beside the ones `mount()` sets up. */
+  private readonly views = new Set<AddedView>();
   private selectionSync?: MorphicSelectionSync;
   private toolboxDefinition?: NonNullable<Blockly.BlocklyOptions["toolbox"]>;
   /** Container the preview editor was mounted into. */
@@ -605,6 +619,9 @@ export class MorphicBlocks extends EventTarget {
     this.previewEditor?.dispose();
     this.previewEditor = undefined;
     this.previewHost = undefined;
+
+    for (const view of this.views) view.editor.dispose();
+    this.views.clear();
 
     this.toolboxCanvas?.dispose();
     this.toolboxCanvas = undefined;
@@ -2231,22 +2248,98 @@ export class MorphicBlocks extends EventTarget {
   }
 
   private generatePreviewText(): MorphicCodeGenerationResult {
-    if (!this.workspace || !this.mountConfig) {
-      return { code: "", metadata: new Map(), placeholders: [] };
-    }
-    const previewMode = this.mountConfig.previewMode;
-    const elementName = this.getActivePreviewElement();
-    if (!previewMode || !elementName) {
+    return this.generateModeText(this.mountConfig?.previewMode);
+  }
+
+  /** The program as `mode`'s source element writes it, as a preview shows it. */
+  private generateModeText(mode: MorphicModeName | undefined): MorphicCodeGenerationResult {
+    const modeDef = this.modeDef(mode);
+    const elementName = modeDef ? resolveModeSourceElement(modeDef, this.elementTypes) : undefined;
+    if (!this.workspace || !this.mountConfig || !mode || !elementName) {
       return { code: "", metadata: new Map(), placeholders: [] };
     }
     return generateTextFromWorkspace(
       this.workspace,
-      previewMode,
+      mode,
       this.definitions,
       this.elementTypes,
       this.mountConfig.modes ?? [],
       elementName,
     );
+  }
+
+  /** Highlight rules of `mode`'s source element. */
+  private highlightRulesFor(mode: MorphicModeName): MorphicHighlightDefinition | undefined {
+    const modeDef = this.modeDef(mode);
+    const elementName = modeDef ? resolveModeSourceElement(modeDef, this.elementTypes) : undefined;
+    return elementName ? this.mountConfig?.code?.[elementName]?.highlighting : undefined;
+  }
+
+  /**
+   * Add a view beside the ones `mount()` sets up, e.g. a second preview in
+   * another mode. Returns a handle to change its mode or remove it; a new
+   * `mount()` removes every added view.
+   */
+  public addView(options: MorphicViewOptions): MorphicViewHandle {
+    if (!this.workspace || !this.mountConfig) {
+      throw new Error("MorphicBlocks must be mounted before addView can be used.");
+    }
+    if (options.kind !== "preview") {
+      throw new Error(`addView: unknown view kind "${String(options.kind)}".`);
+    }
+    if (options.name !== undefined && [...this.views].some((view) => view.name === options.name)) {
+      throw new Error(`addView: a view named "${options.name}" already exists.`);
+    }
+    this.checkTextViewMode("addView", options.mode);
+
+    const editor = new MorphicCodeEditor(
+      options.container,
+      this.workspace,
+      () => this.generateModeText(view.mode),
+      {
+        theme: options.theme,
+        highlightRules: this.highlightRulesFor(options.mode),
+        // Read only like the preview: the editing marker would mislead.
+        showPlaceholderMarkers: false,
+      },
+    );
+    const view: AddedView = {
+      kind: options.kind,
+      name: options.name,
+      container: options.container,
+      mode: options.mode,
+      editor,
+    };
+    this.views.add(view);
+    applyTextViewModeClass(view.container, view.mode, "morphic-preview-root");
+
+    return {
+      kind: view.kind,
+      name: view.name,
+      ready: editor.mount(),
+      getMode: () => view.mode,
+      setMode: (mode) => {
+        if (!this.views.has(view)) return;
+        this.checkTextViewMode("setMode", mode);
+        view.mode = mode;
+        applyTextViewModeClass(view.container, mode, "morphic-preview-root");
+        editor.setHighlightRules(this.highlightRulesFor(mode));
+        editor.refresh();
+      },
+      dispose: () => {
+        if (!this.views.delete(view)) return;
+        editor.dispose();
+      },
+    };
+  }
+
+  /** A text view's mode must exist and have a code element to render. */
+  private checkTextViewMode(caller: string, mode: MorphicModeName): void {
+    const modeDef = this.modeDef(mode);
+    if (!modeDef) throw new Error(`${caller}: unknown mode "${mode}".`);
+    if (resolveModeSourceElement(modeDef, this.elementTypes) === undefined) {
+      throw new Error(`${caller}: mode "${mode}" has no code element to render.`);
+    }
   }
 
   /**

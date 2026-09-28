@@ -684,6 +684,34 @@ export interface MorphicCodeEditorTheme {
   selectionBackground?: string;
 }
 
+/** Kinds of view `addView()` adds beside the ones `mount()` sets up. */
+export type MorphicViewKind = "preview";
+
+/** A view added with `engine.addView()`. */
+export interface MorphicViewOptions {
+  kind: MorphicViewKind;
+  /** Element the view renders into. */
+  container: HTMLElement;
+  /** Mode the view shows; a preview renders its source element. */
+  mode: MorphicModeName;
+  /** Unique among the engine's added views. */
+  name?: string;
+  /** Colours of a text view, like `previewTheme`. */
+  theme?: MorphicCodeEditorTheme;
+}
+
+/** Controls a view added with `engine.addView()`. */
+export interface MorphicViewHandle {
+  readonly kind: MorphicViewKind;
+  readonly name?: string;
+  /** Settles once the view is ready; text views load their editor in the background. */
+  readonly ready: Promise<void>;
+  getMode(): MorphicModeName;
+  setMode(mode: MorphicModeName): void;
+  /** Removes the view. `mount()` again removes every added view too. */
+  dispose(): void;
+}
+
 /** Options for `mountCodeEditor()`. */
 export interface MorphicCodeEditorOptions {
   /** Visual theme — the framework provides sensible defaults. */
