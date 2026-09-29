@@ -129,6 +129,11 @@ function buildThemeExtension(
       backgroundColor: t.background,
       color: t.foreground,
     },
+    // CodeMirror's own theme sets monospace on the scroller, which the text
+    // would inherit instead of the font set on the editor above.
+    ".cm-scroller": {
+      fontFamily: t.fontFamily,
+    },
     ".cm-content": {
       lineHeight: String(t.lineHeight),
     },
