@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { MorphicBlocks } from "../src";
 
 /**
@@ -58,5 +58,31 @@ describe("settings moved into the code section in 0.3.0", () => {
   test("the top level highlighting map is reported with directions", () => {
     const old = { elementTypes: { code: "code" }, highlighting: { code: { keywords: ["say"] } }, blocks: [block] };
     expect(mountWith(old)).toThrow(/"highlighting" map moved into the "code" section/);
+  });
+});
+
+describe("onWarning", () => {
+  test("framework warnings go to the app instead of the console", async () => {
+    const console_ = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const warnings: string[] = [];
+    const engine = new MorphicBlocks(
+      {
+        elementTypes: { code: "code" },
+        modes: [{ name: "only", elements: ["code", "nope"] }],
+        blocks: [block],
+      } as never,
+      {},
+    );
+
+    await engine.mount({
+      workspaceContainer: document.body.appendChild(document.createElement("div")),
+      onWarning: (message) => warnings.push(message),
+    });
+
+    expect(warnings.some((m) => m.includes("Definition warnings"))).toBe(true);
+    expect(warnings.some((m) => m.includes("Modes without explicit CSS"))).toBe(true);
+    expect(console_).not.toHaveBeenCalled();
+    engine.dispose();
+    console_.mockRestore();
   });
 });

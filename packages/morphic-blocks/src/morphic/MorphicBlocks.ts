@@ -179,18 +179,22 @@ const checkedMedia = new Set<string>();
  * zoom controls from `sprites.png`, so checking it asks for a file the page
  * loads anyway.
  */
-function warnWhenMediaMissing(media: string): void {
+function warnWhenMediaMissing(media: string, warn: (message: string) => void): void {
   if (checkedMedia.has(media) || typeof Image === "undefined") return;
   checkedMedia.add(media);
   const probe = new Image();
   probe.onerror = () => {
-    console.warn(
+    warn(
       `[MorphicBlocks] Blockly's media is missing at "${media}", so icons are not shown and sounds stay silent. ` +
         `Copy it there with "morphic-blocks copy-media <folder>", or point blockly.media to where it is.`,
     );
   };
   probe.src = `${media}sprites.png`;
 }
+
+/** Where a mount's warnings go: the host's `onWarning`, or the console. */
+const warnFor = (config: MorphicMountConfig): ((message: string) => void) =>
+  config.onWarning ?? ((message) => console.warn(message));
 
 const workspaceOwners = new WeakMap<Blockly.Workspace, MorphicBlocks>();
 const fallbackOwners = new Map<string, MorphicBlocks>();
@@ -391,7 +395,7 @@ export class MorphicBlocks extends EventTarget {
 
     this.mountConfig = resolvedConfig;
 
-    this.styles.validateModeCoverage(mergedModeStyles, declaredModeNames);
+    this.styles.validateModeCoverage(mergedModeStyles, declaredModeNames, warnFor(config));
     if (resolvedConfig.modes?.length) {
       this.styles.ensureModeVisibilityStyles(resolvedConfig.modes);
     }
@@ -425,7 +429,7 @@ export class MorphicBlocks extends EventTarget {
     workspaceOwners.set(this.workspace, this);
     this.baseTheme = this.workspace.getTheme();
     this.baseFont = measuredFont(this.workspace);
-    if (config.workspaceContainer) warnWhenMediaMissing(this.workspace.options.pathToMedia);
+    if (config.workspaceContainer) warnWhenMediaMissing(this.workspace.options.pathToMedia, warnFor(config));
 
     // The framework owns the workspace, so it keeps Blockly's SVG sized to its
     // container: pane toggles, window resizes and divider drags all change the
@@ -563,7 +567,7 @@ export class MorphicBlocks extends EventTarget {
       );
     }
     if (warnings.length > 0) {
-      console.warn(
+      warnFor(config)(
         `[MorphicBlocks] Definition warnings:\n- ${warnings.join("\n- ")}`,
       );
     }

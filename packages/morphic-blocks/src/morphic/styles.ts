@@ -104,13 +104,14 @@ export class MorphicStyleManager {
   public validateModeCoverage(
     modeStyles: MorphicModeStyle[],
     definitionModes: MorphicModeName[],
+    warn: (message: string) => void = console.warn,
   ): void {
     const styleModes = new Set(modeStyles.map((style) => style.mode));
     const missingModes = definitionModes.filter(
       (mode) => !styleModes.has(mode),
     );
     if (missingModes.length > 0) {
-      console.warn(
+      warn(
         `[MorphicBlocks] Modes without explicit CSS definition: ${missingModes.join(", ")}.`,
       );
     }

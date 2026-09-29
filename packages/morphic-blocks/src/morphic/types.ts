@@ -542,6 +542,12 @@ export interface MorphicMountConfig {
    * present on the preset).
    */
   onPresetApplied?: (preset: MorphicPresetDefinition) => void;
+  /**
+   * Receives every framework warning (definition warnings, modes without
+   * CSS, missing Blockly media) instead of the browser console, e.g. to show
+   * them in the app's own development mode.
+   */
+  onWarning?: (message: string) => void;
   toolbox?: MorphicToolboxConfig;
   toolboxLayout?: MorphicToolboxLayout;
   /**
