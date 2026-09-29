@@ -736,6 +736,7 @@ export class MorphicBlocks extends EventTarget {
       modeLabel: options?.modeLabel ?? toolbox?.modeLabel,
       highlight: options?.highlight ?? toolbox?.highlight,
       touch: options?.touch ?? toolbox?.touch,
+      keyboard: options?.keyboard ?? toolbox?.keyboard,
     };
 
     this.toolboxCanvas = new MorphicToolboxCanvas({
@@ -753,6 +754,7 @@ export class MorphicBlocks extends EventTarget {
       options: canvasOptions,
       onPreviewWorkspace: (workspace) => workspaceOwners.set(workspace, this),
       dropTargets: () => [...this.tileDropTargets],
+      onChoose: (blockType) => this.addBlockFromTile(blockType),
     });
   }
 
@@ -2124,6 +2126,43 @@ export class MorphicBlocks extends EventTarget {
       }
     }
     return null;
+  }
+
+  /**
+   * Add a block chosen on a tile with the keyboard: after the selected block
+   * when its connections fit there, else as a new stack below the others.
+   * The new block is selected, so choosing again builds a chain.
+   */
+  private addBlockFromTile(blockType: string): void {
+    const workspace = this.workspace;
+    if (!workspace) return;
+    const selected = Blockly.common.getSelected();
+    const anchor = selected instanceof Blockly.BlockSvg && selected.workspace === workspace ? selected : null;
+
+    Blockly.Events.setGroup(true);
+    try {
+      const block = workspace.newBlock(resolveBlocklyType(blockType, this.definitions)) as Blockly.BlockSvg;
+      const after = anchor && !anchor.isShadow()
+        ? { kind: "statement" as const, targetBlockId: anchor.id, position: "after" as const }
+        : null;
+      const fits = after !== null && this.codespaceDropAllowed(workspace, block, after);
+      // Placed before it is drawn: drawn first at 0,0, Blockly would push
+      // blocks there out of its way.
+      if (!fits) this.placeOrphanBelowTops(block);
+      block.initSvg();
+      block.render();
+      if (fits && anchor) this.connectStatement(block, anchor, "after");
+      Blockly.common.setSelected(block);
+      // Keep the new block in sight, without moving the view when it is.
+      const view = workspace.getMetricsManager().getViewMetrics(true);
+      const box = block.getBoundingRectangle();
+      const inSight =
+        box.left >= view.left && box.top >= view.top &&
+        box.right <= view.left + view.width && box.bottom <= view.top + view.height;
+      if (!inSight) workspace.centerOnBlock(block.id);
+    } finally {
+      Blockly.Events.setGroup(false);
+    }
   }
 
   /**

@@ -458,6 +458,8 @@ export interface MorphicToolboxConfig {
   highlight?: boolean;
   /** Tiles can be dragged with a finger or pen. Default `true`. */
   touch?: boolean;
+  /** Tiles can be reached with Tab and added with Enter or Space. Default `true`. */
+  keyboard?: boolean;
 }
 
 /**
@@ -482,6 +484,14 @@ export interface MorphicToolboxCanvasOptions {
    * toolbox still scrolls up and down) or after a long press.
    */
   touch?: boolean;
+  /**
+   * Tiles can be reached with Tab and read by screen readers as buttons named
+   * after what they show (code as the codespace writes it, text, image alt
+   * text). Enter or Space adds the block after
+   * the selected one when it fits there, else as a new stack, and selects it,
+   * so pressing again builds a chain. Default `true`.
+   */
+  keyboard?: boolean;
   /** Show only a subset of blocks. Defaults to all blocks in definitions. */
   blocks?: string[];
   /**

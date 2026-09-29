@@ -91,6 +91,8 @@ export class MorphicToolboxCanvas {
   private readonly onDrop: (e: DragEvent) => void;
   /** Targets besides the workspace, such as codespaces, for touch drags. */
   private readonly dropTargets: () => TileDropTarget[];
+  /** Adds a tile's block when the tile is chosen with the keyboard. */
+  private readonly onChoose?: (blockType: string) => void;
 
   constructor(params: {
     container: HTMLElement;
@@ -109,6 +111,7 @@ export class MorphicToolboxCanvas {
     /** Called once with the hidden workspace used to draw block previews. */
     onPreviewWorkspace?: (workspace: Blockly.WorkspaceSvg) => void;
     dropTargets?: () => TileDropTarget[];
+    onChoose?: (blockType: string) => void;
   }) {
     this.container = params.container;
     this.workspaceContainer = params.workspaceContainer;
@@ -124,6 +127,7 @@ export class MorphicToolboxCanvas {
     this.modes = params.modes ?? [];
     this.options = params.options ?? {};
     this.dropTargets = params.dropTargets ?? (() => []);
+    this.onChoose = params.onChoose;
 
     this.onDragOver = (e: DragEvent) => {
       if (e.dataTransfer?.types.includes(DRAG_DATA_KEY)) {
@@ -318,8 +322,44 @@ export class MorphicToolboxCanvas {
       ensureTileTouchStyles();
       this.attachTouchDrag(tile, definition.identifier);
     }
+    if (this.options.keyboard !== false) {
+      tile.tabIndex = 0;
+      tile.setAttribute("role", "button");
+      tile.setAttribute("aria-label", this.tileName(definition, modeOrder));
+      tile.addEventListener("keydown", (e: KeyboardEvent) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        e.preventDefault();
+        this.onChoose?.(definition.identifier);
+      });
+    }
 
     return tile;
+  }
+
+  /**
+   * What a screen reader calls the tile: what the tile shows, in the mode's
+   * order. Code is read as the codespace would write it, text as it is, and
+   * images by their alt text. The identifier when the mode shows nothing.
+   */
+  private tileName(definition: MorphicBlockDefinition, modeOrder: string[]): string {
+    const parts: string[] = [];
+    for (const name of modeOrder) {
+      const content = definition.elements[name];
+      if (content === undefined) continue;
+      const type = resolveElementType(this.elementTypes[name]);
+      if (type === "code") {
+        const code = this.createCodeText(definition, this.currentMode, name);
+        if (code?.trim()) parts.push(code.trim());
+        continue;
+      }
+      const holder = document.createElement("div");
+      holder.innerHTML = type === "image" ? normalizeImageValue(content, resolveImageSize(this.elementTypes[name])) : content;
+      const text = type === "image"
+        ? Array.from(holder.querySelectorAll("img"), (img) => img.alt).join(" ").trim()
+        : holder.textContent?.trim();
+      if (text) parts.push(text);
+    }
+    return parts.join(", ") || definition.identifier;
   }
 
   /** The target under a point: a codespace, else the workspace. */
