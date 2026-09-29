@@ -203,3 +203,6 @@ prototype/*
 
 # research notes (local-only)
 research_notes/
+# Local package builds for testing apps before a release (npm pack)
+*.tgz
+.pack/
