@@ -188,3 +188,46 @@ describe("tile code elements", () => {
     expect(text("python")).toBe("print()");
   });
 });
+
+describe("dropping a tile", () => {
+  test("a dropped block is never drawn at 0,0, where Blockly would push blocks away", async () => {
+    const engine = new MorphicBlocks(
+      {
+        elementTypes: { code: "code" },
+        modes: [{ name: "only", elements: ["code"] }],
+        blocks: [
+          {
+            identifier: "add",
+            elements: { code: "%1 + %2" },
+            inputSlots: {
+              "1": { kind: "value", name: "A", default: { placeholder: "number" } },
+              "2": { kind: "value", name: "B", default: { placeholder: "number" } },
+            },
+            output: true,
+          },
+          { identifier: "number", elements: { code: "%NUM" }, fields: { NUM: { type: "number", default: 1 } }, output: true },
+        ],
+      },
+      {},
+    );
+    engines.push(engine);
+    await engine.mount({ workspaceContainer: div(), toolboxContainer: div() });
+    const drawnAt: string[] = [];
+    const render = Blockly.BlockSvg.prototype.render;
+    Blockly.BlockSvg.prototype.render = function (this: Blockly.BlockSvg) {
+      const { x, y } = this.getRelativeToSurfaceXY();
+      if (!this.getParent()) drawnAt.push(`${Math.round(x)},${Math.round(y)}`);
+      return render.call(this);
+    };
+    try {
+      // Private: what a drop of a tile at a point of the page does.
+      (engine as unknown as { toolboxCanvas: { createBlockAtPosition(type: string, x: number, y: number): void } })
+        .toolboxCanvas.createBlockAtPosition("add", 400, 400);
+    } finally {
+      Blockly.BlockSvg.prototype.render = render;
+    }
+
+    expect(drawnAt.length).toBeGreaterThan(0);
+    expect(drawnAt).not.toContain("0,0");
+  });
+});

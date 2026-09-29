@@ -434,9 +434,11 @@ export class MorphicToolboxCanvas {
     const block = ws.newBlock(
       resolveBlocklyType(blockType, this.definitions),
     ) as Blockly.BlockSvg;
+    // Placed before it is drawn: drawn first at 0,0, Blockly would bump
+    // blocks there out of its way.
+    block.moveTo(new Blockly.utils.Coordinate(x, y));
     block.initSvg();
     block.render();
-    block.moveTo(new Blockly.utils.Coordinate(x, y));
   }
 
   private resolveBlockIds(): string[] {

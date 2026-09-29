@@ -8,6 +8,8 @@ import {
   applyRootModeClasses,
   applyTextViewModeClass,
   captureFieldValues,
+  decorateBlockRoot,
+  isOnCanvas,
   restoreFieldValues,
   type MorphicManagedBlock,
 } from "./block-view";
@@ -2860,14 +2862,19 @@ export class MorphicBlocks extends EventTarget {
         continue;
       }
 
-      this.applyView(
-        block,
-        definition,
-        this.mountConfig.workspaceMode,
-        "workspace",
-      );
+      // A block built in this mode at its creation only needs its drawing
+      // styled. Building it again would remake its slot defaults, which
+      // Blockly draws at 0,0 before connecting them, bumping blocks there.
+      const mode = this.mountConfig.workspaceMode;
+      const managed = block as MorphicManagedBlock;
+      if (managed.__morphicMode === mode && managed.__morphicContext === "workspace" && block.getSvgRoot()) {
+        decorateBlockRoot(block, mode, "workspace");
+        this.styleBlock(block, definition);
+        continue;
+      }
+      this.applyView(block, definition, mode, "workspace");
       if (!block.getSvgRoot()) {
-        this.deferApplyView(id, this.mountConfig.workspaceMode, "workspace");
+        this.deferApplyView(id, mode, "workspace");
       }
     }
   };
@@ -3019,6 +3026,27 @@ export class MorphicBlocks extends EventTarget {
       elementTypes: isMainWorkspace ? this.elementTypes : undefined,
       resolveBlocklyType: (ref) => resolveBlocklyType(ref, this.definitions),
     });
+    this.styleBlock(block, definition);
+
+    const lifecycleBehavior = getLifecycleBehavior(
+      this.behaviors[definition.identifier],
+    );
+    lifecycleBehavior?.onViewApplied?.(
+      block,
+      this.createBehaviorContext(block, definition, mode, context),
+    );
+
+    // Restore field values after onViewApplied has recreated the fields
+    restoreFieldValues(block, fieldMemory);
+  }
+
+  /**
+   * The classes and colours a block's drawing takes from its definition and
+   * the mode's CSS. Needs the block's SVG, so a block built before it had one
+   * is styled again once it does.
+   */
+  private styleBlock(block: Blockly.BlockSvg, definition: MorphicBlockDefinition): void {
+    const category = this.blockCategoryIndex.get(definition.identifier);
     applyBlockCategoryClass(block, category?.token);
 
     // Stamp the stable per-block identifier class so mode CSS can target it
@@ -3034,19 +3062,8 @@ export class MorphicBlocks extends EventTarget {
     // active mode changes the CSS theme.
     if (definition.color !== undefined) {
       block.setColour(definition.color);
-      if (block.rendered) block.render();
+      if (isOnCanvas(block)) block.render();
     }
-
-    const lifecycleBehavior = getLifecycleBehavior(
-      this.behaviors[definition.identifier],
-    );
-    lifecycleBehavior?.onViewApplied?.(
-      block,
-      this.createBehaviorContext(block, definition, mode, context),
-    );
-
-    // Restore field values after onViewApplied has recreated the fields
-    restoreFieldValues(block, fieldMemory);
   }
 
   private applyTextViewClasses(): void {

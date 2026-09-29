@@ -101,9 +101,18 @@ export function applyBlockView(params: MorphicApplyBlockViewParams): void {
   managedBlock.__morphicMode = mode;
   managedBlock.__morphicContext = context;
 
-  if (block.rendered) {
+  if (isOnCanvas(block)) {
     block.render();
   }
+}
+
+/**
+ * Whether a block is drawn on its workspace yet. Blockly calls a new block
+ * `rendered` before its SVG is placed; drawing it then draws it at 0,0, and
+ * Blockly pushes blocks there out of its way.
+ */
+export function isOnCanvas(block: Blockly.BlockSvg): boolean {
+  return block.rendered && !!block.getSvgRoot()?.parentNode;
 }
 
 export function applyRootModeClasses(
@@ -173,7 +182,7 @@ export function applyBlockColorFromCSS(block: Blockly.BlockSvg): void {
   if (colorValue) {
     block.setColour(colorValue);
     // Re-render so the new colour is reflected
-    if (block.rendered) {
+    if (isOnCanvas(block)) {
       block.render();
     }
   }
@@ -195,7 +204,7 @@ export function applyTextViewModeClass(
   }
 }
 
-function decorateBlockRoot(
+export function decorateBlockRoot(
   block: Blockly.BlockSvg,
   mode: MorphicModeName,
   context: MorphicRenderContext,
@@ -545,12 +554,15 @@ function attachEmptyDefaults(
               if (field) field.setValue(value);
             }
           }
-          if (block.rendered) {
-            placeholder.initSvg();
-            placeholder.render();
-          }
           if (placeholder.outputConnection) {
             connection.connect(placeholder.outputConnection);
+          }
+          // Drawn with its parent, as Blockly draws a slot's shadow: drawing
+          // it now, before the parent has its place, draws it at 0,0, where
+          // Blockly pushes blocks out of its way.
+          if (block.rendered) {
+            placeholder.initSvg();
+            placeholder.queueRender();
           }
         } catch {
           // Skip — most likely a missing block type or output-check mismatch.
