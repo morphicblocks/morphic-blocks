@@ -1,5 +1,6 @@
 import { toModeClassToken } from "./template";
 import type {
+  MorphicHighlightDefinition,
   MorphicModeDefinition,
   MorphicModeName,
   MorphicStyleBundle,
@@ -130,6 +131,26 @@ export class MorphicStyleManager {
       addStyle(sourceName, style.cssText);
     }
   }
+}
+
+/**
+ * Token colours for code shown as text on toolbox tiles, per code element:
+ * the element's own `highlighting.colors`, or the codespace's defaults.
+ */
+export function ensureTileHighlightStyles(
+  elementName: string,
+  colors: MorphicHighlightDefinition["colors"] = {},
+): void {
+  const scope = `.morphic-block .morphic-element-${toModeClassToken(elementName)}`;
+  addStyle(
+    `tile-highlight:${elementName}`,
+    [
+      `${scope} .morphic-tok-keyword { color: ${colors.keyword ?? "#cc7832"}; }`,
+      `${scope} .morphic-tok-string { color: ${colors.string ?? "#6a8759"}; }`,
+      `${scope} .morphic-tok-number { color: ${colors.number ?? "#6897bb"}; }`,
+      `${scope} .morphic-tok-comment { color: ${colors.comment ?? "#808080"}; font-style: italic; }`,
+    ].join("\n"),
+  );
 }
 
 /** Hide every element, then show the ones each mode lists. */

@@ -58,3 +58,36 @@ describe("toolbox width", () => {
     expect(toolbox.style.getPropertyValue("--morphic-toolbox-block-width")).toBe(`${Math.max(...widths)}px`);
   });
 });
+
+describe("keyword colors on text tiles", () => {
+  const textFormat: MorphicBlocksFormat = {
+    elementTypes: { python: "code" },
+    code: { python: { highlighting: { keywords: ["print"], colors: { keyword: "#123456" } } } },
+    modes: [{ name: "py", elements: ["python"] }],
+    presets: [{ name: "text", toolbox: { mode: "py", render: { python: "text" } }, workspace: "py" }],
+    blocks: [{ identifier: "say", elements: { python: "print(1)" }, shape: "statement" }],
+  };
+
+  async function textToolbox(toolbox: MorphicToolboxConfig): Promise<HTMLElement> {
+    const engine = new MorphicBlocks(textFormat, {});
+    engines.push(engine);
+    const container = div();
+    await engine.mount({ workspaceContainer: div(), toolboxContainer: container, toolbox });
+    return container;
+  }
+
+  test("code shown as text on a tile is colored like the codespace colors it", async () => {
+    const toolbox = await textToolbox({});
+    const tokens = Array.from(toolbox.querySelectorAll(".morphic-element-python [class^='morphic-tok-']"));
+
+    expect(tokens.map((t) => `${t.className}:${t.textContent}`)).toEqual(["morphic-tok-keyword:print", "morphic-tok-number:1"]);
+    expect(document.querySelector('style[data-morphic-source="tile-highlight:python"]')?.textContent).toContain("#123456");
+  });
+
+  test("the colors can be switched off", async () => {
+    const toolbox = await textToolbox({ highlight: false });
+
+    expect(toolbox.querySelector(".morphic-element-python")?.textContent).toBe("print(1)");
+    expect(toolbox.querySelector("[class^='morphic-tok-']")).toBeNull();
+  });
+});

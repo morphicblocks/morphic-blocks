@@ -454,6 +454,8 @@ export interface MorphicToolboxConfig {
   categories?: MorphicToolboxCategory[];
   /** Header of the HTML toolbox; see {@link MorphicToolboxModeLabel}. */
   modeLabel?: MorphicToolboxModeLabel;
+  /** Colour code shown as text on tiles like the codespace does. Default `true`. */
+  highlight?: boolean;
 }
 
 /**
@@ -467,6 +469,11 @@ export type MorphicToolboxModeLabel = boolean | string | ((mode: string) => stri
 export interface MorphicToolboxCanvasOptions {
   /** Header of the toolbox; see {@link MorphicToolboxModeLabel}. Defaults to "Mode: <name>". */
   modeLabel?: MorphicToolboxModeLabel;
+  /**
+   * Colour code shown as text on tiles (`render: "text"`) with its element's
+   * `code.<element>.highlighting`, as the codespace does. Default `true`.
+   */
+  highlight?: boolean;
   /** Show only a subset of blocks. Defaults to all blocks in definitions. */
   blocks?: string[];
   /**

@@ -728,6 +728,7 @@ export class MorphicBlocks extends EventTarget {
       blocks: options?.blocks ?? toolbox?.blocks,
       categories: options?.categories ?? toolbox?.categories,
       modeLabel: options?.modeLabel ?? toolbox?.modeLabel,
+      highlight: options?.highlight ?? toolbox?.highlight,
     };
 
     this.toolboxCanvas = new MorphicToolboxCanvas({
@@ -741,6 +742,7 @@ export class MorphicBlocks extends EventTarget {
       mode: this.mountConfig.toolboxMode,
       render: this.mountConfig.toolboxRender,
       modes: this.mountConfig.modes,
+      code: this.mountConfig.code,
       options: canvasOptions,
       onPreviewWorkspace: (workspace) => workspaceOwners.set(workspace, this),
     });

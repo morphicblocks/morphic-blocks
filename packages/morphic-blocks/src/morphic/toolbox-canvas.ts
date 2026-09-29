@@ -3,6 +3,8 @@ import { getLifecycleBehavior } from "./behavior-runtime";
 import { resolveBlocklyType } from "./block-namespace";
 import { applyBlockView } from "./block-view";
 import { generateTextFromWorkspace } from "./template-codegen";
+import { ensureTileHighlightStyles } from "./styles";
+import { tokenMatcher } from "./syntax-highlight";
 import { applyFont, measuredFont, readCssFont, type MorphicBlockFont } from "./block-font";
 import { resolveElementType, resolveImageSize } from "./element-types";
 import {
@@ -16,6 +18,8 @@ import type {
   MorphicBlockDefinition,
   MorphicElementTypeEntry,
   MorphicModeDefinition,
+  MorphicCodeElementConfig,
+  MorphicHighlightDefinition,
   MorphicModeName,
   MorphicResolvedView,
   MorphicToolboxCanvasOptions,
@@ -23,6 +27,26 @@ import type {
 } from "./types";
 
 export const DRAG_DATA_KEY = "morphic/block-type";
+
+/** Text as HTML with its tokens wrapped in the classes the codespace uses. */
+function highlightedHtml(text: string, rules: MorphicHighlightDefinition): string {
+  const matchTokens = tokenMatcher(rules);
+  const escape = (value: string) =>
+    value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return text
+    .split("\n")
+    .map((line) => {
+      let html = "";
+      let at = 0;
+      for (const token of matchTokens(line)) {
+        html += escape(line.slice(at, token.from));
+        html += `<span class="morphic-tok-${token.kind}">${escape(line.slice(token.from, token.to))}</span>`;
+        at = token.to;
+      }
+      return html + escape(line.slice(at));
+    })
+    .join("\n");
+}
 
 export class MorphicToolboxCanvas {
   private readonly container: HTMLElement;
@@ -35,6 +59,7 @@ export class MorphicToolboxCanvas {
   private readonly options: MorphicToolboxCanvasOptions;
   private readonly modes: MorphicModeDefinition[];
   private currentMode: MorphicModeName;
+  private readonly code: Record<string, MorphicCodeElementConfig>;
   /** Per-element block/text override for code elements in tiles (from the active preset). */
   private renderOverride?: Record<string, "block" | "text">;
 
@@ -58,6 +83,8 @@ export class MorphicToolboxCanvas {
     mode: MorphicModeName;
     render?: Record<string, "block" | "text">;
     modes?: MorphicModeDefinition[];
+    /** Code element settings; their highlighting colours code shown as text. */
+    code?: Record<string, MorphicCodeElementConfig>;
     options?: MorphicToolboxCanvasOptions;
     /** Called once with the hidden workspace used to draw block previews. */
     onPreviewWorkspace?: (workspace: Blockly.WorkspaceSvg) => void;
@@ -70,6 +97,7 @@ export class MorphicToolboxCanvas {
     this.blockColors = params.blockColors;
     this.behaviors = params.behaviors;
     this.elementTypes = params.elementTypes ?? {};
+    this.code = params.code ?? {};
     this.currentMode = params.mode;
     this.renderOverride = params.render;
     this.modes = params.modes ?? [];
@@ -244,7 +272,12 @@ export class MorphicToolboxCanvas {
         }
       } else if (isCodeElement) {
         const text = this.createCodeText(definition, this.currentMode, elementName);
-        if (text !== null) {
+        const rules = this.options.highlight === false ? undefined : this.code[elementName]?.highlighting;
+        if (text !== null && rules) {
+          // Coloured like the codespace colours this element.
+          ensureTileHighlightStyles(elementName, rules.colors);
+          el.innerHTML = highlightedHtml(text, rules);
+        } else if (text !== null) {
           el.textContent = text;
         } else {
           el.innerHTML = renderTemplateAsHtml(parseTemplate(resolvedContent));
