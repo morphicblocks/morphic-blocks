@@ -272,6 +272,16 @@ generated JavaScript view, hidden until `engine.showCodeEditor()`. The separate
 `mountToolbox()`, `mountCodespace()`, `mountPreview()`, `mountCodeEditor()` and
 `mountToolbar()` methods remain for setting a view up later.
 
+More views beside those, each in its own mode, come from `engine.addView()`:
+previews, codespaces, and read only workspaces that mirror the program as
+blocks. A preset sets their modes by name with `views`, and a toolbar attaches
+to any view by name:
+
+```ts
+engine.addView({ kind: "preview", name: "right", mode: "syntax-js", container: rightEl,
+  toolbar: { container: rightToolbarEl } });
+```
+
 Modes, presets, categories, and code settings all come from the definitions
 passed to the constructor — `mount()` only takes runtime wiring.
 
@@ -377,6 +387,7 @@ Block colours can be driven from CSS via a custom property:
 - ✅ Definition-driven syntax highlighting — per-element `code.<element>.highlighting` rules, runtime-swapped on `setModes()`
 - ✅ Multi-editor selection sync — block ↔ code editor ↔ codespace ↔ preview
 - ✅ One-file constructor + mount-time validation + shipped JSON Schema (`$schema` / `version`)
+- ✅ Added views — `engine.addView()` for more previews, codespaces and read only workspaces, each in its own mode; presets name them with `views`, toolbars attach by view name
 - ✅ Per-mode field rendering — a dropdown option's `display` map (keyed by element name) makes the shown text mode-aware (`True`/`true`, `and`/`&&`) while the stored value drives execution and codegen
 
 ### Upcoming
