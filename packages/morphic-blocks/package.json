@@ -33,10 +33,13 @@
     "test": "vitest run"
   },
   "keywords": [
+    "morphic-blocks",
     "blockly",
-    "framework",
+    "block-based-programming",
+    "text-based-programming",
     "visual-programming",
-    "morphic"
+    "programming-education",
+    "codemirror"
   ],
   "license": "Apache-2.0",
   "dependencies": {
