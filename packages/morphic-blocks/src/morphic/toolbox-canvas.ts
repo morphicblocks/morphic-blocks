@@ -115,7 +115,24 @@ export class MorphicToolboxCanvas {
     }
   }
 
+  /**
+   * Draw the tiles and publish the widest block's width as
+   * `--morphic-toolbox-block-width` on the container. The layout stays the
+   * app's: one that wants every block to fit gives the container
+   * `min-width: calc(var(--morphic-toolbox-block-width) + <padding>)` and
+   * lets its column grow to it (`minmax(250px, min-content)`). Only blocks
+   * count, so long descriptions, which wrap, do not widen it.
+   */
   private render(): void {
+    this.widestBlock = 0;
+    this.renderTiles();
+    this.container.style.setProperty("--morphic-toolbox-block-width", `${Math.ceil(this.widestBlock)}px`);
+  }
+
+  /** Widest block drawn on a tile in the current render, in pixels. */
+  private widestBlock = 0;
+
+  private renderTiles(): void {
     this.container.innerHTML = "";
 
     const modeLabel = this.options.modeLabel ?? true;
@@ -398,7 +415,9 @@ export class MorphicToolboxCanvas {
         "http://www.w3.org/2000/svg",
         "svg",
       );
-      svg.setAttribute("width", String(Math.ceil(bbox.width + pad * 2)));
+      const width = Math.ceil(bbox.width + pad * 2);
+      this.widestBlock = Math.max(this.widestBlock, width);
+      svg.setAttribute("width", String(width));
       svg.setAttribute("height", String(Math.ceil(bbox.height + pad * 2)));
       svg.setAttribute(
         "viewBox",

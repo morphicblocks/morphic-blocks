@@ -49,3 +49,12 @@ describe("toolbox options through mount", () => {
     expect(tiles).toEqual(["wait"]);
   });
 });
+
+describe("toolbox width", () => {
+  test("the widest block's width is published for the app's layout", async () => {
+    const toolbox = await toolboxWith({});
+    const widths = Array.from(toolbox.querySelectorAll("svg")).map((svg) => Number(svg.getAttribute("width")));
+
+    expect(toolbox.style.getPropertyValue("--morphic-toolbox-block-width")).toBe(`${Math.max(...widths)}px`);
+  });
+});
