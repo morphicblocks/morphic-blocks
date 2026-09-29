@@ -154,6 +154,19 @@ export function ensureTileHighlightStyles(
   );
 }
 
+/**
+ * Tiles leave up and down swipes to the browser, so the toolbox scrolls; a
+ * sideways swipe drags the tile. A long press drags too, so the press must not
+ * select text or open the phone's menu. Apps with a sideways toolbox set
+ * `touch-action: pan-x` on their tiles.
+ */
+export function ensureTileTouchStyles(): void {
+  addStyle(
+    "tile-touch",
+    ".morphic-block[data-block-type] { touch-action: pan-y; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }",
+  );
+}
+
 /** Hide every element, then show the ones each mode lists. */
 function modeVisibilityCss(modes: MorphicModeDefinition[]): string {
   const lines: string[] = ['[class^="morphic-element-"] { display: none; }'];

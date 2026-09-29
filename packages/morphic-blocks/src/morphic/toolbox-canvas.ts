@@ -3,7 +3,7 @@ import { getLifecycleBehavior } from "./behavior-runtime";
 import { resolveBlocklyType } from "./block-namespace";
 import { applyBlockView } from "./block-view";
 import { generateTextFromWorkspace } from "./template-codegen";
-import { ensureTileHighlightStyles } from "./styles";
+import { ensureTileHighlightStyles, ensureTileTouchStyles } from "./styles";
 import { tokenMatcher } from "./syntax-highlight";
 import { applyFont, measuredFont, readCssFont, type MorphicBlockFont } from "./block-font";
 import { resolveElementType, resolveImageSize } from "./element-types";
@@ -27,6 +27,24 @@ import type {
 } from "./types";
 
 export const DRAG_DATA_KEY = "morphic/block-type";
+
+/**
+ * Where a tile dragged by touch or pen can land. HTML drag and drop, which
+ * mouse drags use, does not start from a finger in most browsers.
+ */
+export interface TileDropTarget {
+  element: HTMLElement;
+  /** The tile is over the target at this point. */
+  over?(x: number, y: number): void;
+  /** The tile left the target or the drag ended. */
+  leave?(): void;
+  drop(blockType: string, x: number, y: number): void;
+}
+
+/** Sideways movement in pixels before a press on a tile becomes a drag. */
+const TOUCH_DRAG_DISTANCE = 8;
+/** A press held this long, in milliseconds, starts a drag in any direction. */
+const LONG_PRESS_MS = 350;
 
 /** Text as HTML with its tokens wrapped in the classes the codespace uses. */
 function highlightedHtml(text: string, rules: MorphicHighlightDefinition): string {
@@ -71,6 +89,8 @@ export class MorphicToolboxCanvas {
 
   private readonly onDragOver: (e: DragEvent) => void;
   private readonly onDrop: (e: DragEvent) => void;
+  /** Targets besides the workspace, such as codespaces, for touch drags. */
+  private readonly dropTargets: () => TileDropTarget[];
 
   constructor(params: {
     container: HTMLElement;
@@ -88,6 +108,7 @@ export class MorphicToolboxCanvas {
     options?: MorphicToolboxCanvasOptions;
     /** Called once with the hidden workspace used to draw block previews. */
     onPreviewWorkspace?: (workspace: Blockly.WorkspaceSvg) => void;
+    dropTargets?: () => TileDropTarget[];
   }) {
     this.container = params.container;
     this.workspaceContainer = params.workspaceContainer;
@@ -102,6 +123,7 @@ export class MorphicToolboxCanvas {
     this.renderOverride = params.render;
     this.modes = params.modes ?? [];
     this.options = params.options ?? {};
+    this.dropTargets = params.dropTargets ?? (() => []);
 
     this.onDragOver = (e: DragEvent) => {
       if (e.dataTransfer?.types.includes(DRAG_DATA_KEY)) {
@@ -292,8 +314,130 @@ export class MorphicToolboxCanvas {
     tile.addEventListener("dragstart", (e: DragEvent) => {
       e.dataTransfer?.setData(DRAG_DATA_KEY, definition.identifier);
     });
+    if (this.options.touch !== false) {
+      ensureTileTouchStyles();
+      this.attachTouchDrag(tile, definition.identifier);
+    }
 
     return tile;
+  }
+
+  /** The target under a point: a codespace, else the workspace. */
+  private dropTargetAt(x: number, y: number): TileDropTarget | undefined {
+    const hit = document.elementFromPoint(x, y);
+    if (!hit) return undefined;
+    const workspace: TileDropTarget = {
+      element: this.workspaceContainer,
+      drop: (blockType, dropX, dropY) => this.createBlockAtPosition(blockType, dropX, dropY),
+    };
+    return [...this.dropTargets(), workspace].find((target) => target.element.contains(hit));
+  }
+
+  /**
+   * Drag a tile with a finger or pen: a copy of the tile follows the pointer
+   * and the block is made where it is let go.
+   */
+  private attachTouchDrag(tile: HTMLElement, blockType: string): void {
+    tile.addEventListener("pointerdown", (down: PointerEvent) => {
+      if (down.pointerType === "mouse" || !down.isPrimary) return;
+
+      const rect = tile.getBoundingClientRect();
+      let ghost: HTMLElement | undefined;
+      let target: TileDropTarget | undefined;
+      let last = { x: down.clientX, y: down.clientY };
+      // The browser's own drag of the tile would compete with this one.
+      tile.draggable = false;
+
+      // Where the copy's own coordinates start and how they scale: a toolbox
+      // inside a zoomed or transformed element moves them.
+      let origin = { x: 0, y: 0 };
+      let scale = 1;
+      let frame = 0;
+
+      const start = () => {
+        if (ghost) return;
+        ghost = tile.cloneNode(true) as HTMLElement;
+        ghost.classList.add("morphic-drag-ghost");
+        ghost.removeAttribute("tabindex");
+        Object.assign(ghost.style, {
+          position: "fixed",
+          left: "0",
+          top: "0",
+          margin: "0",
+          pointerEvents: "none",
+          zIndex: "2147483647",
+          // A transition on the app's tiles would trail every move.
+          transition: "none",
+          animation: "none",
+        });
+        this.container.appendChild(ghost);
+        const at0 = ghost.getBoundingClientRect();
+        ghost.style.left = "100px";
+        scale = (ghost.getBoundingClientRect().left - at0.left) / 100 || 1;
+        origin = { x: at0.left, y: at0.top };
+        Object.assign(ghost.style, {
+          left: `${(rect.left - origin.x) / scale}px`,
+          top: `${(rect.top - origin.y) / scale}px`,
+          width: `${rect.width / scale}px`,
+        });
+        follow();
+      };
+      const longPress = window.setTimeout(start, LONG_PRESS_MS);
+
+      // At most once per frame: finding the target makes the browser lay out.
+      const follow = () => {
+        if (!ghost || frame) return;
+        frame = requestAnimationFrame(() => {
+          frame = 0;
+          if (!ghost) return;
+          ghost.style.transform = `translate(${(last.x - down.clientX) / scale}px, ${(last.y - down.clientY) / scale}px)`;
+          const next = this.dropTargetAt(last.x, last.y);
+          if (next !== target) target?.leave?.();
+          target = next;
+          target?.over?.(last.x, last.y);
+        });
+      };
+
+      const onMove = (e: PointerEvent) => {
+        if (e.pointerId !== down.pointerId) return;
+        last = { x: e.clientX, y: e.clientY };
+        const dx = Math.abs(e.clientX - down.clientX);
+        const dy = Math.abs(e.clientY - down.clientY);
+        // Up and down belongs to the browser, which scrolls the toolbox.
+        if (!ghost && (dx < TOUCH_DRAG_DISTANCE || dy > dx)) return;
+        window.clearTimeout(longPress);
+        start();
+        follow();
+      };
+      // Once dragging, the page must not scroll under the finger.
+      const onTouchMove = (e: TouchEvent) => {
+        if (ghost) e.preventDefault();
+      };
+      const onContextMenu = (e: Event) => e.preventDefault();
+
+      const end = (e: PointerEvent) => {
+        if (e.pointerId !== down.pointerId) return;
+        window.clearTimeout(longPress);
+        tile.removeEventListener("pointermove", onMove);
+        tile.removeEventListener("pointerup", end);
+        tile.removeEventListener("pointercancel", end);
+        tile.removeEventListener("touchmove", onTouchMove);
+        tile.removeEventListener("contextmenu", onContextMenu);
+        tile.draggable = true;
+        cancelAnimationFrame(frame);
+        target?.leave?.();
+        if (!ghost) return;
+        ghost.remove();
+        if (e.type === "pointerup") this.dropTargetAt(e.clientX, e.clientY)?.drop(blockType, e.clientX, e.clientY);
+      };
+
+      tile.setPointerCapture?.(down.pointerId);
+      tile.addEventListener("pointermove", onMove);
+      tile.addEventListener("pointerup", end);
+      tile.addEventListener("pointercancel", end);
+      tile.addEventListener("touchmove", onTouchMove, { passive: false });
+      tile.addEventListener("contextmenu", onContextMenu);
+    });
   }
 
   private ensurePreviewWorkspace(): Blockly.WorkspaceSvg {

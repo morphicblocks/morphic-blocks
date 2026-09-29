@@ -456,6 +456,8 @@ export interface MorphicToolboxConfig {
   modeLabel?: MorphicToolboxModeLabel;
   /** Colour code shown as text on tiles like the codespace does. Default `true`. */
   highlight?: boolean;
+  /** Tiles can be dragged with a finger or pen. Default `true`. */
+  touch?: boolean;
 }
 
 /**
@@ -474,6 +476,12 @@ export interface MorphicToolboxCanvasOptions {
    * `code.<element>.highlighting`, as the codespace does. Default `true`.
    */
   highlight?: boolean;
+  /**
+   * Tiles can be dragged with a finger or pen into the workspace and the
+   * codespace. Default `true`. A tile starts moving when dragged sideways (the
+   * toolbox still scrolls up and down) or after a long press.
+   */
+  touch?: boolean;
   /** Show only a subset of blocks. Defaults to all blocks in definitions. */
   blocks?: string[];
   /**

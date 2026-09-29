@@ -25,7 +25,7 @@ import { withCodeSettings } from "./element-types";
 import { formatValue } from "./value-format";
 import { MorphicStyleManager, type MorphicModeStyle } from "./styles";
 import { toModeClassToken } from "./template";
-import { DRAG_DATA_KEY, MorphicToolboxCanvas } from "./toolbox-canvas";
+import { DRAG_DATA_KEY, MorphicToolboxCanvas, type TileDropTarget } from "./toolbox-canvas";
 import { buildToolboxDefinition } from "./toolbox";
 import { resolveBlockView, resolveModeSourceElement } from "./view-resolver";
 import { renderToolbar, toolbarItems, type MorphicToolbarHandle } from "./toolbar";
@@ -235,6 +235,8 @@ export class MorphicBlocks extends EventTarget {
   private workspace?: Blockly.WorkspaceSvg;
   private flyoutWorkspace?: Blockly.WorkspaceSvg;
   private toolboxCanvas?: MorphicToolboxCanvas;
+  /** Codespaces a tile dragged by touch or pen can be dropped on. */
+  private readonly tileDropTargets = new Set<TileDropTarget>();
   private codeEditor?: MorphicCodeEditor;
   private codespace?: MorphicCodeEditor;
   private previewEditor?: MorphicCodeEditor;
@@ -733,6 +735,7 @@ export class MorphicBlocks extends EventTarget {
       categories: options?.categories ?? toolbox?.categories,
       modeLabel: options?.modeLabel ?? toolbox?.modeLabel,
       highlight: options?.highlight ?? toolbox?.highlight,
+      touch: options?.touch ?? toolbox?.touch,
     };
 
     this.toolboxCanvas = new MorphicToolboxCanvas({
@@ -749,6 +752,7 @@ export class MorphicBlocks extends EventTarget {
       code: this.mountConfig.code,
       options: canvasOptions,
       onPreviewWorkspace: (workspace) => workspaceOwners.set(workspace, this),
+      dropTargets: () => [...this.tileDropTargets],
     });
   }
 
@@ -1330,13 +1334,15 @@ export class MorphicBlocks extends EventTarget {
       return types.includes(DRAG_DATA_KEY) || types.includes(BLOCK_ID_DRAG_KEY);
     };
 
-    const onDragOver = (e: DragEvent) => {
-      if (!isCodespaceDrag(e)) return;
-      e.preventDefault();
-      const drop = this.computeCodespaceDrop(editor, e.clientX, e.clientY);
+    const hideDrop = () => {
+      editor.hideDropIndicator();
+      editor.hideValueSlotHighlight();
+    };
+
+    const showDropAt = (x: number, y: number) => {
+      const drop = this.computeCodespaceDrop(editor, x, y);
       if (!drop) {
-        editor.hideDropIndicator();
-        editor.hideValueSlotHighlight();
+        hideDrop();
         return;
       }
       if (drop.indicator.kind === "line") {
@@ -1348,24 +1354,29 @@ export class MorphicBlocks extends EventTarget {
       }
     };
 
+    const onDragOver = (e: DragEvent) => {
+      if (!isCodespaceDrag(e)) return;
+      e.preventDefault();
+      showDropAt(e.clientX, e.clientY);
+    };
+
     const onDragLeave = (e: DragEvent) => {
       const next = e.relatedTarget as Node | null;
       if (next && container.contains(next)) return;
-      editor.hideDropIndicator();
-      editor.hideValueSlotHighlight();
+      hideDrop();
     };
 
     const onDrop = (e: DragEvent) => {
       if (!isCodespaceDrag(e)) return;
       e.preventDefault();
-      editor.hideDropIndicator();
-      editor.hideValueSlotHighlight();
+      dropAt(e.clientX, e.clientY, e.dataTransfer?.getData(DRAG_DATA_KEY), e.dataTransfer?.getData(BLOCK_ID_DRAG_KEY));
+    };
 
-      const aimed = this.computeCodespaceDrop(editor, e.clientX, e.clientY);
+    /** Drop a new block from a tile, or move the block with `sourceId`. */
+    const dropAt = (x: number, y: number, blockType?: string, sourceId?: string) => {
+      hideDrop();
+      const aimed = this.computeCodespaceDrop(editor, x, y);
       if (!aimed) return;
-
-      const blockType = e.dataTransfer?.getData(DRAG_DATA_KEY);
-      const sourceId = e.dataTransfer?.getData(BLOCK_ID_DRAG_KEY);
 
       let block: Blockly.BlockSvg | null = null;
       if (blockType) {
@@ -1573,6 +1584,15 @@ export class MorphicBlocks extends EventTarget {
       editor.setEditableHoverHighlight(null);
     };
 
+    // Touch and pen drags from the toolbox, which HTML drag and drop misses.
+    const tileTarget: TileDropTarget = {
+      element: container,
+      over: showDropAt,
+      leave: hideDrop,
+      drop: (blockType, x, y) => dropAt(x, y, blockType),
+    };
+    this.tileDropTargets.add(tileTarget);
+
     container.addEventListener("dragover", onDragOver);
     container.addEventListener("dragleave", onDragLeave);
     container.addEventListener("drop", onDrop);
@@ -1582,6 +1602,7 @@ export class MorphicBlocks extends EventTarget {
     container.addEventListener("mouseleave", onHoverLeave);
 
     return () => {
+      this.tileDropTargets.delete(tileTarget);
       container.removeEventListener("dragover", onDragOver);
       container.removeEventListener("dragleave", onDragLeave);
       container.removeEventListener("drop", onDrop);
