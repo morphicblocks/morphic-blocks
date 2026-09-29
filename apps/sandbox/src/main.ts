@@ -11,6 +11,9 @@ import "./style.css";
 // Open the sandbox with ?rtl to try a right to left page and workspace.
 const RTL = new URLSearchParams(location.search).has("rtl");
 if (RTL) document.documentElement.dir = "rtl";
+// ?touch=off and ?keyboard=off turn the toolbox's touch dragging and
+// keyboard use off, to compare with the defaults.
+const query = new URLSearchParams(location.search);
 
 // The JSON import goes to the engine as is; mount() validates it. The Arabic
 // test block and the preset that shows its concept text in the codespace only
@@ -178,6 +181,10 @@ void engine.mount({
   preset: presets[0]?.name,
   onPresetApplied: handlePresetApplied,
   modesFolder: modeStyles,
+  toolbox: {
+    touch: query.get("touch") !== "off",
+    keyboard: query.get("keyboard") !== "off",
+  },
   blockly: {
     rtl: RTL,
     scrollbars: true,

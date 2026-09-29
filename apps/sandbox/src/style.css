@@ -493,6 +493,12 @@ body {
   font-size: 13px;
 }
 
+/* Tiles are reached with Tab. */
+.morphic-block:focus-visible {
+  outline: 2px solid var(--accent, #55bdcb);
+  outline-offset: 2px;
+}
+
 .morphic-block:hover {
   background: var(--block-bg-hover);
   border-color: var(--block-border-hover);
