@@ -385,6 +385,7 @@ Block colours can be driven from CSS via a custom property:
 - ✅ Inline field edits for atomic placeholders (text / number / dropdown), shadow auto-materialises on first edit
 - ✅ Per-element empty-slot defaults; empty slots render a `[TYPE]` marker when no default is set
 - ✅ Definition-driven syntax highlighting — per-element `code.<element>.highlighting` rules, runtime-swapped on `setModes()`; code shown as text on toolbox tiles is coloured the same way (`toolbox.highlight`)
+- ✅ Toolbox without a mouse — tiles drag with a finger or pen (`toolbox.touch`) and are reached with Tab and added with Enter or Space, named for screen readers (`toolbox.keyboard`); both on by default
 - ✅ Multi-editor selection sync — block ↔ code editor ↔ codespace ↔ preview
 - ✅ One-file constructor + mount-time validation + shipped JSON Schema (`$schema` / `version`)
 - ✅ Added views — `engine.addView()` for more previews, codespaces and read only workspaces, each in its own mode; presets name them with `views`, toolbars attach by view name
