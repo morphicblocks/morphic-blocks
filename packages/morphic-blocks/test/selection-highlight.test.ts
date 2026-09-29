@@ -55,3 +55,22 @@ test("the host's own colour wins", async () => {
 
   expect(style).toContain("rgb(1, 2, 3)");
 });
+
+test("an active highlight takes the new colour when the theme changes", async () => {
+  const engine = new MorphicBlocks(format, { say: () => "say();\n" });
+  engines.push(engine);
+  const codespaceContainer = div();
+  await engine.mount({ workspaceContainer: div(), codespaceContainer, editorTheme: { selectionBackground: "#ffcc00" } });
+  const block = engine.getWorkspace()!.newBlock("morphic:say") as Blockly.BlockSvg;
+  block.initSvg();
+  block.render();
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  const codespace = (engine as unknown as { codespace: { highlightLines(span: { fromLine: number; toLine: number }): void } }).codespace;
+  codespace.highlightLines({ fromLine: 1, toLine: 1 });
+
+  engine.setCodespaceTheme({ selectionBackground: "#00ff00" });
+
+  // The browser writes #00ff00 as rgb().
+  expect(codespaceContainer.querySelector(".morphic-highlight")?.getAttribute("style")).toContain("rgb(0, 255, 0)");
+});
+

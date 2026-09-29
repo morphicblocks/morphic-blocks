@@ -403,6 +403,8 @@ export class MorphicCodeEditor {
   /** The host's highlight colour; without one, the theme's selection colour is used. */
   private highlightColor?: string;
   private themeSelection = DEFAULT_THEME.selectionBackground;
+  /** The lines highlighted now, drawn again when the colour changes. */
+  private activeHighlight?: LineSpan | LineSpan[];
   private metadataEffect?: StateEffectType<MorphicCodeMetadata>;
   private placeholderEffect?: StateEffectType<MorphicPlaceholderRange[]>;
   private dropIndicatorEffect?: StateEffectType<DropIndicator | null>;
@@ -1081,6 +1083,7 @@ export class MorphicCodeEditor {
   /** Highlight one or more ranges of 1-based lines in the editor. */
   highlightLines(spans: LineSpan | LineSpan[]): void {
     if (!this.editorView || !this.highlightEffect) return;
+    this.activeHighlight = spans;
     this.editorView.dispatch({
       effects: (this.highlightEffect as any).of(spans satisfies HighlightRange),
     });
@@ -1089,6 +1092,7 @@ export class MorphicCodeEditor {
   /** Remove all line highlights. */
   clearHighlight(): void {
     if (!this.editorView || !this.highlightEffect) return;
+    this.activeHighlight = undefined;
     this.editorView.dispatch({
       effects: (this.highlightEffect as any).of(null),
     });
@@ -1097,6 +1101,7 @@ export class MorphicCodeEditor {
   /** Update the highlight background colour; `undefined` follows the theme's selection colour. */
   setHighlightColor(color: string | undefined): void {
     this.highlightColor = color;
+    if (this.activeHighlight) this.highlightLines(this.activeHighlight);
   }
 
   /** Show a drop-position indicator above (or below) the given 1-based line. */
@@ -1176,6 +1181,8 @@ export class MorphicCodeEditor {
   setTheme(theme: MorphicCodeEditorTheme): void {
     if (!this.editorView || !this.cm || !this.themeCompartment) return;
     this.themeSelection = theme.selectionBackground ?? DEFAULT_THEME.selectionBackground;
+    // The highlight's colour is fixed when it is drawn, so draw it again.
+    if (this.activeHighlight) this.highlightLines(this.activeHighlight);
     const themeExt = buildThemeExtension(this.cm.view, theme);
     this.editorView.dispatch({
       effects: this.themeCompartment.reconfigure(themeExt),
