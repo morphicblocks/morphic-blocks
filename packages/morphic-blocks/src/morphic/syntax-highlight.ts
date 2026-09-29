@@ -19,71 +19,21 @@ export function buildHighlightExtensions(
 ): Extension[] {
   if (!rules) return [];
 
-  const keywordSet = new Set(rules.keywords ?? []);
-  const stringDelims = (rules.strings ?? []).map((d) =>
-    typeof d === "string" ? { open: d, close: d } : { open: d[0], close: d[1] },
-  );
-  const lineComment = rules.comment;
-  const numbers = rules.numbers !== false;
-
-  const markKw = cmView.Decoration.mark({ class: "morphic-tok-keyword" });
-  const markStr = cmView.Decoration.mark({ class: "morphic-tok-string" });
-  const markNum = cmView.Decoration.mark({ class: "morphic-tok-number" });
-  const markCom = cmView.Decoration.mark({ class: "morphic-tok-comment" });
+  const marks: Record<MorphicTokenKind, import("@codemirror/view").Decoration> = {
+    keyword: cmView.Decoration.mark({ class: "morphic-tok-keyword" }),
+    string: cmView.Decoration.mark({ class: "morphic-tok-string" }),
+    number: cmView.Decoration.mark({ class: "morphic-tok-number" }),
+    comment: cmView.Decoration.mark({ class: "morphic-tok-comment" }),
+  };
+  const matchTokens = tokenMatcher(rules);
 
   const tokenize = (
     line: string,
     lineFrom: number,
     builder: import("@codemirror/state").RangeSetBuilder<import("@codemirror/view").Decoration>,
   ): void => {
-    const len = line.length;
-    let i = 0;
-    while (i < len) {
-      if (lineComment && line.startsWith(lineComment, i)) {
-        builder.add(lineFrom + i, lineFrom + len, markCom);
-        return;
-      }
-      let consumedString = false;
-      for (const d of stringDelims) {
-        if (line.startsWith(d.open, i)) {
-          const start = i;
-          i += d.open.length;
-          while (i < len) {
-            if (line[i] === "\\" && i + 1 < len) {
-              i += 2;
-              continue;
-            }
-            if (line.startsWith(d.close, i)) {
-              i += d.close.length;
-              break;
-            }
-            i += 1;
-          }
-          builder.add(lineFrom + start, lineFrom + i, markStr);
-          consumedString = true;
-          break;
-        }
-      }
-      if (consumedString) continue;
-      if (numbers) {
-        const m = /^\d+(?:\.\d+)?/.exec(line.slice(i));
-        if (m) {
-          builder.add(lineFrom + i, lineFrom + i + m[0].length, markNum);
-          i += m[0].length;
-          continue;
-        }
-      }
-      // A word in any script: letters, combining marks (Arabic vowel signs),
-      // digits and underscores.
-      const ident = /^[\p{L}\p{M}_][\p{L}\p{M}\p{N}_]*/u.exec(line.slice(i));
-      if (ident) {
-        if (keywordSet.has(ident[0])) {
-          builder.add(lineFrom + i, lineFrom + i + ident[0].length, markKw);
-        }
-        i += ident[0].length;
-        continue;
-      }
-      i += 1;
+    for (const token of matchTokens(line)) {
+      builder.add(lineFrom + token.from, lineFrom + token.to, marks[token.kind]);
     }
   };
 
@@ -142,4 +92,81 @@ export function buildHighlightExtensions(
     exts.push(cmView.EditorView.theme(overrideSpec));
   }
   return exts;
+}
+
+export type MorphicTokenKind = "keyword" | "string" | "number" | "comment";
+
+/** A highlighted stretch of one line, by character offsets. */
+export interface MorphicToken {
+  from: number;
+  to: number;
+  kind: MorphicTokenKind;
+}
+
+/**
+ * The tokens one line of text holds under a set of highlight rules, in line
+ * order. Shared by the text views and the toolbox tiles, so both colour code
+ * the same way.
+ */
+export function tokenMatcher(rules: MorphicHighlightDefinition): (line: string) => MorphicToken[] {
+  const keywordSet = new Set(rules.keywords ?? []);
+  const stringDelims = (rules.strings ?? []).map((d) =>
+    typeof d === "string" ? { open: d, close: d } : { open: d[0], close: d[1] },
+  );
+  const lineComment = rules.comment;
+  const numbers = rules.numbers !== false;
+
+  return (line) => {
+    const tokens: MorphicToken[] = [];
+    const len = line.length;
+    let i = 0;
+    while (i < len) {
+      if (lineComment && line.startsWith(lineComment, i)) {
+        tokens.push({ from: i, to: len, kind: "comment" });
+        return tokens;
+      }
+      let consumedString = false;
+      for (const d of stringDelims) {
+        if (line.startsWith(d.open, i)) {
+          const start = i;
+          i += d.open.length;
+          while (i < len) {
+            if (line[i] === "\\" && i + 1 < len) {
+              i += 2;
+              continue;
+            }
+            if (line.startsWith(d.close, i)) {
+              i += d.close.length;
+              break;
+            }
+            i += 1;
+          }
+          tokens.push({ from: start, to: i, kind: "string" });
+          consumedString = true;
+          break;
+        }
+      }
+      if (consumedString) continue;
+      if (numbers) {
+        const m = /^\d+(?:\.\d+)?/.exec(line.slice(i));
+        if (m) {
+          tokens.push({ from: i, to: i + m[0].length, kind: "number" });
+          i += m[0].length;
+          continue;
+        }
+      }
+      // A word in any script: letters, combining marks (Arabic vowel signs),
+      // digits and underscores.
+      const ident = /^[\p{L}\p{M}_][\p{L}\p{M}\p{N}_]*/u.exec(line.slice(i));
+      if (ident) {
+        if (keywordSet.has(ident[0])) {
+          tokens.push({ from: i, to: i + ident[0].length, kind: "keyword" });
+        }
+        i += ident[0].length;
+        continue;
+      }
+      i += 1;
+    }
+    return tokens;
+  };
 }
