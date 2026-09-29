@@ -2476,6 +2476,9 @@ export class MorphicBlocks extends EventTarget {
 
     // A fresh copy of the program, drawn in the view's mode.
     const copyProgram = (): void => {
+      // Loading measures the content anew and moves the view; whoever
+      // scrolled or zoomed the mirror keeps their place.
+      const { scrollX, scrollY, scale } = mirror;
       Blockly.Events.disable();
       try {
         Blockly.serialization.workspaces.load(Blockly.serialization.workspaces.save(main), mirror);
@@ -2483,6 +2486,8 @@ export class MorphicBlocks extends EventTarget {
         Blockly.Events.enable();
       }
       this.renderWorkspaceView(view);
+      if (mirror.scale !== scale) mirror.setScale(scale);
+      mirror.scroll(scrollX, scrollY);
     };
     copyProgram();
 
