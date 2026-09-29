@@ -50,7 +50,7 @@ describe("choosing tiles with the keyboard", () => {
 
     press("say");
 
-    const [block] = workspace.getTopBlocks(false);
+    const block = workspace.getTopBlocks(false)[0]!;
     expect(block.type).toBe("morphic:say");
     expect(Blockly.common.getSelected()).toBe(block);
   });
@@ -61,7 +61,7 @@ describe("choosing tiles with the keyboard", () => {
     press("say");
     press("wait", " ");
 
-    const [top] = workspace.getTopBlocks(false);
+    const top = workspace.getTopBlocks(false)[0]!;
     expect(workspace.getTopBlocks(false)).toHaveLength(1);
     expect(top.getNextBlock()?.type).toBe("morphic:wait");
   });

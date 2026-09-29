@@ -67,7 +67,7 @@ describe("dragging tiles with touch and pen", () => {
     const { engine, tile, codespaceContainer, blocks } = await setUp({}, true);
     const targets = (engine as unknown as { tileDropTargets: Set<{ drop: (type: string, x: number, y: number) => void }> })
       .tileDropTargets;
-    const [target] = [...targets];
+    const target = [...targets][0]!;
     const drop = vi.spyOn(target, "drop").mockImplementation(() => {});
 
     drag(tile, codespaceContainer!.firstElementChild ?? codespaceContainer!);
