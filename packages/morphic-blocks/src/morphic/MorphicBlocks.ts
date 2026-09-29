@@ -1363,6 +1363,9 @@ export class MorphicBlocks extends EventTarget {
       let block: Blockly.BlockSvg | null = null;
       if (blockType) {
         block = workspace.newBlock(resolveBlocklyType(blockType, this.definitions)) as Blockly.BlockSvg;
+        // Placed before it is drawn: drawn first at 0,0, Blockly would push
+        // blocks there out of its way.
+        this.placeOrphanBelowTops(block);
         block.initSvg();
         block.render();
       } else if (sourceId) {
@@ -2248,10 +2251,14 @@ export class MorphicBlocks extends EventTarget {
     const eventsDisabled = Blockly.Events.disable !== undefined;
     if (eventsDisabled) Blockly.Events.disable();
     try {
-      for (let i = 0; i < orderedIds.length; i++) {
-        const block = workspace.getBlockById(orderedIds[i]!) as Blockly.BlockSvg | null;
+      // Stacked by their real heights, so a tall block (an `if` with a body)
+      // does not cover the next one, even while the workspace is hidden.
+      let y = 20;
+      for (const id of orderedIds) {
+        const block = workspace.getBlockById(id) as Blockly.BlockSvg | null;
         if (!block) continue;
-        block.moveTo(new Blockly.utils.Coordinate(20, 20 + i * 100));
+        block.moveTo(new Blockly.utils.Coordinate(20, y));
+        y += block.getHeightWidth().height + 20;
       }
     } finally {
       if (eventsDisabled) Blockly.Events.enable();

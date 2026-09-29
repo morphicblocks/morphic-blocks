@@ -145,3 +145,32 @@ test("a line of a top level chain is a place to connect", async () => {
   });
 });
 
+test("top level blocks stacked by the codespace do not overlap", async () => {
+  const { create } = await setUp();
+  const engine = engines[engines.length - 1]!;
+  const workspace = engine.getWorkspace()!;
+  const select = create("select");
+  for (let i = 0; i < 5; i++) {
+    const where = create("where");
+    let tail: Blockly.Block = select;
+    while (tail.getNextBlock()) tail = tail.getNextBlock()!;
+    tail.nextConnection!.connect(where.previousConnection!);
+  }
+  for (const block of workspace.getAllBlocks(false) as Blockly.BlockSvg[]) {
+    block.initSvg();
+    block.render();
+  }
+  const draw = create("draw");
+  draw.initSvg();
+  draw.render();
+
+  // What reordering top level lines in the codespace does.
+  (engine as unknown as { applyTopBlockOrder(ws: unknown, ids: string[]): void }).applyTopBlockOrder(workspace, [
+    select.id,
+    draw.id,
+  ]);
+
+  const tallBottom = select.getRelativeToSurfaceXY().y + select.getHeightWidth().height;
+  expect(draw.getRelativeToSurfaceXY().y).toBeGreaterThanOrEqual(tallBottom);
+});
+
