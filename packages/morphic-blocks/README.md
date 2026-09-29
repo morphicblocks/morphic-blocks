@@ -16,8 +16,8 @@
 
 Morphic Blocks is an embeddable TypeScript library built on top of
 [Google Blockly](https://developers.google.com/blockly). It renders one block
-model in multiple developer-defined **modes** — iconic, lexical, syntactic, or
-any representation you design — to support the gradual transition between
+model in multiple developer-defined **modes** (icons, words, code or any
+representation you design) to support the gradual transition between
 block-based and text-based programming.
 
 ## Install
@@ -26,44 +26,9 @@ block-based and text-based programming.
 npm i morphic-blocks
 ```
 
-Blockly is a dependency, so it is installed for you. The code editor,
-codespace, and preview views additionally use CodeMirror — install those only if
-you need them:
-
-```sh
-npm i @codemirror/state @codemirror/view @codemirror/lang-javascript
-```
-
-`@codemirror/lang-javascript` is needed only for the code editor, which shows the
-generated JavaScript.
-
-## Quick start
-
-```ts
-import { MorphicBlocks } from "morphic-blocks";
-import definitions from "./definitions.json";
-import { behaviors } from "./behaviors";
-
-// Modes, presets and categories all come from the definitions file, passed as
-// imported; mount() validates it.
-const engine = new MorphicBlocks(definitions, behaviors);
-
-// One call sets up every view it gets a container for.
-engine.mount({
-  workspaceContainer: document.getElementById("workspace")!,
-  toolboxContainer: document.getElementById("toolbox")!,
-  preset: "conceptual", // a preset from definitions.json; without presets the first mode is used
-});
-
-// switch representation at runtime; the same blocks re-render
-engine.applyPreset("python");
-```
-
-## Blockly's media
-
-Blockly's images and sounds (trash can, zoom buttons, clicks) load from
-`blockly-media/` next to your page, never from another server. Copy them there
-with the command that comes with the package, before `dev` and `build`:
+Blockly comes with it. Its images and sounds (trash can, zoom buttons, clicks)
+load from your own site, so visitors' browsers never contact another server.
+Copy them to `blockly-media/` next to your page before `dev` and `build`:
 
 ```json
 "scripts": {
@@ -72,29 +37,109 @@ with the command that comes with the package, before `dev` and `build`:
 }
 ```
 
-It copies only when the folder is new or Blockly was updated. `public/` is
-Vite's folder for static files; use your bundler's equivalent. To load the
-media from elsewhere, set `blockly: { media: "…" }` in `mount()`, for example
-Blockly's own copy at `https://blockly-demo.appspot.com/static/media/`.
+`public/` is Vite's folder for static files; use your bundler's equivalent.
+You can still load them from Blockly's server instead; see
+[Privacy & External Requests](https://docs.morphicblocks.com/guides/privacy/).
+
+The text views (codespace, preview, code editor) use CodeMirror. Install it
+only if you use them:
+
+```sh
+npm i @codemirror/state @codemirror/view @codemirror/lang-javascript
+```
+
+## Quick start
+
+A block is defined once, with one element per representation:
+
+```jsonc
+// definitions.json
+{
+  "elementTypes": {
+    "title":      "text",
+    "conceptual": "code",
+    "python":     "code"
+  },
+  "modes": [
+    { "name": "conceptual", "elements": ["title", "conceptual"] },
+    { "name": "python",     "elements": ["title", "python"] }
+  ],
+  "blocks": [
+    {
+      "identifier": "text_print",
+      "elements": {
+        "title":      "Print",
+        "conceptual": "Output %1",
+        "python":     "print(%1)"
+      },
+      "inputSlots": {
+        "1": { "kind": "value", "name": "TEXT" }
+      }
+    }
+  ]
+}
+```
+
+A behavior writes the JavaScript that runs, one function per block:
+
+```ts
+// behaviors.ts
+import type { MorphicBehaviorMap } from "morphic-blocks";
+
+export const behaviors: MorphicBehaviorMap = {
+  text_print(proxy) {
+    return `console.log(${proxy.inputs.TEXT ?? "undefined"});\n`;
+  },
+};
+```
+
+One call sets up every view it gets a container for:
+
+```ts
+// main.ts
+import { MorphicBlocks } from "morphic-blocks";
+import definitions from "./definitions.json";
+import { behaviors } from "./behaviors";
+
+const engine = new MorphicBlocks(definitions, behaviors);
+
+engine.mount({
+  workspaceContainer: document.getElementById("workspace")!,
+  toolboxContainer: document.getElementById("toolbox")!,
+});
+
+// Switch the representation at runtime; the same blocks re-render.
+engine.setModes({ workspaceMode: "python", toolboxMode: "python" });
+```
+
+## How it works
+
+1. **Definitions** name each block's elements: labels, images and code
+   templates.
+2. **Modes** choose which elements show, one CSS file per mode styles them.
+3. **Views** (workspace, toolbox, codespace, preview) each show a mode, and
+   presets switch them together.
 
 ## Features
 
-- **One definition, many representations** — define a block once; render it as
-  icons, blocks, or source text, switchable at runtime.
-- **Config-driven** — blocks in JSON, behaviors in TypeScript, one CSS file per
-  mode. No per-representation duplication.
-- **Headless & embeddable** — bring your own UI; the framework stays unstyled.
-- **Built on Blockly** — the proven engine stays authoritative underneath.
-- **No external requests.** The framework never contacts another server, so
-  your site decides every request its visitors make. Blockly's own media is
-  the one exception, and you can [serve it yourself](#serve-blocklys-media-yourself).
+- **One definition, many representations:** define a block once and show it
+  as icons, blocks or source text, switchable at runtime.
+- **Blocks and text side by side:** an editable text view of the program, a
+  read only preview and selection that follows across views.
+- **Config driven:** blocks in JSON, behaviors in TypeScript, one CSS file per
+  mode, with no duplication per representation.
+- **Headless and embeddable:** bring your own UI; the framework stays unstyled.
+- **Accessible toolbox:** tiles work with a mouse, a finger, a pen or the
+  keyboard, with names for screen readers.
+- **No external requests:** the framework never contacts another server,
+  Blockly's media included.
 
 ## Documentation
 
-- **Website** — <https://morphicblocks.com>
-- **Docs** — <https://docs.morphicblocks.com>
-- **Playground** — <https://playground.morphicblocks.com>
-- **Source** — <https://github.com/morphicblocks/morphic-blocks>
+- **Website:** <https://morphicblocks.com>
+- **Docs:** <https://docs.morphicblocks.com>
+- **Playground:** <https://playground.morphicblocks.com>
+- **Source:** <https://github.com/morphicblocks/morphic-blocks>
 
 ## License
 
