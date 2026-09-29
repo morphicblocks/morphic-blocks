@@ -70,6 +70,23 @@ export class MorphicStyleManager {
     addStyle("toolbar", (mod as { default: string }).default);
   }
 
+  /**
+   * Blockly outlines the workspace background with a grey line. It is left
+   * out by default and styleable through two CSS variables, e.g.
+   * `--morphic-workspace-border-color: #ccc`.
+   */
+  public ensureWorkspaceStyles(): void {
+    addStyle(
+      "workspace",
+      [
+        ".morphic-workspace-root .blocklyMainBackground {",
+        "  stroke: var(--morphic-workspace-border-color, transparent);",
+        "  stroke-width: var(--morphic-workspace-border-width, 1px);",
+        "}",
+      ].join("\n"),
+    );
+  }
+
   public ensureCategoryStyles(categories: MorphicToolboxCategory[]): void {
     for (const category of categories) {
       if (!category.color) {

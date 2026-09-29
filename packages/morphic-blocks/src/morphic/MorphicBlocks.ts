@@ -407,6 +407,7 @@ export class MorphicBlocks extends EventTarget {
       resolvedConfig,
     );
     this.styles.ensureCategoryStyles(resolvedConfig.toolbox?.categories ?? []);
+    this.styles.ensureWorkspaceStyles();
     this.registerBlocks();
     this.toolboxDefinition = this.resolveToolboxDefinition(resolvedConfig);
 
