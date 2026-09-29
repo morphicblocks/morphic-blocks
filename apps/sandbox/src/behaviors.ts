@@ -87,6 +87,11 @@ export const behaviors: MorphicBehaviorMap = {
     return `let ${varName} = ${proxy.inputs.VAL || "undefined"};\n`;
   },
 
+  // The type is a concept-only field (to try fields a mode leaves out).
+  typed_var(proxy) {
+    return `let ${proxy.fields.VAR || "y"} = ${proxy.inputs.VAL || "undefined"};\n`;
+  },
+
   var_get(proxy) {
     return proxy.fields.VAR || "x";
   },

@@ -716,6 +716,28 @@
       "inputsInline": true
     },
     {
+      "identifier": "typed_var",
+      "category": "Variables",
+      "elements": {
+        "icon": "icons/var_declare.svg",
+        "title": "Typed Variable",
+        "description": "A variable with a type only the concept view shows",
+        "concept": "Create %TYPE variable %VAR = %1",
+        "python": "%VAR = %1",
+        "javascript": "let %VAR = %1;",
+        "go": "%VAR := %1"
+      },
+      "inputSlots": {
+        "1": { "kind": "value", "name": "VAL" }
+      },
+      "fields": {
+        "TYPE": { "type": "dropdown", "options": ["number", "text", "boolean"], "default": "number" },
+        "VAR": { "type": "text", "default": "y" }
+      },
+      "shape": "statement",
+      "inputsInline": true
+    },
+    {
       "identifier": "rtl_test",
       "category": "Output",
       "elements": {
