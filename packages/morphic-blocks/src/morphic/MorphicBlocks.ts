@@ -1025,7 +1025,7 @@ export class MorphicBlocks extends EventTarget {
 
   /**
    * Copy the currently active block to the framework's internal clipboard and
-   * mirror its generated code text to the system clipboard. Resolution order:
+   * its own text, as the view writes it, to the system clipboard. Resolution order:
    * (1) Blockly's selected block, (2) for codespace/preview, the deepest block
    * enclosing the active line. Returns true when something was copied.
    */
@@ -1035,15 +1035,36 @@ export class MorphicBlocks extends EventTarget {
     const data = block.toCopyData();
     if (!data) return false;
     this.lastCopyData = data;
-    // Mirror to system clipboard as code text — best-effort, fire-and-forget.
+    // The system clipboard gets the block's own text as the view writes it,
+    // best effort.
     try {
-      const text = this.toolbarTextFor(view === "workspace" ? "codespace" : view);
+      const text = this.blockTextIn(view, block);
       if (text) void navigator.clipboard?.writeText(text);
     } catch {
       // ignored
     }
     for (const h of this.toolbars) h.refresh();
     return true;
+  }
+
+  /**
+   * A block's own text in a view: its part of the text the view shows (a
+   * workspace, the text its mode writes), without the indent it has there.
+   */
+  private blockTextIn(viewName: string, block: Blockly.Block): string {
+    const view = this.resolveView(viewName);
+    const { code: text, metadata } = view?.editor
+      ? { code: view.editor.getValue(), metadata: view.editor.metadata }
+      : this.generateModeText(view?.mode ?? this.mountConfig?.workspaceMode);
+    const range = metadata.get(block.id);
+    if (range?.startChar === undefined || range.endChar === undefined) return "";
+    const lineStart = text.lastIndexOf("\n", range.startChar - 1) + 1;
+    const indent = /^[ \t]*/.exec(text.slice(lineStart))?.[0] ?? "";
+    return text
+      .slice(range.startChar, range.endChar)
+      .split("\n")
+      .map((line, index) => (index > 0 && line.startsWith(indent) ? line.slice(indent.length) : line))
+      .join("\n");
   }
 
   /**
