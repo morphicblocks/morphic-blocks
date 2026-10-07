@@ -273,8 +273,8 @@ generated JavaScript view, hidden until `engine.showCodeEditor()`. The separate
 `mountToolbar()` methods remain for setting a view up later.
 
 More views beside those, each in its own mode, come from `engine.addView()`:
-previews, codespaces, and read only workspaces that mirror the program as
-blocks. A preset sets their modes by name with `views`, and a toolbar attaches
+previews, codespaces, and workspaces that show the program as blocks, read
+only or editable (`editable: true`). A preset sets their modes by name with `views`, and a toolbar attaches
 to any view by name:
 
 ```ts
@@ -388,7 +388,7 @@ Block colours can be driven from CSS via a custom property:
 - ✅ Toolbox without a mouse — tiles drag with a finger or pen (`toolbox.touch`) and are reached with Tab and added with Enter or Space, named for screen readers (`toolbox.keyboard`); both on by default
 - ✅ Multi-editor selection sync — block ↔ code editor ↔ codespace ↔ preview
 - ✅ One-file constructor + mount-time validation + shipped JSON Schema (`$schema` / `version`)
-- ✅ Added views — `engine.addView()` for more previews, codespaces and read only workspaces, each in its own mode; presets name them with `views`, toolbars attach by view name
+- ✅ Added views — `engine.addView()` for more previews, codespaces and workspaces (read only or editable), each in its own mode; presets name them with `views`, toolbars attach by view name
 - ✅ Per-mode field rendering — a dropdown option's `display` map (keyed by element name) makes the shown text mode-aware (`True`/`true`, `and`/`&&`) while the stored value drives execution and codegen
 
 ### Upcoming
