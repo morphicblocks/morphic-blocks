@@ -141,8 +141,10 @@ interface AddedView {
   mode: MorphicModeName;
   /** A preview's text editor. */
   editor?: MorphicCodeEditor;
-  /** A workspace view's own, read only Blockly workspace. */
+  /** A workspace view's own Blockly workspace. */
   workspace?: Blockly.WorkspaceSvg;
+  /** An added workspace that takes edits (`editable: true`). */
+  editable?: boolean;
   /** Removes what the view set up besides its editor or workspace. */
   teardown?: () => void;
   /** The handle's `setMode`, used when a preset switches the view. */
@@ -954,7 +956,7 @@ export class MorphicBlocks extends EventTarget {
       return view.editor?.getValue() ?? "";
     }
     // An added workspace copies the program as its own mode writes it.
-    if (view?.kind === "workspace" && view.readOnly) {
+    if (view?.kind === "workspace" && view.workspace !== this.workspace) {
       return this.generateModeText(view.mode).code;
     }
     // Workspace: derive text from the codespace if mounted, else generate via JS codegen.
@@ -2443,9 +2445,6 @@ export class MorphicBlocks extends EventTarget {
     if (options.kind !== "preview" && options.kind !== "codespace" && options.kind !== "workspace") {
       throw new Error(`addView: unknown view kind "${String(options.kind)}".`);
     }
-    if (options.kind === "workspace" && (options.editable as boolean | undefined) === true) {
-      throw new Error("addView: an added workspace is read only for now (editable: false).");
-    }
     if (options.name !== undefined && this.resolveView(options.name)) {
       throw new Error(`addView: a view named "${options.name}" already exists.`);
     }
@@ -2539,8 +2538,9 @@ export class MorphicBlocks extends EventTarget {
 
     // Drawn like the main workspace, never loading from elsewhere or playing sounds.
     const host = main.options;
+    const editable = options.editable === true;
     const mirror = Blockly.inject(options.container, {
-      readOnly: true,
+      readOnly: !editable,
       media: host.pathToMedia,
       sounds: false,
       renderer: host.renderer,
@@ -2557,6 +2557,7 @@ export class MorphicBlocks extends EventTarget {
       container: options.container,
       mode: options.mode,
       workspace: mirror,
+      editable,
     };
     this.views.add(view);
     this.styleWorkspaceView(view);
@@ -2597,14 +2598,42 @@ export class MorphicBlocks extends EventTarget {
       }
       if (event.isUiEvent || copyPending) return;
       copyPending = true;
-      setTimeout(() => {
-        copyPending = false;
+      const copyWhenIdle = (): void => {
         if (!this.views.has(view)) return;
+        // A copy would end a drag or close a field's editor in the middle of an edit.
+        if (editable && (mirror.isDragging() || Blockly.WidgetDiv.isVisible() || Blockly.DropDownDiv.isVisible())) {
+          setTimeout(copyWhenIdle, 100);
+          return;
+        }
+        copyPending = false;
         copyProgram();
         showSelection();
-      }, 0);
+      };
+      setTimeout(copyWhenIdle, 0);
     };
     main.addChangeListener(replay);
+
+    // Editable: every change made in the view goes to the main workspace, which
+    // stays the program, and comes back with the next copy. Copies and redraws
+    // run with events off, so only the person's own edits arrive here.
+    const forward = (event: Blockly.Events.Abstract): void => {
+      if (event.isUiEvent || event.workspaceId !== mirror.id) return;
+      const group = Blockly.Events.getGroup();
+      Blockly.Events.setGroup(event.group || group || true);
+      try {
+        Blockly.Events.fromJson(event.toJson(), main).run(true);
+      } catch {
+        // The main workspace no longer has the block; the next copy settles it.
+      } finally {
+        Blockly.Events.setGroup(group);
+      }
+    };
+    const dropTile = editable ? this.attachWorkspaceTileDrop(mirror, options.container) : undefined;
+    if (editable) {
+      mirror.addChangeListener(forward);
+      // Undo and redo follow the program's own history.
+      mirror.undo = (redo: boolean) => main.undo(redo);
+    }
 
     // A click in the mirror selects the same block in the main workspace, so
     // every view highlights it; a click on an empty spot clears it. Blockly selects nothing in a read only
@@ -2633,6 +2662,8 @@ export class MorphicBlocks extends EventTarget {
       : undefined;
     view.teardown = () => {
       main.removeChangeListener(replay);
+      mirror.removeChangeListener(forward);
+      dropTile?.();
       options.container.removeEventListener("click", followClick);
       resize?.disconnect();
       toolbar?.dispose();
@@ -2669,12 +2700,62 @@ export class MorphicBlocks extends EventTarget {
     this.syncFontOf(view.workspace, view.container);
   }
 
-  /** Draw every block of an added workspace in the view's mode. */
+  /**
+   * Draw every block of an added workspace in the view's mode, with events
+   * off: an editable view would take the redraw for an edit.
+   */
   private renderWorkspaceView(view: AddedView): void {
-    for (const block of view.workspace?.getAllBlocks(false) ?? []) {
-      const definition = this.definitions.get(toCleanId(block.type));
-      if (definition) this.applyView(block as Blockly.BlockSvg, definition, view.mode, "workspace");
+    Blockly.Events.disable();
+    try {
+      for (const block of view.workspace?.getAllBlocks(false) ?? []) {
+        const definition = this.definitions.get(toCleanId(block.type));
+        if (definition) this.applyView(block as Blockly.BlockSvg, definition, view.mode, "workspace");
+      }
+    } finally {
+      Blockly.Events.enable();
     }
+  }
+
+  /**
+   * Tiles dropped on an editable added workspace, with the mouse or by touch,
+   * add their block to the main workspace at the same spot; the view shows it
+   * with its next copy. Returns the teardown.
+   */
+  private attachWorkspaceTileDrop(view: Blockly.WorkspaceSvg, container: HTMLElement): () => void {
+    const add = (blockType: string, clientX: number, clientY: number): void => {
+      const main = this.workspace;
+      if (!main) return;
+      const rect = view.getInjectionDiv().getBoundingClientRect();
+      const block = main.newBlock(resolveBlocklyType(blockType, this.definitions)) as Blockly.BlockSvg;
+      // Placed before it is drawn: drawn first at 0,0, Blockly would push
+      // blocks there out of its way.
+      block.moveTo(
+        new Blockly.utils.Coordinate(
+          (clientX - rect.left - view.scrollX) / view.scale,
+          (clientY - rect.top - view.scrollY) / view.scale,
+        ),
+      );
+      block.initSvg();
+      block.render();
+    };
+    const onDragOver = (e: DragEvent) => {
+      if (e.dataTransfer?.types.includes(DRAG_DATA_KEY)) e.preventDefault();
+    };
+    const onDrop = (e: DragEvent) => {
+      const blockType = e.dataTransfer?.getData(DRAG_DATA_KEY);
+      if (!blockType) return;
+      e.preventDefault();
+      add(blockType, e.clientX, e.clientY);
+    };
+    const target: TileDropTarget = { element: container, drop: add };
+    this.tileDropTargets.add(target);
+    container.addEventListener("dragover", onDragOver);
+    container.addEventListener("drop", onDrop);
+    return () => {
+      this.tileDropTargets.delete(target);
+      container.removeEventListener("dragover", onDragOver);
+      container.removeEventListener("drop", onDrop);
+    };
   }
 
   /** Remove an added view and everything it set up. */
@@ -2724,7 +2805,7 @@ export class MorphicBlocks extends EventTarget {
           mode: view.mode,
           editor: view.editor,
           workspace: view.workspace,
-          readOnly: view.kind !== "codespace",
+          readOnly: view.kind === "preview" || (view.kind === "workspace" && !view.editable),
         };
       }
     }

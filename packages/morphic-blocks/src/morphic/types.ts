@@ -735,10 +735,12 @@ export interface MorphicViewOptions {
   name?: string;
   /**
    * An added workspace shows the program as blocks in its own mode and follows
-   * every change of the main workspace. It is read only: `false` is the only
-   * value for now, and the default.
+   * every change of the main workspace. With `true`, blocks can also be
+   * dragged, connected, edited and deleted there, and tiles dropped on it; the
+   * main workspace stays the program and takes every change. Default `false`
+   * (read only).
    */
-  editable?: false;
+  editable?: boolean;
   /** Colours of a text view, like `previewTheme`. */
   theme?: MorphicCodeEditorTheme;
   /** A toolbar for this view, removed with it. Items default to its kind's. */
