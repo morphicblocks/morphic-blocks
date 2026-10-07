@@ -208,7 +208,8 @@ void engine.mount({
 
 
 // ── Added views (to try engine.addView) ────────────────
-// Texts adds a second preview, Mirror two read only workspaces.
+// Texts adds a second preview, Mirror two workspaces: the first editable,
+// the second read only.
 
 function showAddedViews(preset: MorphicPresetDefinition): void {
   for (const [name, kind] of Object.entries(addedViewKinds)) {
@@ -222,6 +223,7 @@ function showAddedViews(preset: MorphicPresetDefinition): void {
           kind,
           name,
           mode,
+          editable: name === "mirror1",
           container: document.getElementById(`${name}-container`)!,
           toolbar: { container: document.getElementById(`${name}-toolbar`)! },
           theme: kind === "codespace" ? editorThemeFor(currentTheme) : previewThemeFor(currentTheme),
