@@ -3,8 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node node_modules/morphic-blocks/dist/cli.js copy-media public/blockly-media && vite",
-    "build": "node node_modules/morphic-blocks/dist/cli.js copy-media public/blockly-media && vite build",
+    "dev": "vite",
+    "build": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {
