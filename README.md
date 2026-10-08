@@ -13,7 +13,7 @@ syntactic mode → code-syntax block template
 code modes     → codespace (text editor) mirrors the workspace
 ```
 
-The framework makes **no external requests**: it never contacts another server, so the embedding site decides every request its visitors make. Blockly's own images and sounds load from `blockly-media/` on your site, copied there by `morphic-blocks copy-media` (see [Example Usage](#example-usage)).
+The framework makes **no external requests**: it never contacts another server, so the embedding site decides every request its visitors make. Blockly's own images and sounds load from `blockly-media/` on your site, copied there by the bundler plugin (`morphic-blocks/vite` and others) or the `morphic-blocks copy-media` command (see [Example Usage](#example-usage)).
 
 Workspace and toolbox can run in **different modes simultaneously**. Dragging from the toolbox to the workspace — or dropping onto the codespace — adds a block to the underlying model.
 
@@ -263,8 +263,11 @@ await engine.mount({
 ```
 
 Blockly loads its images and sounds from `blockly-media/` next to the page.
-`morphic-blocks copy-media public/blockly-media` copies them there before `dev`
-and `build`, as the sandbox does; `blockly.media` points elsewhere.
+The bundler plugin copies them there when `dev` or `build` starts, as the
+sandbox does (`plugins: [blocklyMedia()]` from `morphic-blocks/vite`; also
+`/webpack`, `/rspack`, `/rollup`, `/esbuild`). Without one of these bundlers,
+`morphic-blocks copy-media public/blockly-media` does the same before `dev` and
+`build`; `blockly.media` points elsewhere.
 
 Every container is optional. Selection sync links the views by default
 (`selectionSync: false` turns it off), and a `codeEditorContainer` adds the

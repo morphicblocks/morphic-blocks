@@ -28,17 +28,18 @@ npm i morphic-blocks
 
 Blockly comes with it. Its images and sounds (trash can, zoom buttons, clicks)
 load from your own site, so visitors' browsers never contact another server.
-Copy them to `blockly-media/` next to your page before `dev` and `build`:
+A bundler plugin copies them to `public/blockly-media/` when `dev` or `build`
+starts:
 
-```json
-"scripts": {
-  "dev": "morphic-blocks copy-media public/blockly-media && vite",
-  "build": "morphic-blocks copy-media public/blockly-media && vite build"
-}
+```ts
+// vite.config.ts (also morphic-blocks/webpack, /rspack, /rollup, /esbuild)
+import blocklyMedia from "morphic-blocks/vite";
+export default { plugins: [blocklyMedia()] };
 ```
 
-`public/` is Vite's folder for static files; use your bundler's equivalent.
-You can still load them from Blockly's server instead; see
+With Parcel, Turbopack or no bundler, run `morphic-blocks copy-media
+public/blockly-media` before `dev` and `build` instead. You can still load them
+from Blockly's server; see
 [Privacy & External Requests](https://docs.morphicblocks.com/guides/privacy/).
 
 The text views (codespace, preview, code editor) use CodeMirror. Install it
