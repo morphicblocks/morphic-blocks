@@ -57,6 +57,34 @@ describe("toolbox width", () => {
 
     expect(toolbox.style.getPropertyValue("--morphic-toolbox-block-width")).toBe(`${Math.max(...widths)}px`);
   });
+
+  test("code shown as text counts too, since it does not wrap either", async () => {
+    // jsdom lays nothing out, so code shown as text reports a fixed width.
+    const scrollWidth = Object.getOwnPropertyDescriptor(Element.prototype, "scrollWidth")!;
+    Object.defineProperty(HTMLElement.prototype, "scrollWidth", {
+      configurable: true,
+      get(this: HTMLElement) {
+        return "morphicTextCode" in this.dataset ? 999 : 0;
+      },
+    });
+    try {
+      const engine = new MorphicBlocks(
+        {
+          ...format,
+          presets: [{ name: "text", toolbox: { mode: "python", render: { code: "text" } }, workspace: "python" }],
+        },
+        {},
+      );
+      engines.push(engine);
+      const container = div();
+      await engine.mount({ workspaceContainer: div(), toolboxContainer: container });
+
+      expect(container.style.getPropertyValue("--morphic-toolbox-block-width")).toBe("999px");
+    } finally {
+      delete (HTMLElement.prototype as { scrollWidth?: number }).scrollWidth;
+      Object.defineProperty(Element.prototype, "scrollWidth", scrollWidth);
+    }
+  });
 });
 
 describe("keyword colors on text tiles", () => {

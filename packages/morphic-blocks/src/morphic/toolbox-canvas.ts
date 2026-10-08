@@ -170,20 +170,25 @@ export class MorphicToolboxCanvas {
   }
 
   /**
-   * Draw the tiles and publish the widest block's width as
-   * `--morphic-toolbox-block-width` on the container. The layout stays the
-   * app's: one that wants every block to fit gives the container
+   * Draw the tiles and publish the width of the widest block or code shown
+   * as text as `--morphic-toolbox-block-width` on the container. The layout
+   * stays the app's: one that wants every tile to fit gives the container
    * `min-width: calc(var(--morphic-toolbox-block-width) + <padding>)` and
-   * lets its column grow to it (`minmax(250px, min-content)`). Only blocks
-   * count, so long descriptions, which wrap, do not widen it.
+   * lets its column grow to it (`minmax(250px, min-content)`). Only blocks and
+   * code count, neither of which wraps, so long descriptions do not widen it.
    */
   private render(): void {
     this.widestBlock = 0;
     this.renderTiles();
+    // Code shown as text is measured once it is on the page; one the mode
+    // hides has no width. A toolbox hidden while drawing measures none.
+    for (const code of Array.from(this.container.querySelectorAll<HTMLElement>("[data-morphic-text-code]"))) {
+      this.widestBlock = Math.max(this.widestBlock, code.scrollWidth);
+    }
     this.container.style.setProperty("--morphic-toolbox-block-width", `${Math.ceil(this.widestBlock)}px`);
   }
 
-  /** Widest block drawn on a tile in the current render, in pixels. */
+  /** Widest block or code text on a tile in the current render, in pixels. */
   private widestBlock = 0;
 
   private renderTiles(): void {
@@ -297,6 +302,7 @@ export class MorphicToolboxCanvas {
           el.innerHTML = renderTemplateAsHtml(parseTemplate(resolvedContent));
         }
       } else if (isCodeElement) {
+        el.dataset.morphicTextCode = "";
         const text = this.createCodeText(definition, this.currentMode, elementName);
         const rules = this.options.highlight === false ? undefined : this.code[elementName]?.highlighting;
         if (text !== null && rules) {
