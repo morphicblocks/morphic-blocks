@@ -37,7 +37,7 @@ jsdom cannot answer; tests check generated text, not rendering.
 - `src/morphic/view-resolver.ts` — Mode fallback logic
 - `src/morphic/styles.ts` — CSS/style management, mode coverage validation
 - `src/morphic/types.ts` — All TypeScript types
-- `cli/index.ts` — the `morphic-blocks copy-media <folder>` command (built to `dist/cli.js`, the package's `bin`); the only code with Node types (`cli/tsconfig.json`)
+- `cli/` — the Node side, the only code with Node types (`cli/tsconfig.json`): `index.ts` is the `morphic-blocks copy-media <folder>` command (built to `dist/cli.js`, the package's `bin`); `plugin.ts` the bundler plugin (unplugin) that copies the media on dev/build start, handed out per bundler by `vite.ts`, `webpack.ts`, `rspack.ts`, `rollup.ts`, `esbuild.ts` (package subpaths `morphic-blocks/vite` …); both use `copy-media.ts`. Built by `vite.cli.config.ts`, types by `cli/tsconfig.build.json`
 
 ### How it works
 
@@ -74,7 +74,7 @@ The namespace is an internal Blockly-type detail — it appears only in `Blockly
 
 ## Sandbox (`apps/sandbox`)
 
-Local dev app. Uses `import.meta.glob()` to auto-discover mode CSS files by filename. Seeds a demo workspace on load. Shows live code generation and execution. Serves Blockly's media itself: the package's `copy-media` command (`dist/cli.js`, called by path because bun links no commands from workspace packages) copies it into `public/blockly-media/` before `dev` and `build`, where the framework's default `blockly.media` points.
+Local dev app. Uses `import.meta.glob()` to auto-discover mode CSS files by filename. Seeds a demo workspace on load. Shows live code generation and execution. Serves Blockly's media itself: the package's Vite plugin (`morphic-blocks/vite` in `vite.config.ts`, resolved to the built `dist/vite.js`, so build the package first) copies it into `public/blockly-media/` when `dev` or `build` starts, where the framework's default `blockly.media` points.
 
 ### Themes
 

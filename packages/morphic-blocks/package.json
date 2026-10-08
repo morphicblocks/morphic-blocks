@@ -21,6 +21,26 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/morphic-blocks.js",
       "require": "./dist/morphic-blocks.umd.cjs"
+    },
+    "./vite": {
+      "types": "./dist/vite.d.ts",
+      "import": "./dist/vite.js"
+    },
+    "./webpack": {
+      "types": "./dist/webpack.d.ts",
+      "import": "./dist/webpack.js"
+    },
+    "./rspack": {
+      "types": "./dist/rspack.d.ts",
+      "import": "./dist/rspack.js"
+    },
+    "./rollup": {
+      "types": "./dist/rollup.d.ts",
+      "import": "./dist/rollup.js"
+    },
+    "./esbuild": {
+      "types": "./dist/esbuild.d.ts",
+      "import": "./dist/esbuild.js"
     }
   },
   "files": [
@@ -29,7 +49,7 @@
     "NOTICE"
   ],
   "scripts": {
-    "build": "vite build && vite build --config vite.cli.config.ts && tsc -p tsconfig.build.json && tsc -p cli",
+    "build": "vite build && vite build --config vite.cli.config.ts && tsc -p tsconfig.build.json && tsc -p cli && tsc -p cli/tsconfig.build.json",
     "test": "vitest run"
   },
   "keywords": [
@@ -43,7 +63,8 @@
   ],
   "license": "Apache-2.0",
   "dependencies": {
-    "blockly": "^11.2.2"
+    "blockly": "^11.2.2",
+    "unplugin": "^3.4.0"
   },
   "peerDependencies": {
     "@codemirror/lang-javascript": "^6.0.0",

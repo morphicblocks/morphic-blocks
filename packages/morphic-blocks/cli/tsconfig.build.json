@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "outDir": "../dist",
+    "declarationMap": false
+  },
+  "include": [
+    "plugin.ts",
+    "copy-media.ts",
+    "vite.ts",
+    "webpack.ts",
+    "rspack.ts",
+    "rollup.ts",
+    "esbuild.ts"
+  ]
+}

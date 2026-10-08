@@ -1,16 +1,24 @@
 import { defineConfig } from "vite";
 
-// The `morphic-blocks` command, built for Node next to the library.
+// Node code built next to the library: the `morphic-blocks` command and the
+// bundler plugin, one entry per bundler (morphic-blocks/vite, /webpack, …).
+const bundlers = ["vite", "webpack", "rspack", "rollup", "esbuild"];
+
 export default defineConfig({
   build: {
-    ssr: "cli/index.ts",
+    ssr: true,
     outDir: "dist",
     emptyOutDir: false,
     target: "node18",
     rollupOptions: {
+      input: {
+        cli: "cli/index.ts",
+        ...Object.fromEntries(bundlers.map((name) => [name, `cli/${name}.ts`])),
+      },
       output: {
-        entryFileNames: "cli.js",
-        banner: "#!/usr/bin/env node",
+        entryFileNames: "[name].js",
+        chunkFileNames: "[name]-[hash].js",
+        banner: (chunk) => (chunk.name === "cli" ? "#!/usr/bin/env node" : ""),
       },
     },
   },

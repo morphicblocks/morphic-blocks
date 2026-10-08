@@ -596,6 +596,7 @@ export interface MorphicMountConfig {
   /**
    * Options passed through to Blockly's `inject` (zoom, grid, trashcan, and so
    * on). `media` defaults to `"blockly-media/"` next to the page, filled by
+   * the bundler plugin (`morphic-blocks/vite` and others) or
    * `npx morphic-blocks copy-media`, so Blockly never loads from another server
    * unless the host sets it.
    */

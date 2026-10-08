@@ -188,7 +188,7 @@ function warnWhenMediaMissing(media: string, warn: (message: string) => void): v
   probe.onerror = () => {
     warn(
       `[MorphicBlocks] Blockly's media is missing at "${media}", so icons are not shown and sounds stay silent. ` +
-        `Copy it there with "morphic-blocks copy-media <folder>", or point blockly.media to where it is.`,
+        `Copy it there with the bundler plugin (morphic-blocks/vite and others) or "morphic-blocks copy-media <folder>", or point blockly.media to where it is.`,
     );
   };
   probe.src = `${media}sprites.png`;
