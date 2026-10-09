@@ -449,6 +449,14 @@ export type MorphicToolboxLayout = "flyout" | "category";
 
 /** How the HTML toolbox shows categories; part of both toolbox option sets. */
 export interface MorphicToolboxCategoryOptions {
+  /**
+   * `"stacked"` (default): every category under its heading. `"tabs"`: a list
+   * of the category names and the tiles of the chosen one, the first at the
+   * start; `collapsed` does not apply. The container gets
+   * `morphic-toolbox-stacked` or `morphic-toolbox-tabs`; where the list sits
+   * is the app's CSS. Without categories, tiles are a flat list either way.
+   */
+  layout?: "stacked" | "tabs";
   /** A heading with the category's name above its tiles. Default `true`. */
   categoryHeadings?: boolean;
   /** A click on a heading collapses or expands its category. Default `true`. */

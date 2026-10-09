@@ -195,7 +195,7 @@ function warnWhenMediaMissing(media: string, warn: (message: string) => void): v
 }
 
 /** Where a mount's warnings go: the host's `onWarning`, or the console. */
-const warnFor = (config: MorphicMountConfig): ((message: string) => void) =>
+const warnFor = (config: Pick<MorphicMountConfig, "onWarning">): ((message: string) => void) =>
   config.onWarning ?? ((message) => console.warn(message));
 
 const workspaceOwners = new WeakMap<Blockly.Workspace, MorphicBlocks>();
@@ -743,7 +743,11 @@ export class MorphicBlocks extends EventTarget {
       collapsible: options?.collapsible ?? toolbox?.collapsible,
       collapsed: options?.collapsed ?? toolbox?.collapsed,
       onCategoryToggle: options?.onCategoryToggle ?? toolbox?.onCategoryToggle,
+      layout: options?.layout ?? toolbox?.layout,
     };
+    if (canvasOptions.layout === "tabs" && !canvasOptions.categories?.length) {
+      warnFor(this.mountConfig)('[MorphicBlocks] The toolbox layout "tabs" needs categories; the tiles show as a flat list.');
+    }
 
     this.toolboxCanvas = new MorphicToolboxCanvas({
       container,

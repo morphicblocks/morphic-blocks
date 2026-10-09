@@ -97,7 +97,9 @@ export class MorphicToolboxCanvas {
   /** Names of the collapsed categories; kept across redraws. */
   private readonly collapsedCategories = new Set<string>();
   /** Each drawn category's parts, to collapse or expand without a redraw. */
-  private categoryParts: { name: string; group: HTMLElement; heading?: HTMLElement; tiles: HTMLElement }[] = [];
+  private categoryParts: { name: string; group: HTMLElement; heading?: HTMLElement; tiles: HTMLElement; tab?: HTMLElement }[] = [];
+  /** The category shown with the `"tabs"` layout; the first one until chosen. */
+  private activeCategory?: string;
   /** Adds a tile's block when the tile is chosen with the keyboard. */
   private readonly onChoose?: (blockType: string) => void;
 
@@ -229,6 +231,16 @@ export class MorphicToolboxCanvas {
     const blockIds = this.resolveBlockIds();
     const categories = this.options.categories ?? [];
     this.categoryParts = [];
+    const tabs = this.options.layout === "tabs";
+    this.container.classList.toggle("morphic-toolbox-tabs", tabs);
+    this.container.classList.toggle("morphic-toolbox-stacked", !tabs);
+    // Tabs: one list of the category names, filled below, above the tiles.
+    const tabList = tabs && categories.length > 0 ? document.createElement("div") : undefined;
+    if (tabList) {
+      tabList.className = "morphic-category-tabs";
+      tabList.setAttribute("role", "tablist");
+      this.container.appendChild(tabList);
+    }
 
     if (categories.length === 0) {
       for (const id of blockIds) {
@@ -253,7 +265,22 @@ export class MorphicToolboxCanvas {
       tiles.className = "morphic-category-tiles";
       tiles.id = `morphic-category-${++categoryCount}`;
       let heading: HTMLElement | undefined;
-      if (this.options.categoryHeadings !== false) {
+      let tab: HTMLElement | undefined;
+      if (tabList) {
+        tab = document.createElement("button");
+        tab.className = "morphic-category-tab";
+        (tab as HTMLButtonElement).type = "button";
+        tab.setAttribute("role", "tab");
+        tab.setAttribute("aria-controls", tiles.id);
+        tab.textContent = category.name;
+        if (category.color) tab.style.setProperty("--morphic-category-color", category.color);
+        tab.addEventListener("click", () => {
+          this.activeCategory = category.name;
+          this.showCategories();
+        });
+        tabList.appendChild(tab);
+        tiles.setAttribute("role", "tabpanel");
+      } else if (this.options.categoryHeadings !== false) {
         // A button when it collapses the category, so the keyboard reaches it.
         const collapsible = this.options.collapsible !== false;
         heading = document.createElement(collapsible ? "button" : "div");
@@ -269,7 +296,7 @@ export class MorphicToolboxCanvas {
         }
         group.appendChild(heading);
       }
-      this.categoryParts.push({ name: category.name, group, heading, tiles });
+      this.categoryParts.push({ name: category.name, group, heading, tiles, tab });
 
       for (const id of ids) {
         const def = this.definitions.get(id);
@@ -300,8 +327,19 @@ export class MorphicToolboxCanvas {
     this.options.onCategoryToggle?.(name, collapsed);
   }
 
-  /** Hide the tiles of collapsed categories and tell their headings. */
+  /**
+   * Hide the tiles of collapsed categories and tell their headings; with
+   * tabs, show only the chosen category.
+   */
   private showCategories(): void {
+    if (this.options.layout === "tabs") {
+      const active = this.categoryParts.find((part) => part.name === this.activeCategory) ?? this.categoryParts[0];
+      for (const part of this.categoryParts) {
+        part.group.hidden = part !== active;
+        part.tab?.setAttribute("aria-selected", String(part === active));
+      }
+      return;
+    }
     const collapsible = this.options.collapsible !== false;
     for (const { name, group, heading, tiles } of this.categoryParts) {
       const collapsed = collapsible && this.collapsedCategories.has(name);

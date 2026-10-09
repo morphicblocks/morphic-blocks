@@ -109,3 +109,61 @@ describe("collapsing categories", () => {
     expect(tilesOf(container, "loops").hidden).toBe(false);
   });
 });
+
+describe("categories as tabs", () => {
+  const shown = (container: HTMLElement) =>
+    Array.from(container.querySelectorAll<HTMLElement>("[data-category]"))
+      .filter((group) => !group.hidden)
+      .map((group) => group.dataset.category);
+
+  test("list the names and show the first category's tiles", async () => {
+    const { container, headings } = await toolboxWith({ layout: "tabs" });
+    const tabs = Array.from(container.querySelectorAll<HTMLButtonElement>(".morphic-category-tab"));
+
+    expect(container.classList.contains("morphic-toolbox-tabs")).toBe(true);
+    expect(tabs.map((tab) => tab.textContent)).toEqual(["Output & Text", "Loops"]);
+    expect(tabs.map((tab) => tab.getAttribute("aria-selected"))).toEqual(["true", "false"]);
+    expect(shown(container)).toEqual(["output-text"]);
+    // The tabs name the categories, so no headings above the tiles.
+    expect(headings()).toEqual([]);
+  });
+
+  test("show the chosen category, also after the tiles are drawn again", async () => {
+    const { engine, container } = await toolboxWith({ layout: "tabs" });
+
+    container.querySelectorAll<HTMLButtonElement>(".morphic-category-tab")[1]!.click();
+    expect(shown(container)).toEqual(["loops"]);
+
+    engine.setModes({ toolboxMode: "python" });
+    expect(shown(container)).toEqual(["loops"]);
+  });
+
+  test("keep tiles without a category in view", async () => {
+    const { container } = await toolboxWith({ layout: "tabs" });
+
+    expect(container.querySelector<HTMLElement>('[data-block-type="wait"]')!.closest("[hidden]")).toBeNull();
+  });
+
+  test("warn without categories and show a flat list", async () => {
+    const warnings: string[] = [];
+    const { categories: _, ...flat } = format;
+    const engine = new MorphicBlocks(flat, {});
+    engines.push(engine);
+    const container = div();
+    await engine.mount({
+      workspaceContainer: div(),
+      toolboxContainer: container,
+      toolbox: { layout: "tabs" },
+      onWarning: (message) => warnings.push(message),
+    });
+
+    expect(warnings.some((message) => message.includes('"tabs" needs categories'))).toBe(true);
+    expect(container.querySelectorAll("[data-block-type]")).toHaveLength(3);
+  });
+
+  test("stacked is the default layout", async () => {
+    const { container } = await toolboxWith();
+
+    expect(container.classList.contains("morphic-toolbox-stacked")).toBe(true);
+  });
+});
