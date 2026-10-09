@@ -451,6 +451,15 @@ export type MorphicToolboxLayout = "flyout" | "category";
 export interface MorphicToolboxCategoryOptions {
   /** A heading with the category's name above its tiles. Default `true`. */
   categoryHeadings?: boolean;
+  /** A click on a heading collapses or expands its category. Default `true`. */
+  collapsible?: boolean;
+  /**
+   * Categories collapsed at the start: `true` for all, or their names.
+   * Default: all open. The toolbox keeps the state across redraws.
+   */
+  collapsed?: boolean | string[];
+  /** Called when a category is collapsed or expanded, e.g. to remember it. */
+  onCategoryToggle?: (name: string, collapsed: boolean) => void;
 }
 
 export interface MorphicToolboxConfig extends MorphicToolboxCategoryOptions {

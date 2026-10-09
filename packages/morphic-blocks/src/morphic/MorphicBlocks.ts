@@ -740,6 +740,9 @@ export class MorphicBlocks extends EventTarget {
       touch: options?.touch ?? toolbox?.touch,
       keyboard: options?.keyboard ?? toolbox?.keyboard,
       categoryHeadings: options?.categoryHeadings ?? toolbox?.categoryHeadings,
+      collapsible: options?.collapsible ?? toolbox?.collapsible,
+      collapsed: options?.collapsed ?? toolbox?.collapsed,
+      onCategoryToggle: options?.onCategoryToggle ?? toolbox?.onCategoryToggle,
     };
 
     this.toolboxCanvas = new MorphicToolboxCanvas({

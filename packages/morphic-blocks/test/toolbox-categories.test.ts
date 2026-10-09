@@ -56,3 +56,56 @@ describe("category headings", () => {
     expect(container.querySelectorAll("[data-block-type]")).toHaveLength(3);
   });
 });
+
+describe("collapsing categories", () => {
+  const tilesOf = (container: HTMLElement, name: string) =>
+    container.querySelector<HTMLElement>(`[data-category="${name}"] .morphic-category-tiles`)!;
+  const headingOf = (container: HTMLElement, name: string) =>
+    container.querySelector<HTMLButtonElement>(`[data-category="${name}"] .morphic-category-heading`)!;
+
+  test("all start open, and a click on a heading collapses and expands", async () => {
+    const toggles: [string, boolean][] = [];
+    const { container } = await toolboxWith({ onCategoryToggle: (name, collapsed) => toggles.push([name, collapsed]) });
+    const heading = headingOf(container, "loops");
+
+    expect(tilesOf(container, "loops").hidden).toBe(false);
+    expect(heading.getAttribute("aria-expanded")).toBe("true");
+
+    heading.click();
+    expect(tilesOf(container, "loops").hidden).toBe(true);
+    expect(heading.getAttribute("aria-expanded")).toBe("false");
+
+    heading.click();
+    expect(tilesOf(container, "loops").hidden).toBe(false);
+    expect(toggles).toEqual([
+      ["Loops", true],
+      ["Loops", false],
+    ]);
+  });
+
+  test("start collapsed: all, or the ones named", async () => {
+    const all = await toolboxWith({ collapsed: true });
+    expect(tilesOf(all.container, "loops").hidden).toBe(true);
+    expect(tilesOf(all.container, "output-text").hidden).toBe(true);
+
+    const some = await toolboxWith({ collapsed: ["Loops"] });
+    expect(tilesOf(some.container, "loops").hidden).toBe(true);
+    expect(tilesOf(some.container, "output-text").hidden).toBe(false);
+  });
+
+  test("stay collapsed when the tiles are drawn again", async () => {
+    const { engine, container } = await toolboxWith();
+    headingOf(container, "loops").click();
+
+    engine.setModes({ toolboxMode: "python" });
+
+    expect(tilesOf(container, "loops").hidden).toBe(true);
+  });
+
+  test("can be switched off, leaving plain headings", async () => {
+    const { container } = await toolboxWith({ collapsible: false, collapsed: true });
+
+    expect(headingOf(container, "loops").tagName).toBe("DIV");
+    expect(tilesOf(container, "loops").hidden).toBe(false);
+  });
+});

@@ -28,6 +28,9 @@ import type {
 
 export const DRAG_DATA_KEY = "morphic/block-type";
 
+/** Numbers the category tile groups, so their ids stay unique on the page. */
+let categoryCount = 0;
+
 /**
  * Where a tile dragged by touch or pen can land. HTML drag and drop, which
  * mouse drags use, does not start from a finger in most browsers.
@@ -91,6 +94,10 @@ export class MorphicToolboxCanvas {
   private readonly onDrop: (e: DragEvent) => void;
   /** Targets besides the workspace, such as codespaces, for touch drags. */
   private readonly dropTargets: () => TileDropTarget[];
+  /** Names of the collapsed categories; kept across redraws. */
+  private readonly collapsedCategories = new Set<string>();
+  /** Each drawn category's parts, to collapse or expand without a redraw. */
+  private categoryParts: { name: string; group: HTMLElement; heading?: HTMLElement; tiles: HTMLElement }[] = [];
   /** Adds a tile's block when the tile is chosen with the keyboard. */
   private readonly onChoose?: (blockType: string) => void;
 
@@ -127,6 +134,9 @@ export class MorphicToolboxCanvas {
     this.modes = params.modes ?? [];
     this.options = params.options ?? {};
     this.dropTargets = params.dropTargets ?? (() => []);
+    const collapsed = this.options.collapsed;
+    const names = collapsed === true ? (this.options.categories ?? []).map((c) => c.name) : collapsed || [];
+    for (const name of names) this.collapsedCategories.add(name);
     this.onChoose = params.onChoose;
 
     this.onDragOver = (e: DragEvent) => {
@@ -186,6 +196,9 @@ export class MorphicToolboxCanvas {
       this.widestBlock = Math.max(this.widestBlock, code.scrollWidth);
     }
     this.container.style.setProperty("--morphic-toolbox-block-width", `${Math.ceil(this.widestBlock)}px`);
+    // Collapsed only now, so the width counts every category and opening one
+    // never widens the toolbox.
+    this.showCategories();
   }
 
   /** Widest block or code text on a tile in the current render, in pixels. */
@@ -215,6 +228,7 @@ export class MorphicToolboxCanvas {
 
     const blockIds = this.resolveBlockIds();
     const categories = this.options.categories ?? [];
+    this.categoryParts = [];
 
     if (categories.length === 0) {
       for (const id of blockIds) {
@@ -235,16 +249,27 @@ export class MorphicToolboxCanvas {
       if (category.color) {
         group.style.setProperty("--morphic-category-color", category.color);
       }
-      if (this.options.categoryHeadings !== false) {
-        const heading = document.createElement("div");
-        heading.className = "morphic-category-heading";
-        heading.setAttribute("role", "heading");
-        heading.setAttribute("aria-level", "3");
-        heading.textContent = category.name;
-        group.appendChild(heading);
-      }
       const tiles = document.createElement("div");
       tiles.className = "morphic-category-tiles";
+      tiles.id = `morphic-category-${++categoryCount}`;
+      let heading: HTMLElement | undefined;
+      if (this.options.categoryHeadings !== false) {
+        // A button when it collapses the category, so the keyboard reaches it.
+        const collapsible = this.options.collapsible !== false;
+        heading = document.createElement(collapsible ? "button" : "div");
+        heading.className = "morphic-category-heading";
+        heading.textContent = category.name;
+        if (collapsible) {
+          (heading as HTMLButtonElement).type = "button";
+          heading.setAttribute("aria-controls", tiles.id);
+          heading.addEventListener("click", () => this.toggleCategory(category.name));
+        } else {
+          heading.setAttribute("role", "heading");
+          heading.setAttribute("aria-level", "3");
+        }
+        group.appendChild(heading);
+      }
+      this.categoryParts.push({ name: category.name, group, heading, tiles });
 
       for (const id of ids) {
         const def = this.definitions.get(id);
@@ -264,6 +289,25 @@ export class MorphicToolboxCanvas {
         const def = this.definitions.get(id);
         if (def) this.container.appendChild(this.createTile(def));
       }
+    }
+  }
+
+  /** Collapse or expand a category, without drawing the tiles again. */
+  private toggleCategory(name: string): void {
+    const collapsed = !this.collapsedCategories.delete(name);
+    if (collapsed) this.collapsedCategories.add(name);
+    this.showCategories();
+    this.options.onCategoryToggle?.(name, collapsed);
+  }
+
+  /** Hide the tiles of collapsed categories and tell their headings. */
+  private showCategories(): void {
+    const collapsible = this.options.collapsible !== false;
+    for (const { name, group, heading, tiles } of this.categoryParts) {
+      const collapsed = collapsible && this.collapsedCategories.has(name);
+      tiles.hidden = collapsed;
+      group.toggleAttribute("data-collapsed", collapsed);
+      if (heading?.tagName === "BUTTON") heading.setAttribute("aria-expanded", String(!collapsed));
     }
   }
 
