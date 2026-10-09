@@ -167,6 +167,25 @@ export function ensureTileTouchStyles(): void {
   );
 }
 
+/**
+ * The toolbox's scroll hints: no scrollbar, and a fade at each edge where more
+ * tiles wait. `:where()` gives them no weight, so any rule of the app wins.
+ */
+export function ensureToolboxScrollStyles(): void {
+  const hidden = ":where(.morphic-toolbox-hide-scrollbar";
+  const fade = (gradient: string) => `mask-image: ${gradient}; -webkit-mask-image: ${gradient};`;
+  addStyle(
+    "toolbox-scroll",
+    [
+      `${hidden}) { scrollbar-width: none; }`,
+      `${hidden})::-webkit-scrollbar { display: none; }`,
+      `${hidden}.morphic-toolbox-more-below) { ${fade("linear-gradient(to bottom, #000 calc(100% - 2rem), transparent)")} }`,
+      `${hidden}.morphic-toolbox-more-above) { ${fade("linear-gradient(to top, #000 calc(100% - 2rem), transparent)")} }`,
+      `${hidden}.morphic-toolbox-more-above.morphic-toolbox-more-below) { ${fade("linear-gradient(transparent, #000 2rem, #000 calc(100% - 2rem), transparent)")} }`,
+    ].join("\n"),
+  );
+}
+
 /** Hide every element, then show the ones each mode lists. */
 function modeVisibilityCss(modes: MorphicModeDefinition[]): string {
   const lines: string[] = ['[class^="morphic-element-"] { display: none; }'];

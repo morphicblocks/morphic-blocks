@@ -167,3 +167,35 @@ describe("categories as tabs", () => {
     expect(container.classList.contains("morphic-toolbox-stacked")).toBe(true);
   });
 });
+
+describe("scrolling the toolbox", () => {
+  test("hides the scrollbar by default, or keeps it on request", async () => {
+    const hidden = await toolboxWith();
+    expect(hidden.container.classList.contains("morphic-toolbox")).toBe(true);
+    expect(hidden.container.classList.contains("morphic-toolbox-hide-scrollbar")).toBe(true);
+
+    const shownBar = await toolboxWith({ scrollbar: true });
+    expect(shownBar.container.classList.contains("morphic-toolbox")).toBe(true);
+    expect(shownBar.container.classList.contains("morphic-toolbox-hide-scrollbar")).toBe(false);
+  });
+
+  test("marks where more tiles wait while scrolling", async () => {
+    const { container } = await toolboxWith();
+    // jsdom lays nothing out: a toolbox 100px high showing tiles 300px high.
+    Object.defineProperty(container, "clientHeight", { configurable: true, value: 100 });
+    Object.defineProperty(container, "scrollHeight", { configurable: true, value: 300 });
+    const scrollTo = (top: number) => {
+      container.scrollTop = top;
+      container.dispatchEvent(new Event("scroll"));
+    };
+    const marks = () =>
+      ["morphic-toolbox-more-above", "morphic-toolbox-more-below"].filter((name) => container.classList.contains(name));
+
+    scrollTo(0);
+    expect(marks()).toEqual(["morphic-toolbox-more-below"]);
+    scrollTo(100);
+    expect(marks()).toEqual(["morphic-toolbox-more-above", "morphic-toolbox-more-below"]);
+    scrollTo(200);
+    expect(marks()).toEqual(["morphic-toolbox-more-above"]);
+  });
+});

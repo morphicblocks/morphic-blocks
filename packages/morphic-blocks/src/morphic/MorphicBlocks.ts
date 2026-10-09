@@ -744,6 +744,7 @@ export class MorphicBlocks extends EventTarget {
       collapsed: options?.collapsed ?? toolbox?.collapsed,
       onCategoryToggle: options?.onCategoryToggle ?? toolbox?.onCategoryToggle,
       layout: options?.layout ?? toolbox?.layout,
+      scrollbar: options?.scrollbar ?? toolbox?.scrollbar,
     };
     if (canvasOptions.layout === "tabs" && !canvasOptions.categories?.length) {
       warnFor(this.mountConfig)('[MorphicBlocks] The toolbox layout "tabs" needs categories; the tiles show as a flat list.');

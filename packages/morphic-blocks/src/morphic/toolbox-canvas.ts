@@ -3,7 +3,7 @@ import { getLifecycleBehavior } from "./behavior-runtime";
 import { resolveBlocklyType } from "./block-namespace";
 import { applyBlockView } from "./block-view";
 import { generateTextFromWorkspace } from "./template-codegen";
-import { ensureTileHighlightStyles, ensureTileTouchStyles } from "./styles";
+import { ensureTileHighlightStyles, ensureTileTouchStyles, ensureToolboxScrollStyles } from "./styles";
 import { tokenMatcher } from "./syntax-highlight";
 import { applyFont, measuredFont, readCssFont, type MorphicBlockFont } from "./block-font";
 import { resolveElementType, resolveImageSize } from "./element-types";
@@ -100,6 +100,9 @@ export class MorphicToolboxCanvas {
   private categoryParts: { name: string; group: HTMLElement; heading?: HTMLElement; tiles: HTMLElement; tab?: HTMLElement }[] = [];
   /** The category shown with the `"tabs"` layout; the first one until chosen. */
   private activeCategory?: string;
+  private readonly onScroll = () => this.showScrollHints();
+  private readonly resizeObserver =
+    typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => this.showScrollHints()) : undefined;
   /** Adds a tile's block when the tile is chosen with the keyboard. */
   private readonly onChoose?: (blockType: string) => void;
 
@@ -157,6 +160,14 @@ export class MorphicToolboxCanvas {
     this.workspaceContainer.addEventListener("dragover", this.onDragOver);
     this.workspaceContainer.addEventListener("drop", this.onDrop);
 
+    this.container.classList.add("morphic-toolbox");
+    if (this.options.scrollbar !== true) {
+      ensureToolboxScrollStyles();
+      this.container.classList.add("morphic-toolbox-hide-scrollbar");
+    }
+    this.container.addEventListener("scroll", this.onScroll, { passive: true });
+    this.resizeObserver?.observe(this.container);
+
     this.render();
   }
 
@@ -169,6 +180,16 @@ export class MorphicToolboxCanvas {
   dispose(): void {
     this.workspaceContainer.removeEventListener("dragover", this.onDragOver);
     this.workspaceContainer.removeEventListener("drop", this.onDrop);
+    this.container.removeEventListener("scroll", this.onScroll);
+    this.resizeObserver?.disconnect();
+    this.container.classList.remove(
+      "morphic-toolbox",
+      "morphic-toolbox-hide-scrollbar",
+      "morphic-toolbox-more-above",
+      "morphic-toolbox-more-below",
+      "morphic-toolbox-stacked",
+      "morphic-toolbox-tabs",
+    );
     this.container.innerHTML = "";
     if (this.previewWorkspace) {
       this.previewWorkspace.dispose();
@@ -327,11 +348,23 @@ export class MorphicToolboxCanvas {
     this.options.onCategoryToggle?.(name, collapsed);
   }
 
+  /** Mark the container while tiles wait above or below its visible part. */
+  private showScrollHints(): void {
+    const { scrollTop, clientHeight, scrollHeight } = this.container;
+    this.container.classList.toggle("morphic-toolbox-more-above", scrollTop > 1);
+    this.container.classList.toggle("morphic-toolbox-more-below", scrollTop + clientHeight < scrollHeight - 1);
+  }
+
   /**
    * Hide the tiles of collapsed categories and tell their headings; with
    * tabs, show only the chosen category.
    */
   private showCategories(): void {
+    this.showCategoryState();
+    this.showScrollHints();
+  }
+
+  private showCategoryState(): void {
     if (this.options.layout === "tabs") {
       const active = this.categoryParts.find((part) => part.name === this.activeCategory) ?? this.categoryParts[0];
       for (const part of this.categoryParts) {

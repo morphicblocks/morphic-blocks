@@ -447,8 +447,8 @@ export interface MorphicToolboxCategory {
 
 export type MorphicToolboxLayout = "flyout" | "category";
 
-/** How the HTML toolbox shows categories; part of both toolbox option sets. */
-export interface MorphicToolboxCategoryOptions {
+/** How the HTML toolbox shows categories and scrolls; part of both toolbox option sets. */
+export interface MorphicToolboxDisplayOptions {
   /**
    * `"stacked"` (default): every category under its heading. `"tabs"`: a list
    * of the category names and the tiles of the chosen one, the first at the
@@ -468,9 +468,18 @@ export interface MorphicToolboxCategoryOptions {
   collapsed?: boolean | string[];
   /** Called when a category is collapsed or expanded, e.g. to remember it. */
   onCategoryToggle?: (name: string, collapsed: boolean) => void;
+  /**
+   * Show the container's scrollbar. Default `false`: hidden, and the edges
+   * fade where more tiles wait. Either way the container gets the classes
+   * `morphic-toolbox`, `morphic-toolbox-more-above` and
+   * `morphic-toolbox-more-below` (while tiles are hidden there) for the
+   * app's own styles; the defaults have no weight (`:where()`), so any app
+   * rule wins. Works when the container is the element that scrolls.
+   */
+  scrollbar?: boolean;
 }
 
-export interface MorphicToolboxConfig extends MorphicToolboxCategoryOptions {
+export interface MorphicToolboxConfig extends MorphicToolboxDisplayOptions {
   kind?: "flyoutToolbox" | "categoryToolbox";
   /** Show only these blocks, in the HTML toolbox and in Blockly's own. */
   blocks?: string[];
@@ -493,7 +502,7 @@ export interface MorphicToolboxConfig extends MorphicToolboxCategoryOptions {
 export type MorphicToolboxModeLabel = boolean | string | ((mode: string) => string);
 
 /** Options for the custom HTML toolbox canvas (mountToolbox). */
-export interface MorphicToolboxCanvasOptions extends MorphicToolboxCategoryOptions {
+export interface MorphicToolboxCanvasOptions extends MorphicToolboxDisplayOptions {
   /** Header of the toolbox; see {@link MorphicToolboxModeLabel}. Defaults to "Mode: <name>". */
   modeLabel?: MorphicToolboxModeLabel;
   /**
