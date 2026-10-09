@@ -131,7 +131,8 @@ engine.setModes({ workspaceMode: "python", toolboxMode: "python" });
   mode, with no duplication per representation.
 - **Headless and embeddable:** bring your own UI; the framework stays unstyled.
 - **Accessible toolbox:** tiles work with a mouse, a finger, a pen or the
-  keyboard, with names for screen readers.
+  keyboard, with names for screen readers; categories have headings, collapse,
+  or show as tabs.
 - **No external requests:** the framework never contacts another server,
   Blockly's media included.
 

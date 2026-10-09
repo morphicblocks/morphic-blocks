@@ -200,7 +200,8 @@ All elements are always rendered; CSS controls visibility:
 
 - Renders Morphic Block tiles as HTML (no off-screen Blockly workspaces)
 - Drag-and-drop: dragging a tile into the workspace creates the actual Blockly block
-- Optional category grouping via `<div data-category="...">` wrappers
+- Optional category grouping via `<div data-category="...">` wrappers, each with a heading button (`.morphic-category-heading`, the category name) and its tiles in `.morphic-category-tiles`; headings collapse and expand (`collapsible`, `collapsed`, `onCategoryToggle`, state kept across redraws), or `layout: "tabs"` shows one category at a time (`.morphic-category-tabs`); the width is measured with every category open, collapsing comes after
+- The container gets `morphic-toolbox` plus `morphic-toolbox-more-above` / `-more-below` while tiles are hidden there; by default the scrollbar is hidden and the edges fade (styles in `styles.ts` with `:where()`, so app CSS wins), `scrollbar: true` keeps it
 - Re-renders on `setModes({ toolboxMode })`
 - Options: `{ blocks?: string[], categories?: MorphicToolboxCategory[] }`
 - Block tiles are drawn in a hidden Blockly workspace that takes `media`, `renderer`, `rendererOverrides`, `theme` and `rtl` from the host workspace's options and never loads sounds

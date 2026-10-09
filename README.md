@@ -388,6 +388,7 @@ Block colours can be driven from CSS via a custom property:
 - ✅ Inline field edits for atomic placeholders (text / number / dropdown), shadow auto-materialises on first edit
 - ✅ Per-element empty-slot defaults; empty slots render a `[TYPE]` marker when no default is set
 - ✅ Definition-driven syntax highlighting — per-element `code.<element>.highlighting` rules, runtime-swapped on `setModes()`; code shown as text on toolbox tiles is coloured the same way (`toolbox.highlight`)
+- ✅ Toolbox categories — headings with each category's name that collapse and expand (`toolbox.collapsible`, `collapsed`), or one category at a time as tabs (`layout: "tabs"`); the scrollbar is hidden and the edges fade where more tiles wait (`scrollbar: true` shows it), with classes for the app's own styles
 - ✅ Toolbox without a mouse — tiles drag with a finger or pen (`toolbox.touch`) and are reached with Tab and added with Enter or Space, named for screen readers (`toolbox.keyboard`); both on by default
 - ✅ Multi-editor selection sync — block ↔ code editor ↔ codespace ↔ preview
 - ✅ One-file constructor + mount-time validation + shipped JSON Schema (`$schema` / `version`)
