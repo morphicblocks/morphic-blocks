@@ -463,17 +463,60 @@ body {
   margin-bottom: 16px;
 }
 
-[data-category]::before {
-  content: attr(data-category);
-  display: block;
+/* The toolbox's own category headings; a click collapses the category. */
+.morphic-category-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  font: inherit;
   font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 1.2px;
   color: var(--text-muted);
   font-weight: 800;
-  padding-bottom: 6px;
+  padding: 0 0 6px;
   margin-bottom: 8px;
+  background: none;
+  border: 0;
   border-bottom: 1px solid var(--divider);
+  cursor: pointer;
+}
+
+.morphic-category-heading::after {
+  content: "▾";
+  margin-left: auto;
+  font-size: 11px;
+}
+
+.morphic-category-heading[aria-expanded="false"]::after {
+  content: "▸";
+}
+
+/* ?tabs: the category names as a row of tabs above the tiles. */
+.morphic-category-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.morphic-category-tab {
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 8px;
+  color: var(--text-muted);
+  background: none;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--morphic-category-color, var(--border));
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.morphic-category-tab[aria-selected="true"] {
+  color: var(--text);
+  background: var(--block-bg);
 }
 
 /* Block tiles */

@@ -12,7 +12,8 @@ import "./style.css";
 const RTL = new URLSearchParams(location.search).has("rtl");
 if (RTL) document.documentElement.dir = "rtl";
 // ?touch=off and ?keyboard=off turn the toolbox's touch dragging and
-// keyboard use off, to compare with the defaults.
+// keyboard use off, to compare with the defaults; ?tabs shows the categories
+// as tabs, ?scrollbar keeps the toolbox's scrollbar.
 const query = new URLSearchParams(location.search);
 
 // The JSON import goes to the engine as is; mount() validates it. The Arabic
@@ -184,6 +185,8 @@ void engine.mount({
   toolbox: {
     touch: query.get("touch") !== "off",
     keyboard: query.get("keyboard") !== "off",
+    layout: query.has("tabs") ? "tabs" : "stacked",
+    scrollbar: query.has("scrollbar"),
   },
   blockly: {
     rtl: RTL,
