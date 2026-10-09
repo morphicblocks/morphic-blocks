@@ -235,15 +235,26 @@ export class MorphicToolboxCanvas {
       if (category.color) {
         group.style.setProperty("--morphic-category-color", category.color);
       }
+      if (this.options.categoryHeadings !== false) {
+        const heading = document.createElement("div");
+        heading.className = "morphic-category-heading";
+        heading.setAttribute("role", "heading");
+        heading.setAttribute("aria-level", "3");
+        heading.textContent = category.name;
+        group.appendChild(heading);
+      }
+      const tiles = document.createElement("div");
+      tiles.className = "morphic-category-tiles";
 
       for (const id of ids) {
         const def = this.definitions.get(id);
         if (def) {
-          group.appendChild(this.createTile(def));
+          tiles.appendChild(this.createTile(def));
           categorized.add(id);
         }
       }
 
+      group.appendChild(tiles);
       this.container.appendChild(group);
     }
 

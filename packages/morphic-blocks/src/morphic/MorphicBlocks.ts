@@ -739,6 +739,7 @@ export class MorphicBlocks extends EventTarget {
       highlight: options?.highlight ?? toolbox?.highlight,
       touch: options?.touch ?? toolbox?.touch,
       keyboard: options?.keyboard ?? toolbox?.keyboard,
+      categoryHeadings: options?.categoryHeadings ?? toolbox?.categoryHeadings,
     };
 
     this.toolboxCanvas = new MorphicToolboxCanvas({

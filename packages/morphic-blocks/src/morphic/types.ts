@@ -447,7 +447,13 @@ export interface MorphicToolboxCategory {
 
 export type MorphicToolboxLayout = "flyout" | "category";
 
-export interface MorphicToolboxConfig {
+/** How the HTML toolbox shows categories; part of both toolbox option sets. */
+export interface MorphicToolboxCategoryOptions {
+  /** A heading with the category's name above its tiles. Default `true`. */
+  categoryHeadings?: boolean;
+}
+
+export interface MorphicToolboxConfig extends MorphicToolboxCategoryOptions {
   kind?: "flyoutToolbox" | "categoryToolbox";
   /** Show only these blocks, in the HTML toolbox and in Blockly's own. */
   blocks?: string[];
@@ -470,7 +476,7 @@ export interface MorphicToolboxConfig {
 export type MorphicToolboxModeLabel = boolean | string | ((mode: string) => string);
 
 /** Options for the custom HTML toolbox canvas (mountToolbox). */
-export interface MorphicToolboxCanvasOptions {
+export interface MorphicToolboxCanvasOptions extends MorphicToolboxCategoryOptions {
   /** Header of the toolbox; see {@link MorphicToolboxModeLabel}. Defaults to "Mode: <name>". */
   modeLabel?: MorphicToolboxModeLabel;
   /**
