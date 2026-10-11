@@ -627,3 +627,9 @@ body {
   background: var(--bg-panel);
   white-space: nowrap;
 }
+
+/* Text views: a gap one line high after each group of blocks, so groups read
+   apart without an extra line in the text. */
+.cm-content .cm-line.morphic-group-end:not(:last-child) {
+  padding-bottom: 1lh;
+}
