@@ -204,6 +204,7 @@ body {
   border-color: var(--border);
 }
 
+#groups-select,
 #theme-select {
   height: 32px;
   border-radius: 6px;
@@ -216,11 +217,13 @@ body {
   transition: color 0.2s, border-color 0.2s;
 }
 
+#groups-select:hover,
 #theme-select:hover {
   color: var(--text);
   border-color: var(--text-muted);
 }
 
+#groups-select option,
 #theme-select option {
   background: var(--bg-panel);
   color: var(--text);
@@ -628,8 +631,23 @@ body {
   white-space: nowrap;
 }
 
-/* Text views: a gap one line high after each group of blocks, so groups read
-   apart without an extra line in the text. */
-.cm-content .cm-line.morphic-group-end:not(:last-child) {
+/* Text views: how groups of blocks show, picked in the header ("Groups"). */
+[data-groups="gap"] .cm-content .cm-line.morphic-group-end:not(:last-child) {
   padding-bottom: 1lh;
+}
+
+[data-groups="bar"] .cm-content .morphic-group-line {
+  box-shadow: inset 3px 0 0 var(--border);
+}
+
+[data-groups="tint"] .cm-content .morphic-group-even {
+  background: rgb(127 127 127 / 0.08);
+}
+
+[data-groups="separator"] .cm-content .morphic-group-start:not(:first-child) {
+  border-top: 1px dashed var(--border);
+}
+
+[data-groups="hover"] .cm-content .morphic-group-hover {
+  box-shadow: inset 3px 0 0 var(--accent);
 }

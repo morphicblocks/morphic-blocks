@@ -153,6 +153,13 @@ function applyTheme(theme: ThemeName, syncEditors: boolean): void {
 
 applyTheme(currentTheme, false);
 
+// How the text views show groups of blocks; the classes come from the
+// framework, the looks are the examples from the docs.
+const groupsSelect = document.getElementById("groups-select") as HTMLSelectElement;
+groupsSelect.addEventListener("change", () => {
+  document.documentElement.dataset.groups = groupsSelect.value;
+});
+
 themeSelect.addEventListener("change", () => {
   applyTheme(themeSelect.value as ThemeName, true);
 });
