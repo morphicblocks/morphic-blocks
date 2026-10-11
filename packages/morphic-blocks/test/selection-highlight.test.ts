@@ -43,17 +43,14 @@ async function highlightStyle(config: Partial<MorphicMountConfig>): Promise<stri
 test("the highlight follows the view's selection colour", async () => {
   const style = await highlightStyle({ editorTheme: { selectionBackground: "#ffcc00" } });
 
-  // The browser writes #ffcc00 as rgb().
-  expect(style).toContain("rgb(255, 204, 0)");
+  expect(style).toContain("#ffcc00");
 });
 
-test("the host's own colour wins", async () => {
-  const style = await highlightStyle({
-    editorTheme: { selectionBackground: "#ffcc00" },
-    selectionSync: { highlightColor: "rgb(1, 2, 3)" },
-  });
+test("the app's CSS can set its own colour", async () => {
+  const style = await highlightStyle({ editorTheme: { selectionBackground: "#ffcc00" } });
 
-  expect(style).toContain("rgb(1, 2, 3)");
+  // The theme's colour is only the fallback of the variable.
+  expect(style).toMatch(/^background: var\(--morphic-highlight-color, /);
 });
 
 test("an active highlight takes the new colour when the theme changes", async () => {
@@ -70,7 +67,6 @@ test("an active highlight takes the new colour when the theme changes", async ()
 
   engine.setCodespaceTheme({ selectionBackground: "#00ff00" });
 
-  // The browser writes #00ff00 as rgb().
-  expect(codespaceContainer.querySelector(".morphic-highlight")?.getAttribute("style")).toContain("rgb(0, 255, 0)");
+  expect(codespaceContainer.querySelector(".morphic-highlight")?.getAttribute("style")).toContain("#00ff00");
 });
 

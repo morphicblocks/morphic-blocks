@@ -401,7 +401,6 @@ export class MorphicCodeEditor {
   private syntaxHighlightCompartment?: import("@codemirror/state").Compartment;
   private highlightEffect?: StateEffect<HighlightRange>;
   /** The host's highlight colour; without one, the theme's selection colour is used. */
-  private highlightColor?: string;
   private themeSelection = DEFAULT_THEME.selectionBackground;
   /** The lines highlighted now, drawn again when the colour changes. */
   private activeHighlight?: LineSpan | LineSpan[];
@@ -515,7 +514,9 @@ export class MorphicCodeEditor {
             const doc = tr.state.doc;
             const mark = cmView.Decoration.mark({
               class: "morphic-highlight",
-              attributes: { style: `background: ${editor.highlightColor ?? mix(editor.themeSelection, 60)}` },
+              // The theme's selection colour, a little lighter, unless the
+              // app's CSS sets --morphic-highlight-color.
+              attributes: { style: `background: var(--morphic-highlight-color, ${mix(editor.themeSelection, 60)})` },
             });
             const ranges = spans
               .map((s) => {
@@ -1189,12 +1190,6 @@ export class MorphicCodeEditor {
     this.editorView.dispatch({
       effects: (this.highlightEffect as any).of(null),
     });
-  }
-
-  /** Update the highlight background colour; `undefined` follows the theme's selection colour. */
-  setHighlightColor(color: string | undefined): void {
-    this.highlightColor = color;
-    if (this.activeHighlight) this.highlightLines(this.activeHighlight);
   }
 
   /** Show a drop-position indicator above (or below) the given 1-based line. */

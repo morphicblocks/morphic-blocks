@@ -846,8 +846,6 @@ export interface MorphicCodeEditorOptions {
 
 /** Options for `enableSelectionSync()`. */
 export interface MorphicSelectionSyncOptions {
-  /** CSS background colour for highlighted code lines. Defaults to each editor's theme `selectionBackground`, a little lighter. */
-  highlightColor?: string;
   /** Enable block → code direction. Defaults to true. */
   blockToCode?: boolean;
   /** Enable code → block direction. Defaults to true. */

@@ -41,10 +41,6 @@ export class MorphicSelectionSync {
     this.editors = Array.isArray(editors) ? [...editors] : [editors];
     this.blockToCode = options.blockToCode !== false;
     this.codeToBlock = options.codeToBlock !== false;
-    // Without a colour of its own, each editor follows its theme's selection colour.
-    for (const editor of this.editors) {
-      editor.setHighlightColor(options.highlightColor);
-    }
   }
 
   /** Start listening for selection events in both directions. */
