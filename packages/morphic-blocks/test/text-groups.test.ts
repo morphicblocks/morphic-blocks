@@ -73,3 +73,43 @@ describe("groups of blocks in text views", () => {
     ]);
   });
 });
+
+describe("line numbers after outside CSS", () => {
+  test("are measured again when a line changes size", async () => {
+    // jsdom has no ResizeObserver: record what is watched, and resize by hand.
+    const observers: { callback: () => void; boxes: string[] }[] = [];
+    const original = globalThis.ResizeObserver;
+    globalThis.ResizeObserver = class {
+      private readonly record: { callback: () => void; boxes: string[] };
+      constructor(callback: () => void) {
+        this.record = { callback, boxes: [] };
+        observers.push(this.record);
+      }
+      observe(_target: Element, options?: { box?: string }) {
+        this.record.boxes.push(options?.box ?? "content-box");
+      }
+      unobserve() {}
+      disconnect() {}
+    } as unknown as typeof ResizeObserver;
+    try {
+      const engine = new MorphicBlocks(format, {});
+      engines.push(engine);
+      await engine.mount({ workspaceContainer: div(), codespaceContainer: div() });
+      await settle();
+      const view = (engine as unknown as { codespace: { editorView: { requestMeasure(): void } } }).codespace.editorView;
+      let measured = 0;
+      const requestMeasure = view.requestMeasure.bind(view);
+      view.requestMeasure = (...args: unknown[]) => {
+        if (args.length === 0) measured++;
+        return requestMeasure(...(args as []));
+      };
+      const lines = observers.find((observer) => observer.boxes.includes("border-box"));
+
+      expect(lines).toBeDefined();
+      lines!.callback();
+      expect(measured).toBe(1);
+    } finally {
+      globalThis.ResizeObserver = original;
+    }
+  });
+});

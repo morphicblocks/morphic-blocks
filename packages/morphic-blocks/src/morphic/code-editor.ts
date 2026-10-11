@@ -53,6 +53,60 @@ const DEFAULT_THEME: Required<MorphicCodeEditorTheme> = {
   selectionBackground: "#264f78",
 };
 
+/**
+ * CodeMirror measures its lines only on its own updates. CSS that changes
+ * their height from outside (a gap between groups, a font size) would leave
+ * the line numbers and gutter markers behind, so the rendered lines are
+ * watched and measured again when one changes size.
+ */
+function buildLineResizeExtensions(cmView: typeof import("@codemirror/view")): Extension[] {
+  if (typeof ResizeObserver === "undefined") return [];
+  return [
+    cmView.ViewPlugin.fromClass(
+      class {
+        private readonly observer: ResizeObserver;
+        private readonly watched = new Set<Element>();
+        constructor(private readonly view: import("@codemirror/view").EditorView) {
+          this.observer = new ResizeObserver(() => {
+            // A plain measure skips line heights unless CodeMirror changed its
+            // own content; this flag (not public API) asks for them too.
+            const state = (this.view as unknown as { viewState?: { mustMeasureContent?: boolean } }).viewState;
+            if (state) state.mustMeasureContent = true;
+            this.view.requestMeasure();
+          });
+          queueMicrotask(() => this.watch());
+        }
+        update() {
+          // Called before CodeMirror redraws its lines; watch them once drawn.
+          queueMicrotask(() => this.watch());
+        }
+        destroy() {
+          this.destroyed = true;
+          this.observer.disconnect();
+        }
+        private destroyed = false;
+        private watch() {
+          if (this.destroyed) return;
+          const lines = new Set(Array.from(this.view.contentDOM.children));
+          for (const line of this.watched) {
+            if (!lines.has(line)) {
+              this.observer.unobserve(line);
+              this.watched.delete(line);
+            }
+          }
+          for (const line of lines) {
+            if (!this.watched.has(line)) {
+              // The border box, so padding and borders count too.
+              this.observer.observe(line, { box: "border-box" });
+              this.watched.add(line);
+            }
+          }
+        }
+      },
+    ),
+  ];
+}
+
 const mix = (color: string, pct: number) =>
   `color-mix(in srgb, ${color} ${pct}%, transparent)`;
 
@@ -585,6 +639,7 @@ export class MorphicCodeEditor {
       ...this.buildValueSlotHighlightExtensions(cmView, cmState),
       ...this.buildHoverHighlightExtensions(cmView, cmState),
       ...this.buildGroupExtensions(cmView, cmState),
+      ...buildLineResizeExtensions(cmView),
       ...this.buildEditableHoverHighlightExtensions(cmView, cmState),
       ...(this.options.extensions ?? []) as Extension[],
     ];
@@ -601,6 +656,7 @@ export class MorphicCodeEditor {
         extensions,
       }),
     });
+
 
     if (this.groupsEffect && result.groups?.length) {
       this.editorView.dispatch({ effects: this.groupsEffect.of(result.groups) });
