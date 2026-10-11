@@ -89,20 +89,24 @@ export function generateTextFromWorkspace(
     emptyStatements: options.emptyStatements !== false,
   };
 
+  const groups: { startLine: number; endLine: number }[] = [];
+  const lineCount = () => state.output.split("\n").length;
   let first = true;
   for (const block of workspace.getTopBlocks(true)) {
     const before = state.output.length;
     if (!first) state.output += "\n";
+    const startLine = lineCount();
     renderStatementChain(block, ctx, state);
     if (state.output.length === before + (first ? 0 : 1)) {
       // Nothing was emitted for this top-level block — revert the separator.
       state.output = state.output.slice(0, before);
     } else {
       first = false;
+      groups.push({ startLine, endLine: lineCount() });
     }
   }
 
-  return { code: state.output, metadata: state.metadata, placeholders: state.placeholders };
+  return { code: state.output, metadata: state.metadata, placeholders: state.placeholders, groups };
 }
 
 function renderStatementChain(

@@ -732,6 +732,11 @@ export interface MorphicCodeGenerationResult {
   metadata: MorphicCodeMetadata;
   /** Value-slot ranges with default/set classification. Empty if no value slots emitted. */
   placeholders: MorphicPlaceholderRange[];
+  /**
+   * Line range (1-based, inclusive) of each group of connected blocks, a stack
+   * in the workspace, in text order. Text views mark these lines with classes.
+   */
+  groups?: { startLine: number; endLine: number }[];
 }
 
 /** Theme configuration for the code editor. */

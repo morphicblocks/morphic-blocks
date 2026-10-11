@@ -410,6 +410,8 @@ export class MorphicCodeEditor {
   private dropIndicatorEffect?: StateEffectType<DropIndicator | null>;
   private valueSlotHighlightEffect?: StateEffectType<{ from: number; to: number } | null>;
   private hoverHighlightEffect?: StateEffectType<{ from: number; to: number } | null>;
+  /** Hands the code view the line ranges of the groups of blocks. */
+  private groupsEffect?: StateEffectType<{ startLine: number; endLine: number }[]>;
   private editableHoverHighlightEffect?: StateEffectType<{ from: number; to: number } | null>;
   private emptyClickListener?: (e: MouseEvent) => void;
   // Set by dispose(); a mount still waiting for CodeMirror then stops.
@@ -581,6 +583,7 @@ export class MorphicCodeEditor {
       ...this.buildDropIndicatorExtensions(cmView, cmState),
       ...this.buildValueSlotHighlightExtensions(cmView, cmState),
       ...this.buildHoverHighlightExtensions(cmView, cmState),
+      ...this.buildGroupExtensions(cmView, cmState),
       ...this.buildEditableHoverHighlightExtensions(cmView, cmState),
       ...(this.options.extensions ?? []) as Extension[],
     ];
@@ -597,6 +600,10 @@ export class MorphicCodeEditor {
         extensions,
       }),
     });
+
+    if (this.groupsEffect && result.groups?.length) {
+      this.editorView.dispatch({ effects: this.groupsEffect.of(result.groups) });
+    }
 
     // Populate the delete gutter with initial metadata (if onDelete is configured).
     if (this.metadataEffect && this.metadata.size > 0) {
@@ -948,6 +955,92 @@ export class MorphicCodeEditor {
    * before they act. Driven from `setHoverHighlight` (called by MorphicBlocks
    * on the codespace container's `mousemove`/`mouseleave`).
    */
+  /**
+   * Classes on the lines of each group of connected blocks, and on their
+   * gutter (line numbers, delete, grip): `morphic-group-start`, `-end`,
+   * `-line` (groups of more than one line), `-odd` / `-even` (every other
+   * group) and `-hover` (the group under the mouse). They change nothing
+   * visible; the app styles them.
+   */
+  private buildGroupExtensions(
+    cmView: typeof import("@codemirror/view"),
+    cmState: typeof import("@codemirror/state"),
+  ): Extension[] {
+    type Groups = { startLine: number; endLine: number }[];
+    const setGroups = cmState.StateEffect.define<Groups>();
+    const setHover = cmState.StateEffect.define<number | null>();
+    this.groupsEffect = setGroups;
+
+    class GroupMarker extends cmView.GutterMarker {
+      constructor(readonly elementClass: string) {
+        super();
+      }
+      eq(other: GroupMarker): boolean {
+        return other.elementClass === this.elementClass;
+      }
+    }
+
+    const field = cmState.StateField.define<{ groups: Groups; hover: number | null }>({
+      create: () => ({ groups: [], hover: null }),
+      update(value, tr) {
+        let next = value;
+        for (const effect of tr.effects) {
+          if (effect.is(setGroups)) next = { groups: effect.value, hover: null };
+          if (effect.is(setHover)) next = { ...next, hover: effect.value };
+        }
+        return next;
+      },
+    });
+
+    // One class string per line of every group.
+    const classesByLine = (state: import("@codemirror/state").EditorState): Map<number, string> => {
+      const { groups, hover } = state.field(field);
+      const classes = new Map<number, string>();
+      groups.forEach(({ startLine, endLine }, index) => {
+        for (let line = startLine; line <= Math.min(endLine, state.doc.lines); line++) {
+          const names = [index % 2 === 0 ? "morphic-group-odd" : "morphic-group-even"];
+          if (line === startLine) names.push("morphic-group-start");
+          if (line === endLine) names.push("morphic-group-end");
+          if (endLine > startLine) names.push("morphic-group-line");
+          if (index === hover) names.push("morphic-group-hover");
+          classes.set(line, names.join(" "));
+        }
+      });
+      return classes;
+    };
+
+    const lineDecorations = cmView.EditorView.decorations.compute([field, "doc"], (state) => {
+      const ranges = [...classesByLine(state)].map(([line, cls]) =>
+        cmView.Decoration.line({ class: cls }).range(state.doc.line(line).from),
+      );
+      return cmView.Decoration.set(ranges);
+    });
+    const gutterClasses = cmView.gutterLineClass.compute([field, "doc"], (state) =>
+      cmState.RangeSet.of(
+        [...classesByLine(state)].map(([line, cls]) => new GroupMarker(cls).range(state.doc.line(line).from)),
+      ),
+    );
+
+    // The group under the mouse, on the text or its gutter.
+    const groupAt = (view: import("@codemirror/view").EditorView, event: MouseEvent): number | null => {
+      const pos = view.posAtCoords({ x: event.clientX, y: event.clientY }, false);
+      const line = view.state.doc.lineAt(pos).number;
+      const index = view.state.field(field).groups.findIndex((g) => line >= g.startLine && line <= g.endLine);
+      return index === -1 ? null : index;
+    };
+    const hoverHandlers = cmView.EditorView.domEventHandlers({
+      mousemove(event, view) {
+        const index = groupAt(view, event);
+        if (index !== view.state.field(field).hover) view.dispatch({ effects: setHover.of(index) });
+      },
+      mouseleave(_event, view) {
+        if (view.state.field(field).hover !== null) view.dispatch({ effects: setHover.of(null) });
+      },
+    });
+
+    return [field, lineDecorations, gutterClasses, hoverHandlers];
+  }
+
   private buildHoverHighlightExtensions(
     cmView: typeof import("@codemirror/view"),
     cmState: typeof import("@codemirror/state"),
@@ -1277,6 +1370,7 @@ export class MorphicCodeEditor {
     const effects: StateEffect<unknown>[] = [];
     if (this.metadataEffect) effects.push(this.metadataEffect.of(result.metadata));
     if (this.placeholderEffect) effects.push(this.placeholderEffect.of(result.placeholders));
+    if (this.groupsEffect) effects.push(this.groupsEffect.of(result.groups ?? []));
     this.editorView.dispatch({
       changes: {
         from: 0,
