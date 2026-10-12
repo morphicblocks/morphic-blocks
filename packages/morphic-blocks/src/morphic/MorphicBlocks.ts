@@ -2902,23 +2902,37 @@ export class MorphicBlocks extends EventTarget {
   }
 
   private deleteBlockAtCodespaceLine(editor: MorphicCodeEditor, line: number): void {
-    const meta = editor.metadata;
-    if (!this.workspace || !meta || meta.size === 0) return;
+    const block = this.blockOwningLine(editor, line);
+    block?.dispose(true);
+  }
 
-    // Pick the innermost block whose range contains the line.
-    let bestId: string | null = null;
-    let bestSize = Infinity;
+  /**
+   * The block a line belongs to, as the workspace would delete it: the
+   * statement that starts on the line (the innermost, for nested one-line
+   * templates), else the innermost statement around it (a closing `}`), and a
+   * value only where it stands as its own group. Defaults (shadows) are never
+   * picked; deleting one changes nothing.
+   */
+  private blockOwningLine(editor: MorphicCodeEditor, line: number): Blockly.Block | null {
+    const meta = editor.metadata;
+    if (!this.workspace || !meta || meta.size === 0) return null;
+    const depthOf = (block: Blockly.Block) => {
+      let depth = 0;
+      for (let parent = block.getParent(); parent; parent = parent.getParent()) depth++;
+      return depth;
+    };
+    const owners: { block: Blockly.Block; startLine: number; size: number; depth: number }[] = [];
     for (const [id, { startLine, endLine }] of meta) {
       if (line < startLine || line > endLine) continue;
-      const size = endLine - startLine;
-      if (size < bestSize) {
-        bestSize = size;
-        bestId = id;
-      }
+      const block = this.workspace.getBlockById(id);
+      if (!block || block.isShadow()) continue;
+      const statement = !!block.previousConnection || !!block.nextConnection;
+      if (!statement && block.getParent()) continue;
+      owners.push({ block, startLine, size: endLine - startLine, depth: depthOf(block) });
     }
-    if (bestId) {
-      this.workspace.getBlockById(bestId)?.dispose(true);
-    }
+    const innermost = (list: typeof owners) =>
+      list.sort((a, b) => a.size - b.size || b.depth - a.depth)[0]?.block ?? null;
+    return innermost(owners.filter((owner) => owner.startLine === line)) ?? innermost(owners);
   }
 
   private generateCodespaceText(): MorphicCodeGenerationResult {
