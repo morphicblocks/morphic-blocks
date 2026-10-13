@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import type * as Blockly from "blockly";
 import { MorphicBlocks } from "../src";
 import type { MorphicBlocksFormat } from "../src/morphic/types";
@@ -64,16 +64,39 @@ async function setUp() {
   say.getInput("VALUE")!.connection!.connect(make("plus").outputConnection!);
   const loose = make("plus");
   loose.moveBy(0, 500);
-  await settle();
   const internals = engine as unknown as {
-    codespace: { getValue(): string };
-    deleteBlockAtCodespaceLine(editor: unknown, line: number): void;
+    codespace: { getValue(): string; editorView: import("@codemirror/view").EditorView };
+    deleteBlockAtCodespaceLine(editor: unknown, line: number, lastLine?: number): void;
   };
-  const deleteLine = async (line: number) => {
-    internals.deleteBlockAtCodespaceLine(internals.codespace, line);
+  // Under load the pause can pass before the codespace has written the program.
+  await vi.waitFor(() => expect(internals.codespace.getValue()).toContain("3 + 5"), { timeout: 3000 });
+  const deleteLine = async (line: number, lastLine?: number) => {
+    internals.deleteBlockAtCodespaceLine(internals.codespace, line, lastLine);
     await settle();
   };
-  return { workspace, when, say, loose, deleteLine, text: () => internals.codespace.getValue() };
+  // Select from the start of line `first` to the end of line `last`.
+  const selectLines = (first: number, last: number) => {
+    const view = internals.codespace.editorView;
+    view.dispatch({ selection: { anchor: view.state.doc.line(first).from, head: view.state.doc.line(last).to } });
+  };
+  const pressOnLines = async (key: string, first: number, last: number) => {
+    selectLines(first, last);
+    const view = internals.codespace.editorView;
+    view.contentDOM.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+    await settle();
+  };
+  return {
+    engine,
+    workspace,
+    make,
+    when,
+    say,
+    loose,
+    deleteLine,
+    selectLines,
+    pressOnLines,
+    text: () => internals.codespace.getValue(),
+  };
 }
 
 describe("deleting a line in the codespace", () => {
@@ -111,4 +134,54 @@ describe("deleting a line in the codespace", () => {
 
     expect(workspace.getBlockById(loose.id)).toBeNull();
   });
+});
+
+describe("deleting selected lines in the codespace", () => {
+  test("removes the blocks of all of them", async () => {
+    const { workspace, when, loose, text, deleteLine } = await setUp();
+    const last = text().split("\n").indexOf("3 + 5") + 1;
+
+    await deleteLine(1, last);
+
+    expect(workspace.getBlockById(when.id)).toBeNull();
+    expect(workspace.getBlockById(loose.id)).toBeNull();
+    expect(text()).toBe("");
+  });
+
+  test("removes statements that follow each other", async () => {
+    const { workspace, when, say, make, deleteLine } = await setUp();
+    const after = make("say");
+    when.nextConnection!.connect(after.previousConnection!);
+    await settle();
+
+    await deleteLine(3, 4);
+
+    expect(workspace.getBlockById(when.id)).toBeNull();
+    expect(workspace.getBlockById(say.id)).toBeNull();
+    expect(workspace.getBlockById(after.id)).toBeNull();
+  });
+
+  test("removes a statement inside a selected one with it, in one undo step", async () => {
+    const { engine, workspace, when, say, deleteLine } = await setUp();
+
+    await deleteLine(1, 2);
+    expect(workspace.getBlockById(when.id)).toBeNull();
+
+    engine.getWorkspace()!.undo(false);
+    expect(workspace.getBlockById(when.id)).not.toBeNull();
+    expect(workspace.getBlockById(say.id)).not.toBeNull();
+  });
+
+  test("happens with Delete or Backspace", async () => {
+    const { workspace, when, loose, text, pressOnLines } = await setUp();
+    const last = text().split("\n").indexOf("3 + 5") + 1;
+
+    await pressOnLines("Backspace", last, last);
+    expect(workspace.getBlockById(loose.id)).toBeNull();
+    expect(workspace.getBlockById(when.id)).not.toBeNull();
+
+    await pressOnLines("Delete", 1, 3);
+    expect(workspace.getBlockById(when.id)).toBeNull();
+  });
+
 });

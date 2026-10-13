@@ -812,10 +812,11 @@ export interface MorphicCodeEditorOptions {
   extensions?: unknown[];
   /**
    * Called when the user requests to delete the block at a given 1-based line
-   * (via Delete/Backspace on an empty selection, or a click on the gutter ✕).
+   * (via Delete/Backspace, or a click on the gutter ✕), or the blocks of the
+   * lines `line` to `lastLine` when several lines are selected.
    * When set, the editor installs a keymap and a delete gutter.
    */
-  onDelete?: (line: number) => void;
+  onDelete?: (line: number, lastLine?: number) => void;
   /**
    * If provided, a "grip" gutter (⋮⋮) appears on the start line of every block
    * id for which this returns `true`. Mousedown on the grip starts an HTML5

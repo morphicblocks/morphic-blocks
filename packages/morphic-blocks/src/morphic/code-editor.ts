@@ -34,6 +34,20 @@ export const BLOCK_ID_DRAG_KEY = "morphic/block-id";
  * on the source's own line resolves to a no-op).
  */
 let activeGripDragSourceId: string | undefined;
+
+/**
+ * The lines a selection covers, or `null` when nothing is selected. A
+ * selection ending at the start of a line leaves that line out.
+ */
+function selectedLines(state: import("@codemirror/state").EditorState): { first: number; last: number } | null {
+  const { from, to, empty } = state.selection.main;
+  if (empty) return null;
+  const first = state.doc.lineAt(from).number;
+  const end = state.doc.lineAt(to);
+  const last = end.from === to && end.number > first ? end.number - 1 : end.number;
+  return { first, last };
+}
+
 export function getActiveGripDragSourceId(): string | undefined {
   return activeGripDragSourceId;
 }
@@ -785,25 +799,20 @@ export class MorphicCodeEditor {
       },
     });
 
+    // With lines selected, the keys delete the blocks of all of them, else
+    // the block of the cursor's line.
+    const deleteAtSelection = (view: import("@codemirror/view").EditorView): boolean => {
+      const lines = selectedLines(view.state);
+      if (lines) {
+        onDelete(lines.first, lines.last);
+      } else {
+        onDelete(view.state.doc.lineAt(view.state.selection.main.head).number);
+      }
+      return true;
+    };
     const deleteKeymap = cmView.keymap.of([
-      {
-        key: "Delete",
-        run: (view) => {
-          if (!view.state.selection.main.empty) return false;
-          const line = view.state.doc.lineAt(view.state.selection.main.head).number;
-          onDelete(line);
-          return true;
-        },
-      },
-      {
-        key: "Backspace",
-        run: (view) => {
-          if (!view.state.selection.main.empty) return false;
-          const line = view.state.doc.lineAt(view.state.selection.main.head).number;
-          onDelete(line);
-          return true;
-        },
-      },
+      { key: "Delete", run: deleteAtSelection },
+      { key: "Backspace", run: deleteAtSelection },
     ]);
 
     return [markersField, deleteGutter, cmState.Prec.highest(deleteKeymap)];

@@ -1330,7 +1330,9 @@ export class MorphicBlocks extends EventTarget {
 
     const mergedOptions: MorphicCodeEditorOptions = {
       ...options,
-      onDelete: options?.onDelete ?? ((line) => this.codespace && this.deleteBlockAtCodespaceLine(this.codespace, line)),
+      onDelete:
+        options?.onDelete ??
+        ((line, lastLine) => this.codespace && this.deleteBlockAtCodespaceLine(this.codespace, line, lastLine)),
       canDragBlock: options?.canDragBlock ?? ((blockId) => this.canMoveInCodespace(blockId)),
       highlightRules: options?.highlightRules ?? this.resolveHighlightRules("codespace"),
       onPlaceholderApply:
@@ -2479,7 +2481,7 @@ export class MorphicBlocks extends EventTarget {
         highlightRules: this.highlightRulesFor(options.mode),
         ...(editing
           ? {
-              onDelete: (line: number) => this.deleteBlockAtCodespaceLine(editor, line),
+              onDelete: (line: number, lastLine?: number) => this.deleteBlockAtCodespaceLine(editor, line, lastLine),
               canDragBlock: (blockId: string) => this.canMoveInCodespace(blockId),
               onPlaceholderApply: (edit: MorphicPlaceholderEditTarget, value: string) =>
                 this.applyPlaceholderEdit(edit, value),
@@ -2908,9 +2910,32 @@ export class MorphicBlocks extends EventTarget {
     return !!(block?.previousConnection || block?.outputConnection);
   }
 
-  private deleteBlockAtCodespaceLine(editor: MorphicCodeEditor, line: number): void {
-    const block = this.blockOwningLine(editor, line);
-    block?.dispose(true);
+  /**
+   * Delete the block a line belongs to, or of each line from `line` to
+   * `lastLine`: a block inside another one deleted goes with it, and all of
+   * it is one undo step.
+   */
+  private deleteBlockAtCodespaceLine(editor: MorphicCodeEditor, line: number, lastLine = line): void {
+    const blocks = new Set<Blockly.Block>();
+    for (let current = line; current <= lastLine; current++) {
+      const block = this.blockOwningLine(editor, current);
+      if (block) blocks.add(block);
+    }
+    // Inside, not below: the block after another in a stack is not part of it.
+    const insideAnother = (block: Blockly.Block) => {
+      for (let parent = block.getSurroundParent(); parent; parent = parent.getSurroundParent()) {
+        if (blocks.has(parent)) return true;
+      }
+      return false;
+    };
+    const outer = [...blocks].filter((block) => !insideAnother(block));
+    if (outer.length === 0) return;
+    Blockly.Events.setGroup(true);
+    try {
+      for (const block of outer) block.dispose(true);
+    } finally {
+      Blockly.Events.setGroup(false);
+    }
   }
 
   /**
