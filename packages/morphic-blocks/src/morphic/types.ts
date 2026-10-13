@@ -817,6 +817,8 @@ export interface MorphicCodeEditorOptions {
    * When set, the editor installs a keymap and a delete gutter.
    */
   onDelete?: (line: number, lastLine?: number) => void;
+  /** Called when the selected lines change (see `getSelectedLines()`). */
+  onLineSelection?: () => void;
   /**
    * If provided, a "grip" gutter (⋮⋮) appears on the start line of every block
    * id for which this returns `true`. Mousedown on the grip starts an HTML5

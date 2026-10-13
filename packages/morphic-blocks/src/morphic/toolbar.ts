@@ -12,6 +12,7 @@ const ICON_PASTE = `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" 
 const ICON_UNDO = `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h7a3 3 0 0 1 0 6H6"/><polyline points="5 5 2 8 5 11"/></svg>`;
 const ICON_REDO = `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 8H6a3 3 0 0 0 0 6h4"/><polyline points="11 5 14 8 11 11"/></svg>`;
 const ICON_CLEAR = `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 4 13 4"/><path d="M5 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"/><path d="M4 4l1 9a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1l1-9"/></svg>`;
+const ICON_DELETE = `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg>`;
 const ICON_RUN = `<svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><polygon points="4,3 13,8 4,13"/></svg>`;
 const ICON_ZOOM_IN = `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="4"/><line x1="10" y1="10" x2="14" y2="14"/><line x1="5" y1="7" x2="9" y2="7"/><line x1="7" y1="5" x2="7" y2="9"/></svg>`;
 const ICON_ZOOM_OUT = `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="4"/><line x1="10" y1="10" x2="14" y2="14"/><line x1="5" y1="7" x2="9" y2="7"/></svg>`;
@@ -130,6 +131,20 @@ export const toolbarItems = {
       title: "Reset zoom",
       icon: ICON_ZOOM_FIT,
       onClick: (ctx) => ctx.engine.zoomPane(ctx.view, "fit"),
+    };
+  },
+
+  /** Delete the blocks of the lines selected in a codespace; disabled while none are. */
+  deleteSelection(): MorphicToolbarItem {
+    return {
+      id: "delete",
+      label: "Delete",
+      title: "Delete selected lines",
+      icon: ICON_DELETE,
+      disabled: (ctx) => !ctx.engine.hasSelectedLines(ctx.view),
+      onClick: (ctx) => {
+        ctx.engine.deleteSelectedLines(ctx.view);
+      },
     };
   },
 
@@ -286,6 +301,18 @@ export const toolbarItems = {
   defaultsFor(pane: MorphicToolbarPane): MorphicToolbarItem[] {
     switch (pane) {
       case "workspace":
+        return [
+          toolbarItems.modeLabel(),
+          toolbarItems.spacer(),
+          toolbarItems.undo(),
+          toolbarItems.redo(),
+          toolbarItems.copy(),
+          toolbarItems.paste(),
+          toolbarItems.zoomIn(),
+          toolbarItems.zoomOut(),
+          toolbarItems.zoomFit(),
+          toolbarItems.clear(),
+        ];
       case "codespace":
         return [
           toolbarItems.modeLabel(),
@@ -294,6 +321,7 @@ export const toolbarItems = {
           toolbarItems.redo(),
           toolbarItems.copy(),
           toolbarItems.paste(),
+          toolbarItems.deleteSelection(),
           toolbarItems.zoomIn(),
           toolbarItems.zoomOut(),
           toolbarItems.zoomFit(),

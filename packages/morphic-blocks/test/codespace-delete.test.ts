@@ -47,7 +47,8 @@ afterEach(() => {
 async function setUp() {
   const engine = new MorphicBlocks(format, {});
   engines.push(engine);
-  await engine.mount({ workspaceContainer: div(), codespaceContainer: div() });
+  const toolbar = div();
+  await engine.mount({ workspaceContainer: div(), codespaceContainer: div(), toolbarContainers: { codespace: toolbar } });
   engine.setModes({ codespaceMode: "js" });
   const workspace = engine.getWorkspace()!;
   const make = (type: string) => {
@@ -85,6 +86,7 @@ async function setUp() {
     view.contentDOM.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
     await settle();
   };
+  const deleteButton = () => toolbar.querySelector<HTMLButtonElement>('[data-toolbar-id="delete"]')!;
   return {
     engine,
     workspace,
@@ -95,6 +97,7 @@ async function setUp() {
     deleteLine,
     selectLines,
     pressOnLines,
+    deleteButton,
     text: () => internals.codespace.getValue(),
   };
 }
@@ -184,4 +187,21 @@ describe("deleting selected lines in the codespace", () => {
     expect(workspace.getBlockById(when.id)).toBeNull();
   });
 
+  test("happens with the toolbar button, enabled only while lines are selected", async () => {
+    const { workspace, when, selectLines, deleteButton } = await setUp();
+    expect(deleteButton().disabled).toBe(true);
+
+    selectLines(1, 3);
+    expect(deleteButton().disabled).toBe(false);
+    // The browser shows the selection too; jsdom does not, so set it by hand.
+    const content = document.querySelector(".cm-content")!;
+    document.getSelection()!.selectAllChildren(content);
+
+    deleteButton().click();
+    await settle();
+    expect(workspace.getBlockById(when.id)).toBeNull();
+    expect(deleteButton().disabled).toBe(true);
+    // The button took the focus: the browser's selection must not stay on the text left.
+    expect(document.getSelection()?.toString()).toBe("");
+  });
 });

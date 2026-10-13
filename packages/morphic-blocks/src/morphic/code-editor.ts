@@ -636,6 +636,17 @@ export class MorphicCodeEditor {
       editor.onCursorLine(line);
     });
 
+    // Tell the host when the selected lines change, e.g. to enable a button.
+    let lastSelected = "";
+    const lineSelectionListener = cmView.EditorView.updateListener.of((update) => {
+      if (!update.selectionSet && !update.docChanged) return;
+      const lines = selectedLines(update.state);
+      const key = lines ? `${lines.first}-${lines.last}` : "";
+      if (key === lastSelected) return;
+      lastSelected = key;
+      editor.options.onLineSelection?.();
+    });
+
     const showPlaceholderMarkers = this.options.showPlaceholderMarkers !== false;
     const extensions: Extension[] = [
       cmView.lineNumbers(),
@@ -645,6 +656,7 @@ export class MorphicCodeEditor {
       highlightField,
       ...(showPlaceholderMarkers ? [placeholderField] : []),
       cursorListener,
+      lineSelectionListener,
       this.themeCompartment.of(themeExt),
       this.syntaxHighlightCompartment.of(initialHighlightExt),
       ...this.buildDeleteExtensions(cmView, cmState, metadataEffect),
@@ -1381,6 +1393,24 @@ export class MorphicCodeEditor {
   /** Current editor text. Empty string when the editor is not mounted yet. */
   public getValue(): string {
     return this.editorView?.state.doc.toString() ?? this.lastCode ?? "";
+  }
+
+  /** The 1-based lines the selection covers, or `null` when nothing is selected. */
+  public getSelectedLines(): { first: number; last: number } | null {
+    return this.editorView ? selectedLines(this.editorView.state) : null;
+  }
+
+  /**
+   * Drop the selection, also the browser's: while the editor is not focused
+   * (e.g. a toolbar button was clicked), the browser keeps showing it on
+   * whatever text moves into its place.
+   */
+  public clearSelection(): void {
+    const view = this.editorView;
+    if (!view) return;
+    view.dispatch({ selection: { anchor: view.state.selection.main.from } });
+    const selection = document.getSelection();
+    if (selection?.anchorNode && view.contentDOM.contains(selection.anchorNode)) selection.removeAllRanges();
   }
 
   /** 1-based line number under the cursor. Returns 1 when no cursor / not mounted. */

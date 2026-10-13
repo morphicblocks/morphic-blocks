@@ -1034,6 +1034,25 @@ export class MorphicBlocks extends EventTarget {
     return !!this.lastCopyData;
   }
 
+  /** Whether lines are selected in the codespace named `view`, so `deleteSelectedLines()` has something to delete. */
+  public hasSelectedLines(view: string): boolean {
+    const resolved = this.resolveView(view);
+    return resolved?.kind === "codespace" && !!resolved.editor?.getSelectedLines();
+  }
+
+  /**
+   * Delete the blocks of the lines selected in the codespace named `view`, as
+   * Delete or Backspace does there. Returns true when lines were selected.
+   */
+  public deleteSelectedLines(view: string): boolean {
+    const resolved = this.resolveView(view);
+    const lines = resolved?.kind === "codespace" ? resolved.editor?.getSelectedLines() : null;
+    if (!resolved?.editor || !lines) return false;
+    resolved.editor.clearSelection();
+    this.deleteBlockAtCodespaceLine(resolved.editor, lines.first, lines.last);
+    return true;
+  }
+
   /**
    * Copy the currently active block to the framework's internal clipboard and
    * its own text, as the view writes it, to the system clipboard. Resolution order:
@@ -1143,6 +1162,13 @@ export class MorphicBlocks extends EventTarget {
       return;
     }
     resolved?.editor?.adjustZoom(direction);
+  }
+
+  /** Redraw the toolbars of the view named `view`, e.g. when its selected lines change. */
+  private refreshToolbars(view: string): void {
+    for (const handle of this.toolbars) {
+      if (handle.view === view) handle.refresh();
+    }
   }
 
   private ensureToolbarBlocklyListener(): void {
@@ -1333,6 +1359,7 @@ export class MorphicBlocks extends EventTarget {
       onDelete:
         options?.onDelete ??
         ((line, lastLine) => this.codespace && this.deleteBlockAtCodespaceLine(this.codespace, line, lastLine)),
+      onLineSelection: options?.onLineSelection ?? (() => this.refreshToolbars("codespace")),
       canDragBlock: options?.canDragBlock ?? ((blockId) => this.canMoveInCodespace(blockId)),
       highlightRules: options?.highlightRules ?? this.resolveHighlightRules("codespace"),
       onPlaceholderApply:
@@ -2482,6 +2509,7 @@ export class MorphicBlocks extends EventTarget {
         ...(editing
           ? {
               onDelete: (line: number, lastLine?: number) => this.deleteBlockAtCodespaceLine(editor, line, lastLine),
+              onLineSelection: () => this.refreshToolbars(view.name),
               canDragBlock: (blockId: string) => this.canMoveInCodespace(blockId),
               onPlaceholderApply: (edit: MorphicPlaceholderEditTarget, value: string) =>
                 this.applyPlaceholderEdit(edit, value),
