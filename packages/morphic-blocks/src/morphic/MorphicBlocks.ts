@@ -2235,11 +2235,13 @@ export class MorphicBlocks extends EventTarget {
 
   /**
    * Connect `source`'s output into the value input named `inputName` on
-   * `parent`. A real (non-shadow) child currently in the slot is `unplug`'d
-   * to top level; a shadow disconnects implicitly when the new block
-   * connects. The Blockly connection-check (output-type vs slot `check`)
-   * runs inside `connect`; an incompatible drop throws and is rolled back
-   * by restoring the prior real child when there was one.
+   * `parent`. A real (non-shadow) child currently in the slot goes into the
+   * new block's only value input that takes it, as Blockly does on a
+   * workspace drop, or else to its own line below the others; a shadow
+   * disconnects implicitly when the new block connects. The Blockly
+   * connection-check (output-type vs slot `check`) runs inside `connect`; an
+   * incompatible drop throws and is rolled back by restoring the prior real
+   * child when there was one.
    */
   private connectIntoValueSlot(
     source: Blockly.BlockSvg,
@@ -2253,19 +2255,11 @@ export class MorphicBlocks extends EventTarget {
 
     const existing = conn.targetBlock() as Blockly.BlockSvg | null;
     const existingWasReal = !!existing && !existing.isShadow();
-    if (existingWasReal) {
-      existing!.unplug(false);
-      // Without a manual move, the unplugged child keeps the (now-stale)
-      // coordinate it inherited from its parent's slot, so it can render
-      // above the parent's line in the codespace. Push it below the current
-      // last top block instead.
-      this.placeOrphanBelowTops(existing!);
-    }
+    if (existingWasReal) existing!.unplug(false);
     // The slot's check applies as in the workspace; `codespaceDropAllowed`
     // has refused a value it does not accept.
     try {
       conn.connect(source.outputConnection);
-      return true;
     } catch {
       if (existingWasReal && existing?.outputConnection) {
         try {
@@ -2276,6 +2270,19 @@ export class MorphicBlocks extends EventTarget {
       }
       return false;
     }
+    if (existingWasReal && existing!.outputConnection) {
+      const home = Blockly.Connection.getConnectionForOrphanedConnection(source, existing!.outputConnection);
+      if (home) {
+        home.connect(existing!.outputConnection);
+      } else {
+        // Without a manual move, the unplugged child keeps the (now-stale)
+        // coordinate it inherited from its parent's slot, so it can render
+        // above the parent's line in the codespace. Push it below the current
+        // last top block instead.
+        this.placeOrphanBelowTops(existing!);
+      }
+    }
+    return true;
   }
 
   private computeBlockDepth(blockId: string): number {
