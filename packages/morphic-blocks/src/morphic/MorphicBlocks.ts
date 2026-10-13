@@ -38,6 +38,7 @@ import type {
   MorphicCodeBlockPosition,
   MorphicCodeEditorOptions,
   MorphicCodeEditorTheme,
+  MorphicCodespaceDeleteOptions,
   MorphicCodeGenerationResult,
   MorphicCodeElementConfig,
   MorphicElementTypeEntry,
@@ -145,6 +146,8 @@ interface AddedView {
   workspace?: Blockly.WorkspaceSvg;
   /** An added workspace that takes edits (`editable: true`). */
   editable?: boolean;
+  /** How blocks are deleted in an added codespace. */
+  delete?: MorphicCodespaceDeleteOptions;
   /** Removes what the view set up besides its editor or workspace. */
   teardown?: () => void;
   /** The handle's `setMode`, used when a preset switches the view. */
@@ -469,10 +472,16 @@ export class MorphicBlocks extends EventTarget {
    */
   private async mountViews(config: MorphicMountConfig, generation: number): Promise<void> {
     const editorOptions = config.editorTheme ? { theme: config.editorTheme } : undefined;
+    const deletes = config.codespace?.delete;
+    const codespaceOptions = {
+      ...editorOptions,
+      deleteButtons: deletes?.lineButtons,
+      deleteKeys: deletes?.keys,
+    };
     const previewTheme = config.previewTheme ?? config.editorTheme;
     const pending: Promise<void>[] = [];
     if (config.codespaceContainer) {
-      pending.push(this.mountCodespace(editorOptions));
+      pending.push(this.mountCodespace(codespaceOptions));
     }
     if (config.previewContainer) {
       pending.push(this.mountPreview(config.previewContainer, previewTheme ? { theme: previewTheme } : undefined));
@@ -1032,6 +1041,19 @@ export class MorphicBlocks extends EventTarget {
   /** Whether the framework's internal clipboard has a copyable to paste. */
   public hasClipboardContents(): boolean {
     return !!this.lastCopyData;
+  }
+
+  /** The ways to delete blocks in the codespace named `view`, each `true` unless the app turned it off. */
+  public getDeleteOptions(view: string): Required<MorphicCodespaceDeleteOptions> {
+    const options =
+      view === "codespace"
+        ? this.mountConfig?.codespace?.delete
+        : [...this.views].find((added) => added.name === view)?.delete;
+    return {
+      lineButtons: options?.lineButtons !== false,
+      keys: options?.keys !== false,
+      toolbarButton: options?.toolbarButton !== false,
+    };
   }
 
   /** Whether lines are selected in the codespace named `view`, so `deleteSelectedLines()` has something to delete. */
@@ -2510,6 +2532,8 @@ export class MorphicBlocks extends EventTarget {
           ? {
               onDelete: (line: number, lastLine?: number) => this.deleteBlockAtCodespaceLine(editor, line, lastLine),
               onLineSelection: () => this.refreshToolbars(view.name),
+              deleteButtons: options.delete?.lineButtons,
+              deleteKeys: options.delete?.keys,
               canDragBlock: (blockId: string) => this.canMoveInCodespace(blockId),
               onPlaceholderApply: (edit: MorphicPlaceholderEditTarget, value: string) =>
                 this.applyPlaceholderEdit(edit, value),
@@ -2526,6 +2550,7 @@ export class MorphicBlocks extends EventTarget {
       container: options.container,
       mode: options.mode,
       editor,
+      delete: options.delete,
     };
     this.views.add(view);
     applyTextViewModeClass(view.container, view.mode, rootClass);

@@ -141,6 +141,7 @@ export const toolbarItems = {
       label: "Delete",
       title: "Delete selected lines",
       icon: ICON_DELETE,
+      visible: (ctx) => ctx.engine.getDeleteOptions(ctx.view).toolbarButton,
       disabled: (ctx) => !ctx.engine.hasSelectedLines(ctx.view),
       onClick: (ctx) => {
         ctx.engine.deleteSelectedLines(ctx.view);

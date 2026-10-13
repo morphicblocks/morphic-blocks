@@ -43,6 +43,8 @@ export type {
   MorphicCodeBlockPosition,
   MorphicCodeEditorOptions,
   MorphicCodeEditorTheme,
+  MorphicCodespaceDeleteOptions,
+  MorphicCodespaceOptions,
   MorphicCodeGenerationResult,
   MorphicCodeMetadata,
   MorphicConnectionSpec,

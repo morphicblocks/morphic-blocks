@@ -827,7 +827,10 @@ export class MorphicCodeEditor {
       { key: "Backspace", run: deleteAtSelection },
     ]);
 
-    return [markersField, deleteGutter, cmState.Prec.highest(deleteKeymap)];
+    return [
+      ...(this.options.deleteButtons !== false ? [markersField, deleteGutter] : []),
+      ...(this.options.deleteKeys !== false ? [cmState.Prec.highest(deleteKeymap)] : []),
+    ];
   }
 
   private buildGripExtensions(

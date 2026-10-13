@@ -600,6 +600,8 @@ export interface MorphicMountConfig {
   onWarning?: (message: string) => void;
   toolbox?: MorphicToolboxConfig;
   toolboxLayout?: MorphicToolboxLayout;
+  /** Options of the codespace `mount()` sets up. */
+  codespace?: MorphicCodespaceOptions;
   /**
    * When true, Blockly is injected without a built-in toolbox.
    * Use this when calling `mountToolbox()` to avoid Blockly toolbox type conflicts.
@@ -762,6 +764,21 @@ export interface MorphicCodeEditorTheme {
 /** Kinds of view `addView()` adds beside the ones `mount()` sets up. */
 export type MorphicViewKind = "preview" | "codespace" | "workspace";
 
+/** Ways to delete blocks in a codespace, each on unless set to `false`. */
+export interface MorphicCodespaceDeleteOptions {
+  /** The ✕ beside each line where a block starts. */
+  lineButtons?: boolean;
+  /** Delete and Backspace: the block of the cursor's line, or of every selected line. */
+  keys?: boolean;
+  /** The toolbar button that deletes the blocks of the selected lines. */
+  toolbarButton?: boolean;
+}
+
+/** Options of the codespace `mount()` sets up. */
+export interface MorphicCodespaceOptions {
+  delete?: MorphicCodespaceDeleteOptions;
+}
+
 /** A view added with `engine.addView()`. */
 export interface MorphicViewOptions {
   kind: MorphicViewKind;
@@ -779,6 +796,8 @@ export interface MorphicViewOptions {
    * (read only).
    */
   editable?: boolean;
+  /** How blocks are deleted in an added codespace. */
+  delete?: MorphicCodespaceDeleteOptions;
   /** Colours of a text view, like `previewTheme`. */
   theme?: MorphicCodeEditorTheme;
   /** A toolbar for this view, removed with it. Items default to its kind's. */
@@ -819,6 +838,10 @@ export interface MorphicCodeEditorOptions {
   onDelete?: (line: number, lastLine?: number) => void;
   /** Called when the selected lines change (see `getSelectedLines()`). */
   onLineSelection?: () => void;
+  /** With `onDelete`: the ✕ beside each line where a block starts. Default `true`. */
+  deleteButtons?: boolean;
+  /** With `onDelete`: Delete and Backspace delete. Default `true`. */
+  deleteKeys?: boolean;
   /**
    * If provided, a "grip" gutter (⋮⋮) appears on the start line of every block
    * id for which this returns `true`. Mousedown on the grip starts an HTML5

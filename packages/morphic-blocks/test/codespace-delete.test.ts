@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import type * as Blockly from "blockly";
 import { MorphicBlocks } from "../src";
-import type { MorphicBlocksFormat } from "../src/morphic/types";
+import type { MorphicBlocksFormat, MorphicCodespaceOptions } from "../src/morphic/types";
 
 /** Deleting a line in the codespace removes the block the line belongs to, as the workspace would. */
 
@@ -44,11 +44,11 @@ afterEach(() => {
   document.body.innerHTML = "";
 });
 
-async function setUp() {
+async function setUp(codespace?: MorphicCodespaceOptions) {
   const engine = new MorphicBlocks(format, {});
   engines.push(engine);
   const toolbar = div();
-  await engine.mount({ workspaceContainer: div(), codespaceContainer: div(), toolbarContainers: { codespace: toolbar } });
+  await engine.mount({ workspaceContainer: div(), codespaceContainer: div(), toolbarContainers: { codespace: toolbar }, codespace });
   engine.setModes({ codespaceMode: "js" });
   const workspace = engine.getWorkspace()!;
   const make = (type: string) => {
@@ -98,6 +98,7 @@ async function setUp() {
     selectLines,
     pressOnLines,
     deleteButton,
+    lineButtons: () => document.querySelectorAll(".morphic-delete-marker").length,
     text: () => internals.codespace.getValue(),
   };
 }
@@ -203,5 +204,26 @@ describe("deleting selected lines in the codespace", () => {
     expect(deleteButton().disabled).toBe(true);
     // The button took the focus: the browser's selection must not stay on the text left.
     expect(document.getSelection()?.toString()).toBe("");
+  });
+});
+
+describe("ways to delete in the codespace", () => {
+  test("are all on by default", async () => {
+    const { lineButtons, deleteButton } = await setUp();
+
+    expect(lineButtons()).toBeGreaterThan(0);
+    expect(deleteButton()).not.toBeNull();
+  });
+
+  test("can each be turned off", async () => {
+    const { workspace, loose, text, lineButtons, deleteButton, pressOnLines } = await setUp({
+      delete: { lineButtons: false, keys: false, toolbarButton: false },
+    });
+    const last = text().split("\n").indexOf("3 + 5") + 1;
+
+    expect(lineButtons()).toBe(0);
+    expect(deleteButton()).toBeNull();
+    await pressOnLines("Delete", last, last);
+    expect(workspace.getBlockById(loose.id)).not.toBeNull();
   });
 });
