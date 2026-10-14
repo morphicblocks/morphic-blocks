@@ -121,18 +121,37 @@ export function validateDefinitions(
     const placeholderSets = new Map<string, Set<number>>();
     const allPlaceholders = new Set<number>();
     const fieldTokens = new Set<string>();
+    const valueTypeTokens = new Map<string, Set<number>>();
     for (const [name, content] of Object.entries(def.elements)) {
       if (!codeElementNames.has(name)) continue;
       const indices = new Set<number>();
+      const valueTypes = new Set<number>();
       for (const token of parseTemplate(content)) {
         if (token.kind === "placeholder") {
           indices.add(token.index);
           allPlaceholders.add(token.index);
         } else if (token.kind === "field") {
           fieldTokens.add(token.name);
+        } else if (token.kind === "valueType") {
+          valueTypes.add(token.index);
         }
       }
       placeholderSets.set(name, indices);
+      valueTypeTokens.set(name, valueTypes);
+    }
+
+    // (1b) `%N:type` names the type of slot N's value, so slot N must be a
+    // value slot of the same template.
+    for (const [name, valueTypes] of valueTypeTokens) {
+      for (const index of valueTypes) {
+        const slot = def.inputSlots?.[String(index)];
+        if (!placeholderSets.get(name)?.has(index) || slot?.kind === "statement") {
+          errors.push(
+            `Block "${id}": element "${name}" uses %${index}:type, but %${index} is not a value slot in it — ` +
+              `the type comes from the value in that slot.`,
+          );
+        }
+      }
     }
 
     // (2) All code elements must share the same %N set. A mismatch means an

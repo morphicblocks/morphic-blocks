@@ -77,6 +77,11 @@
           "description": "Written into an empty statement slot where an empty body is invalid, e.g. \"pass\" for Python.",
           "type": "string"
         },
+        "types": {
+          "description": "Names %1:type writes, keyed by the value's type (its output check, or the slot's check while empty), e.g. { \"Number\": \"int\", \"default\": \"var\" }.",
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
         "highlighting": { "$ref": "#/$defs/highlight" },
         "values": {
           "description": "How printed values are written while this element is shown, e.g. Python's True, None and ['a', 'b'].",

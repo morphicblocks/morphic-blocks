@@ -5,6 +5,7 @@ import { Order, javascriptGenerator, type JavascriptGenerator } from "blockly/ja
 import { getCodeBehavior } from "./behavior-runtime";
 import { toBlocklyType, toCleanId } from "./block-namespace";
 import { getManagedBlockMode } from "./block-view";
+import { isValueTypeLabel } from "./value-type";
 import type {
   MorphicBehaviorMap,
   MorphicBehaviorProxy,
@@ -101,7 +102,7 @@ function createBehaviorProxy(block: Blockly.Block, generator: JavascriptGenerato
     }
 
     for (const field of input.fieldRow) {
-      if (!field.name) {
+      if (!field.name || isValueTypeLabel(field)) {
         continue;
       }
       // No guessing: the plain value, plus a finished string literal for the

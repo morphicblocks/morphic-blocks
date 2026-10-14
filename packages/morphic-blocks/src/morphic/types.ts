@@ -95,6 +95,13 @@ export interface MorphicCodeElementConfig {
    * leave empty bodies empty.
    */
   emptyStatement?: string;
+  /**
+   * Names written for `%1:type`, keyed by the value's type (its block's
+   * `output` check, or the slot's `check` while empty), e.g. Java:
+   * `{ "Number": "int", "String": "String", "Boolean": "boolean", "default": "var" }`.
+   * `default` is used when no key fits; without it nothing is written.
+   */
+  types?: Record<string, string>;
   /** Token highlighting for the codespace and preview showing this element. */
   highlighting?: MorphicHighlightDefinition;
   /**

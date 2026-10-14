@@ -9,6 +9,7 @@ import {
   ALIGN_RIGHT,
 } from "./constants";
 import { resolveDefaultConfig } from "./element-types";
+import { isValueTypeLabel, VALUE_TYPE_FIELD, valueTypeName } from "./value-type";
 import {
   normalizeTemplateText,
   parseTemplate,
@@ -66,6 +67,11 @@ export interface MorphicApplyBlockViewParams {
    * stock Blockly types pass through. Defaults to identity when omitted.
    */
   resolveBlocklyType?: (ref: string) => string;
+  /**
+   * Element types with their `code` settings, for the names `%1:type` shows.
+   * Unlike `elementTypes`, it adds no slot defaults. Falls back to `elementTypes`.
+   */
+  codeSettings?: Record<string, MorphicElementTypeEntry>;
 }
 
 export function applyBlockView(params: MorphicApplyBlockViewParams): void {
@@ -95,6 +101,7 @@ export function applyBlockView(params: MorphicApplyBlockViewParams): void {
   if (elementTypes) {
     attachEmptyDefaults(block, definition, view, elementTypes, resolveBlocklyType);
   }
+  showValueTypes(block, definition, view, params.codeSettings ?? elementTypes);
   decorateBlockRoot(block, mode, context);
 
   const managedBlock = block as MorphicManagedBlock;
@@ -245,6 +252,11 @@ function renderTemplate(
       continue;
     }
 
+    if (token.kind === "valueType") {
+      pendingFields.push({ field: new Blockly.FieldLabel(""), name: `${VALUE_TYPE_FIELD}${token.index}` });
+      continue;
+    }
+
     if (token.kind === "field") {
       // Declared fields are built here at the token position. Undeclared tokens
       // are left for a behavior's onViewApplied to supply (custom/plugin fields).
@@ -296,6 +308,40 @@ function renderTemplate(
   if (block.inputList.length === 0) {
     block.appendDummyInput("LABEL").appendField(definition.identifier);
   }
+}
+
+/**
+ * Fill the labels of `%1:type` tokens with the type names of the values in
+ * their slots, and keep them in step: a value connected, replaced or removed
+ * changes the name.
+ */
+function showValueTypes(
+  block: Blockly.BlockSvg,
+  definition: MorphicBlockDefinition,
+  view: MorphicResolvedView,
+  codeSettings: Record<string, MorphicElementTypeEntry> | undefined,
+): void {
+  const labels = block.inputList.flatMap((input) =>
+    input.fieldRow.filter(isValueTypeLabel),
+  );
+  if (labels.length === 0) {
+    // A mode without the token stops the updates an earlier mode set up
+    // (Blockly takes no `null` here).
+    if (block.onchange) block.setOnChange(() => {});
+    return;
+  }
+  const elementEntry = view.elementName ? codeSettings?.[view.elementName] : undefined;
+  const update = () => {
+    for (const label of labels) {
+      const index = label.name!.slice(VALUE_TYPE_FIELD.length);
+      const name = valueTypeName(block, resolveSlotDefinition(definition, view, Number(index)), elementEntry);
+      if (label.getValue() !== name) label.setValue(name);
+    }
+  };
+  update();
+  block.setOnChange((event) => {
+    if (event.type === Blockly.Events.BLOCK_MOVE || event.type === Blockly.Events.BLOCK_CREATE) update();
+  });
 }
 
 function resolveSlotDefinition(
@@ -604,7 +650,8 @@ export function captureFieldValues(block: Blockly.BlockSvg): Map<string, unknown
   const values = new Map<string, unknown>();
   for (const input of block.inputList) {
     for (const field of input.fieldRow) {
-      if (field.name) {
+      // A type label follows its slot's value; it has nothing to remember.
+      if (field.name && !isValueTypeLabel(field)) {
         values.set(field.name, field.getValue());
       }
     }

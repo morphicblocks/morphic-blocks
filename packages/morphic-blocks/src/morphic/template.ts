@@ -16,6 +16,12 @@ export interface MorphicPlaceholderToken {
   index: number;
 }
 
+/** `%1:type`: the name of the type of the value in slot 1, from the element's `code.types`. */
+export interface MorphicValueTypeToken {
+  kind: "valueType";
+  index: number;
+}
+
 export interface MorphicFieldToken {
   kind: "field";
   name: string;
@@ -25,9 +31,13 @@ export type MorphicTemplateToken =
   | MorphicImageToken
   | MorphicTextToken
   | MorphicPlaceholderToken
+  | MorphicValueTypeToken
   | MorphicFieldToken;
 
 const DEFAULT_IMAGE_SIZE = 18;
+
+/** Written after a slot's number, `%1:type`, for the type of the slot's value. */
+const VALUE_TYPE_SUFFIX = ":type";
 
 export function parseTemplate(template: string): MorphicTemplateToken[] {
   const tokens: MorphicTemplateToken[] = [];
@@ -57,6 +67,11 @@ export function parseTemplate(template: string): MorphicTemplateToken[] {
         digitIndex += 1;
       }
       const placeholderIndex = Number.parseInt(template.slice(index + 1, digitIndex), 10);
+      if (template.startsWith(VALUE_TYPE_SUFFIX, digitIndex)) {
+        tokens.push({ kind: "valueType", index: placeholderIndex });
+        index = digitIndex + VALUE_TYPE_SUFFIX.length;
+        continue;
+      }
       if (!Number.isNaN(placeholderIndex)) {
         tokens.push({ kind: "placeholder", index: placeholderIndex });
       }
@@ -117,6 +132,9 @@ export function renderTemplateAsHtml(tokens: MorphicTemplateToken[]): string {
     }
     if (token.kind === "field") {
       return `<span class="morphic-field-placeholder" data-field-name="${escapeAttr(token.name)}"></span>`;
+    }
+    if (token.kind === "valueType") {
+      return `<span class="morphic-value-type" data-slot-index="${token.index}"></span>`;
     }
     // placeholder
     return `<span class="morphic-toolbox-slot" data-slot-index="${token.index}"></span>`;

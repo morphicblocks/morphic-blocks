@@ -3,6 +3,7 @@ import { toCleanId } from "./block-namespace";
 import { parseTemplate, type MorphicTemplateToken } from "./template";
 import type { MorphicElementTypeWithCode } from "./element-types";
 import { resolveBlockView } from "./view-resolver";
+import { isValueTypeLabel, valueTypeName } from "./value-type";
 import type {
   MorphicBlockDefinition,
   MorphicCodeBlockPosition,
@@ -268,6 +269,10 @@ function renderBlock(
     if (token.kind === "image") {
       continue;
     }
+    if (token.kind === "valueType") {
+      appendText(state, valueTypeName(block, definition.inputSlots?.[String(token.index)], elementEntry));
+      continue;
+    }
 
     const slot = definition.inputSlots?.[String(token.index)];
     const inputName = slot?.name;
@@ -339,7 +344,7 @@ function renderBlock(
         ? rawTarget.inputList.flatMap((i) => i.fieldRow).filter((f) => !!f.name)
         : [];
       const inputFields = !rawTarget?.isShadow() && input
-        ? input.fieldRow.filter((f) => !!f.name && !definition.fields?.[f.name!])
+        ? input.fieldRow.filter((f) => !!f.name && !definition.fields?.[f.name!] && !isValueTypeLabel(f))
         : [];
       const willEmitValue = shadowFields.length > 0 || inputFields.length > 0;
 

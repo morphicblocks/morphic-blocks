@@ -3313,6 +3313,7 @@ export class MorphicBlocks extends EventTarget {
       mode,
       context,
       elementTypes: isMainWorkspace ? this.elementTypes : undefined,
+      codeSettings: this.elementTypes,
       resolveBlocklyType: (ref) => resolveBlocklyType(ref, this.definitions),
     });
     this.styleBlock(block, definition);

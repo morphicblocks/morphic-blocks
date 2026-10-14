@@ -64,6 +64,7 @@ The namespace is an internal Blockly-type detail — it appears only in `Blockly
 
 - `%1`, `%2` — input slots (auto-create Blockly inputs; also substituted in text rendering)
 - `%FIELDNAME` — field value (uppercase alpha token; substituted in text rendering; ignored by Blockly block rendering because behaviors attach fields via `onViewApplied`)
+- `%1:type` — name of the type of slot 1's value (its block's output check, or the slot's check while empty), looked up in the element's `code.<element>.types` (`default` when nothing fits); a label in blocks that follows the value (`value-type.ts`)
 - `<img src="...">` — image/SVG fields
 - Plain text — label fields
 
@@ -152,7 +153,7 @@ A **mode** declares which elements are visible and, by scanning for the first `t
 - `elementTypes` — global registry mapping element names to their type (`text`, `code`, `image`)
 - `modes` — explicit mode definitions; mode names are arbitrary (no coupling to element names)
 - `presets` — named per-view mode configurations (see below)
-- `code` — how each code element's language is written, keyed by element name: `stringQuote`, `empty` (defaults for empty value slots, keyed by `check`), `emptyStatement` (written into empty statement slots, e.g. `pass`), `highlighting` and `values` (how `runJavaScript()` output writes printed values while the element is shown; `value-format.ts`). Internally folded onto the element entries (`withCodeSettings` in `element-types.ts`)
+- `code` — how each code element's language is written, keyed by element name: `stringQuote`, `empty` (defaults for empty value slots, keyed by `check`), `emptyStatement` (written into empty statement slots, e.g. `pass`), `types` (names `%1:type` writes, keyed by type), `highlighting` and `values` (how `runJavaScript()` output writes printed values while the element is shown; `value-format.ts`). Internally folded onto the element entries (`withCodeSettings` in `element-types.ts`)
 - `categories` — optional metadata (name, color); blocks reference them by name
 - `blocks` — flat array; per-block `elements` are plain `name: content` strings
 
