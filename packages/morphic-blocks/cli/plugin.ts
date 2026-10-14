@@ -16,9 +16,17 @@ export interface BlocklyMediaOptions {
 }
 
 // `| undefined` lets the plugin be called without options: `blocklyMedia()`.
-export const blocklyMedia = createUnplugin((options: BlocklyMediaOptions | undefined = {}) => ({
-  name: "morphic-blocks-media",
-  buildStart() {
+export const blocklyMedia = createUnplugin((options: BlocklyMediaOptions | undefined = {}) => {
+  const copy = (): void => {
     copyBlocklyMedia(options?.folder ?? "public/blockly-media");
-  },
-}));
+  };
+  return {
+    name: "morphic-blocks-media",
+    buildStart: copy,
+    vite: {
+      // Vite lists the public files before `buildStart`; files copied later
+      // are not served until the next start. Copy before it lists them.
+      config: copy,
+    },
+  };
+});

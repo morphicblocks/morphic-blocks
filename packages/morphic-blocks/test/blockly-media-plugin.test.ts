@@ -50,4 +50,14 @@ describe("Blockly's media", () => {
 
     expect(existsSync(join(folder, ".blockly-version"))).toBe(true);
   });
+
+  test("is copied by the Vite plugin before Vite lists the public files", async () => {
+    const folder = newFolder();
+    const plugin = blocklyMedia.raw({ folder }, { framework: "vite", versions: {} });
+    const hooks = Array.isArray(plugin) ? plugin[0]! : plugin;
+
+    await (hooks.vite?.config as () => unknown).call({});
+
+    expect(existsSync(join(folder, ".blockly-version"))).toBe(true);
+  });
 });
