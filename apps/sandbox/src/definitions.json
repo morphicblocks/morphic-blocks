@@ -12,6 +12,7 @@
   },
   "code": {
     "concept": {
+      "types": { "Number": "number", "String": "text", "Boolean": "boolean", "default": "any" },
       "empty": {
         "Number": {
           "shadow": "math_number",
@@ -39,6 +40,7 @@
       }
     },
     "python": {
+      "types": { "Number": "float", "String": "str", "Boolean": "bool", "default": "object" },
       "stringQuote": "\"",
       "emptyStatement": "pass",
       "values": {
@@ -153,6 +155,7 @@
     },
     "go": {
       "stringQuote": "\"",
+      "types": { "Number": "float64", "String": "string", "Boolean": "bool", "default": "any" },
       "empty": {
         "Number": {
           "shadow": "math_number",
@@ -721,17 +724,16 @@
       "elements": {
         "icon": "icons/var_declare.svg",
         "title": "Typed Variable",
-        "description": "A variable with a type only the concept view shows",
-        "concept": "Create %TYPE variable %VAR = %1",
-        "python": "%VAR = %1",
+        "description": "A variable whose type comes from its value",
+        "concept": "Create %1:type variable %VAR = %1",
+        "python": "%VAR: %1:type = %1",
         "javascript": "let %VAR = %1;",
-        "go": "%VAR := %1"
+        "go": "var %VAR %1:type = %1"
       },
       "inputSlots": {
         "1": { "kind": "value", "name": "VAL" }
       },
       "fields": {
-        "TYPE": { "type": "dropdown", "options": ["number", "text", "boolean"], "default": "number" },
         "VAR": { "type": "text", "default": "y" }
       },
       "shape": "statement",
