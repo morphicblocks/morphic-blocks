@@ -73,9 +73,9 @@ export type {
   MorphicToolboxModeLabel,
   MorphicBlockElements,
   MorphicModeDefinition,
+  MorphicTileRender,
   MorphicPresetDefinition,
   MorphicRunOutputLine,
   MorphicRunResult,
-  MorphicPresetToolbox,
   MorphicSelectionSyncOptions,
 } from "./morphic/types";

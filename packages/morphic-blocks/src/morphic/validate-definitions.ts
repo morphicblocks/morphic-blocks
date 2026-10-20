@@ -314,6 +314,35 @@ export function validateDefinitions(
     }
   }
 
+  // (8b) A mode's `render` says how its code elements are drawn on tiles. It
+  // moved there from the preset's toolbox entry in 0.4.0, so an old file
+  // fails with directions.
+  for (const mode of modes ?? []) {
+    // Typed loosely: a JSON file can hold any string here.
+    for (const [element, value] of Object.entries(mode.render ?? {}) as [string, string][]) {
+      if (value === "block" || value === "text") {
+        errors.push(`Mode "${mode.name}": render "${value}" is now "${value}-based" (render.${element}).`);
+      } else if (value !== "block-based" && value !== "text-based") {
+        errors.push(`Mode "${mode.name}": render.${element} must be "block-based" or "text-based".`);
+      } else if (!codeElementNames.has(element) || !mode.elements.includes(element)) {
+        warnings.push(
+          `Mode "${mode.name}": render.${element} names no code element of the mode — it changes nothing.`,
+        );
+      }
+    }
+  }
+  for (const preset of presets ?? []) {
+    const toolbox: unknown = preset.toolbox;
+    if (typeof toolbox === "object" && toolbox !== null) {
+      const { mode, render } = toolbox as { mode?: string; render?: Record<string, string> };
+      const example = Object.keys(render ?? {})[0] ?? "python";
+      errors.push(
+        `Preset "${preset.name}": the toolbox entry is a mode name since 0.4.0, and its "render" moved into the mode: ` +
+          `"toolbox": "${mode ?? "<mode>"}", and on that mode "render": { "${example}": "text-based" }.`,
+      );
+    }
+  }
+
   // (9) Code section keys must be code elements or their settings never apply.
   for (const key of Object.keys(code ?? {})) {
     if (!codeElementNames.has(key)) {

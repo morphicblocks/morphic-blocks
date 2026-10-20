@@ -48,7 +48,6 @@ import type {
   MorphicMountConfig,
   MorphicPlaceholderEditTarget,
   MorphicPresetDefinition,
-  MorphicPresetToolbox,
   MorphicRenderContext,
   MorphicRunOutputLine,
   MorphicRunResult,
@@ -110,21 +109,9 @@ type MorphicResolvedMountConfig = Omit<MorphicMountConfig, "modeStyles"> & {
   codespaceMode?: MorphicModeName;
   /** Mode for the preview editor; its source element is rendered there. */
   previewMode?: MorphicModeName;
-  /** Per-element block/text override for toolbox tiles (from the active preset's toolbox entry). */
-  toolboxRender?: Record<string, "block" | "text">;
   /** The element Blockly was injected into — either the user's workspaceContainer or an internal headless host. */
   workspaceHost: HTMLElement;
 };
-
-/** Normalize a preset's toolbox (string or object) to a mode + optional render map. */
-function normalizePresetToolbox(toolbox: MorphicPresetToolbox): {
-  mode: MorphicModeName;
-  render?: Record<string, "block" | "text">;
-} {
-  return typeof toolbox === "string"
-    ? { mode: toolbox }
-    : { mode: toolbox.mode, render: toolbox.render };
-}
 
 /**
  * Blockly keeps one global table of block types for the whole page, while each
@@ -370,16 +357,10 @@ export class MorphicBlocks extends EventTarget {
     const declaredModeNames = (config.modes ?? []).map((mode) => mode.name);
     const defaultMode =
       declaredModeNames[0] ?? mergedModeStyles[0]?.mode ?? "default";
-    const initialToolbox = initialPreset
-      ? normalizePresetToolbox(initialPreset.toolbox)
-      : undefined;
     const workspaceMode = initialPreset
       ? (initialPreset.workspace ?? initialPreset.codespace ?? defaultMode)
       : defaultMode;
-    const toolboxMode = initialToolbox
-      ? initialToolbox.mode
-      : defaultMode;
-    const toolboxRender = initialToolbox?.render;
+    const toolboxMode = initialPreset ? initialPreset.toolbox : defaultMode;
     const codespaceMode = initialPreset?.codespace;
     const previewMode = initialPreset?.preview;
 
@@ -392,7 +373,6 @@ export class MorphicBlocks extends EventTarget {
       modeStyles: mergedModeStyles,
       workspaceMode,
       toolboxMode,
-      toolboxRender,
       codespaceMode,
       previewMode,
       workspaceHost,
@@ -540,10 +520,8 @@ export class MorphicBlocks extends EventTarget {
     if (!preset) {
       throw new Error(`applyPreset: unknown preset "${nameOrIndex}".`);
     }
-    const toolbox = normalizePresetToolbox(preset.toolbox);
     this.setModes({
-      toolboxMode: toolbox.mode,
-      toolboxRender: toolbox.render ?? null,
+      toolboxMode: preset.toolbox,
       workspaceMode: preset.workspace ?? preset.codespace,
       codespaceMode: preset.codespace ?? null,
       previewMode: preset.preview ?? null,
@@ -615,9 +593,8 @@ export class MorphicBlocks extends EventTarget {
         );
       }
 
-      const toolbox = normalizePresetToolbox(preset.toolbox);
       const refs: Array<[view: string, name: MorphicModeName | undefined]> = [
-        ["toolbox", toolbox.mode],
+        ["toolbox", preset.toolbox],
         ["workspace", preset.workspace],
         ["codespace", preset.codespace],
         ["preview", preset.preview],
@@ -643,14 +620,6 @@ export class MorphicBlocks extends EventTarget {
       for (const [viewName, mode] of Object.entries(preset.views ?? {})) {
         if (!modeByName.has(mode)) {
           throw new Error(`Preset "${preset.name}": unknown mode "${mode}" for view "${viewName}".`);
-        }
-      }
-
-      for (const value of Object.values(toolbox.render ?? {})) {
-        if (value !== "block" && value !== "text") {
-          throw new Error(
-            `Preset "${preset.name}": toolbox render values must be "block" or "text".`,
-          );
         }
       }
     }
@@ -768,7 +737,6 @@ export class MorphicBlocks extends EventTarget {
       behaviors: this.behaviors,
       elementTypes: this.elementTypes,
       mode: this.mountConfig.toolboxMode,
-      render: this.mountConfig.toolboxRender,
       modes: this.mountConfig.modes,
       code: this.mountConfig.code,
       options: canvasOptions,
@@ -798,7 +766,7 @@ export class MorphicBlocks extends EventTarget {
       this.syncFontOf(view.workspace, view.container);
       remeasureBlocks(view.workspace);
     }
-    this.toolboxCanvas?.rerender(this.mountConfig.toolboxMode, this.mountConfig.toolboxRender);
+    this.toolboxCanvas?.rerender(this.mountConfig.toolboxMode);
   }
 
   public getWorkspace(): Blockly.WorkspaceSvg | undefined {
@@ -871,7 +839,7 @@ export class MorphicBlocks extends EventTarget {
     this.styles.ensureModeVisibilityStyles(modes, previousModes);
 
     if (mode === this.mountConfig.toolboxMode) {
-      this.toolboxCanvas?.rerender(this.mountConfig.toolboxMode, this.mountConfig.toolboxRender);
+      this.toolboxCanvas?.rerender(this.mountConfig.toolboxMode);
       this.renderFlyoutBlocks();
     }
     if (mode === this.mountConfig.workspaceMode) {
@@ -1211,8 +1179,6 @@ export class MorphicBlocks extends EventTarget {
   public setModes(modes: {
     workspaceMode?: MorphicModeName;
     toolboxMode?: MorphicModeName;
-    /** Per-element block/text override for toolbox tiles. `null` clears it (all code elements render as blocks). */
-    toolboxRender?: Record<string, "block" | "text"> | null;
     /** Independent codespace mode. `null` clears the override (falls back to workspaceMode). */
     codespaceMode?: MorphicModeName | null;
     /** Preview mode. `null` clears it (preview renders nothing unless the workspace mode declares a legacy `preview`). */
@@ -1249,15 +1215,15 @@ export class MorphicBlocks extends EventTarget {
     if (modes.previewMode !== undefined) {
       this.mountConfig.previewMode = modes.previewMode ?? undefined;
     }
-    if (modes.toolboxRender !== undefined) {
-      this.mountConfig.toolboxRender = modes.toolboxRender ?? undefined;
-    }
-    if (modes.toolboxMode || modes.toolboxRender !== undefined) {
-      if (modes.toolboxMode) this.mountConfig.toolboxMode = modes.toolboxMode;
-      this.toolboxCanvas?.rerender(
-        this.mountConfig.toolboxMode,
-        this.mountConfig.toolboxRender,
+    // Moved in 0.4.0: named here so an upgrade fails with directions.
+    if ("toolboxRender" in modes) {
+      throw new Error(
+        'setModes: "toolboxRender" moved into the mode in 0.4.0: give the mode a "render" map, e.g. { "python": "text-based" }.',
       );
+    }
+    if (modes.toolboxMode) {
+      this.mountConfig.toolboxMode = modes.toolboxMode;
+      this.toolboxCanvas?.rerender(this.mountConfig.toolboxMode);
     }
 
     // Workspace blocks follow only the workspace mode, so a toolbox change

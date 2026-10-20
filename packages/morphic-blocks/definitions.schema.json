@@ -130,26 +130,14 @@
         "elements": {
           "type": "array",
           "items": { "type": "string" }
+        },
+        "render": {
+          "description": "How the mode's code elements are drawn on toolbox tiles, by element name. Blocks unless \"text-based\".",
+          "type": "object",
+          "additionalProperties": { "enum": ["block-based", "text-based"] }
         }
       },
       "additionalProperties": false
-    },
-    "presetToolbox": {
-      "oneOf": [
-        { "type": "string" },
-        {
-          "type": "object",
-          "required": ["mode"],
-          "properties": {
-            "mode": { "type": "string" },
-            "render": {
-              "type": "object",
-              "additionalProperties": { "enum": ["block", "text"] }
-            }
-          },
-          "additionalProperties": false
-        }
-      ]
     },
     "preset": {
       "type": "object",
@@ -157,7 +145,7 @@
       "properties": {
         "name": { "type": "string" },
         "label": { "type": "string" },
-        "toolbox": { "$ref": "#/$defs/presetToolbox" },
+        "toolbox": { "description": "The mode of the toolbox tiles.", "type": "string" },
         "workspace": { "type": "string" },
         "codespace": { "type": "string" },
         "preview": { "type": "string" },

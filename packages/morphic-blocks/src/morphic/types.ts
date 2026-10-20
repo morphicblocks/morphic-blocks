@@ -212,20 +212,15 @@ export type MorphicBlockElements = Record<string, string>;
  * is part of the preset: `toolbox` is required, and at least one editing
  * space (`workspace` or `codespace`) must be set; `preview` is optional.
  */
-/**
- * A preset's toolbox: either a bare mode name (all code elements render as
- * blocks) or an object that additionally overrides, per element, whether a
- * `code` element renders as a draggable block or as source text in the tile.
- */
-export type MorphicPresetToolbox =
-  | MorphicModeName
-  | { mode: MorphicModeName; render?: Record<string, "block" | "text"> };
+/** How a mode's code element is drawn on a tile: as a block, or as its text. */
+export type MorphicTileRender = "block-based" | "text-based";
 
 export interface MorphicPresetDefinition {
   name: string;
   /** Display label (e.g. for buttons). Falls back to `name`. */
   label?: string;
-  toolbox: MorphicPresetToolbox;
+  /** The mode of the toolbox tiles; the mode's `render` says how they are drawn. */
+  toolbox: MorphicModeName;
   workspace?: MorphicModeName;
   codespace?: MorphicModeName;
   preview?: MorphicModeName;
@@ -247,6 +242,11 @@ export interface MorphicModeDefinition {
   name: string;
   /** Element names that are visible in this mode (e.g. ["icon", "text"]). */
   elements: string[];
+  /**
+   * How the mode's code elements are drawn on toolbox tiles, by element name:
+   * `"block-based"` (the default) or `"text-based"`, e.g. `{ "python": "text-based" }`.
+   */
+  render?: Record<string, MorphicTileRender>;
 }
 
 export interface MorphicBlockDefinition {

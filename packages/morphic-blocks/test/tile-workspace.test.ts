@@ -120,8 +120,8 @@ describe("text rendered tiles", () => {
     const engine = new MorphicBlocks(
       {
         elementTypes: { python: "code" },
-        modes: [{ name: "py", elements: ["python"] }],
-        presets: [{ name: "text", toolbox: { mode: "py", render: { python: "text" } }, workspace: "py" }],
+        modes: [{ name: "py", elements: ["python"], render: { python: "text-based" } }],
+        presets: [{ name: "text", toolbox: "py", workspace: "py" }],
         code: { python: { emptyStatement: "pass" } },
         blocks: [
           {

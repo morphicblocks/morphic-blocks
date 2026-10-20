@@ -124,11 +124,12 @@ A **mode** declares which elements are visible and, by scanning for the first `t
   "modes": [
     { "name": "iconic",    "elements": ["icon", "title", "text"] },
     { "name": "lexical",   "elements": ["title", "block"] },
-    { "name": "syntactic", "elements": ["title", "syntax", "text"] }
+    { "name": "syntactic", "elements": ["title", "syntax", "text"] },
+    { "name": "syntax-text", "elements": ["title", "syntax"], "render": { "syntax": "text-based" } }
   ],
   "presets": [
     { "name": "starter", "label": "Starter", "toolbox": "iconic",  "workspace": "lexical" },
-    { "name": "text",    "label": "Text",    "toolbox": { "mode": "syntactic", "render": { "syntax": "text" } }, "codespace": "syntactic", "preview": "syntactic" }
+    { "name": "text",    "label": "Text",    "toolbox": "syntax-text", "codespace": "syntactic", "preview": "syntactic" }
   ],
   "categories": [
     { "name": "Output", "color": "#5C81A6" }
@@ -163,16 +164,17 @@ A **mode** declares which elements are visible and, by scanning for the first `t
 |------------|----------|--------------------------------------------|
 | `name`     | yes      | Mode identifier                            |
 | `elements` | yes      | Element names rendered on the toolbox tile |
+| `render`   | no       | How each code element is drawn on a tile: `"block-based"` (default) or `"text-based"`, by element name |
 
-A mode is purely presentational: it names a subset of elements. Its **source element** — what a codespace or preview renders when the mode is assigned to it — is the first `type: "code"` element in its `elements` array. How a mode's code elements render on a toolbox tile (block vs text) is decided by the preset's `toolbox` entry, not the mode, so one mode can be reused across presets with different tile rendering.
+A mode is purely presentational: it names a subset of elements. Its **source element** — what a codespace or preview renders when the mode is assigned to it — is the first `type: "code"` element in its `elements` array. `render` only matters while the mode is the toolbox mode (since 0.4.0; before, the preset's `toolbox` entry carried it, and `mount()` reports that place with directions).
 
 ### Presets
 
 A **preset** assigns a mode to each view: `{ name, label?, toolbox, workspace?, codespace?, preview? }`. `toolbox` is required, at least one editing space (`workspace` / `codespace`) must be set, and presence of a view key means that view is shown.
 
-The `toolbox` entry is either a **mode name** (all code elements render as draggable blocks) or an **object** `{ mode, render }` where `render` is a per-element map (`{ elementName: "block" | "text" }`) that overrides how each `code` element renders in the tile. This is where a code element is shown as source text instead of a block, and lets a mode with several code elements render each differently.
+The `toolbox` entry is a **mode name**; that mode's `render` decides whether each code element shows as a block or as source text on the tiles.
 
-Presets are passed via the mount config (`presets`, initial `preset`), validated at mount (unknown modes, missing code elements, codespace without `codespaceContainer`, duplicate names, invalid render values), applied at runtime with `engine.applyPreset(nameOrIndex)`, and reported to the host via `onPresetApplied(preset)` for pane-visibility layout. Workspace and codespace can be visible simultaneously with different modes; `setModes({ workspaceMode?, toolboxMode?, toolboxRender?, codespaceMode?, previewMode? })` remains the lower-level API (`null` clears the codespace/preview modes and the toolbox render override).
+Presets are passed via the mount config (`presets`, initial `preset`), validated at mount (unknown modes, missing code elements, codespace without `codespaceContainer`, duplicate names), applied at runtime with `engine.applyPreset(nameOrIndex)`, and reported to the host via `onPresetApplied(preset)` for pane-visibility layout. Workspace and codespace can be visible simultaneously with different modes; `setModes({ workspaceMode?, toolboxMode?, codespaceMode?, previewMode? })` remains the lower-level API (`null` clears the codespace/preview modes).
 
 ### Workspace template resolution
 

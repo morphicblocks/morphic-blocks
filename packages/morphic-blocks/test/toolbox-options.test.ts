@@ -71,7 +71,8 @@ describe("toolbox width", () => {
       const engine = new MorphicBlocks(
         {
           ...format,
-          presets: [{ name: "text", toolbox: { mode: "python", render: { code: "text" } }, workspace: "python" }],
+          modes: format.modes!.map((mode) => ({ ...mode, render: { code: "text-based" } })),
+          presets: [{ name: "text", toolbox: "python", workspace: "python" }],
         },
         {},
       );
@@ -91,8 +92,8 @@ describe("keyword colors on text tiles", () => {
   const textFormat: MorphicBlocksFormat = {
     elementTypes: { python: "code" },
     code: { python: { highlighting: { keywords: ["print"], colors: { keyword: "#123456" } } } },
-    modes: [{ name: "py", elements: ["python"] }],
-    presets: [{ name: "text", toolbox: { mode: "py", render: { python: "text" } }, workspace: "py" }],
+    modes: [{ name: "py", elements: ["python"], render: { python: "text-based" } }],
+    presets: [{ name: "text", toolbox: "py", workspace: "py" }],
     blocks: [{ identifier: "say", elements: { python: "print(1)" }, shape: "statement" }],
   };
 

@@ -10,10 +10,13 @@
       "highlighting": { "keywords": ["print"], "strings": ["\"", ["„", "“"]] }
     }
   },
-  "modes": [{ "name": "only", "elements": ["title", "code"] }],
+  "modes": [
+    { "name": "only", "elements": ["title", "code"] },
+    { "name": "only-text", "elements": ["title", "code"], "render": { "code": "text-based" } }
+  ],
   "presets": [
     { "name": "blocks", "toolbox": "only", "workspace": "only" },
-    { "name": "text", "toolbox": { "mode": "only", "render": { "code": "text" } }, "codespace": "only", "preview": "only" }
+    { "name": "text", "toolbox": "only-text", "codespace": "only", "preview": "only" }
   ],
   "blocks": [
     {
