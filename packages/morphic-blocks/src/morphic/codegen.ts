@@ -116,7 +116,7 @@ function createBehaviorProxy(block: Blockly.Block, generator: JavascriptGenerato
   return {
     blockId: block.id,
     blockType: toCleanId(block.type),
-    mode: getManagedBlockMode(block) ?? "default",
+    element: getManagedBlockMode(block) ?? "default",
     context,
     inputs,
     fields,

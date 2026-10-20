@@ -41,24 +41,24 @@ describe("added read only codespaces", () => {
     const python = div();
     const javascript = div();
 
-    await engine.addView({ kind: "codespace", editable: false, container: python, mode: "py" }).ready;
-    await engine.addView({ kind: "codespace", editable: false, container: javascript, mode: "js" }).ready;
+    await engine.addView({ kind: "codespace", editable: false, container: python, element: "python" }).ready;
+    await engine.addView({ kind: "codespace", editable: false, container: javascript, element: "javascript" }).ready;
 
     expect(text(python)).toBe("print()");
     expect(text(javascript)).toBe("console.log();");
-    expect(javascript.classList).toContain("morphic-mode-js");
+    expect(javascript.classList).toContain("morphic-mode-javascript");
   });
 
-  test("a preview's mode can change, and it can be removed", async () => {
+  test("a read only codespace's element can change, and it can be removed", async () => {
     const engine = await mountEngine();
     const container = div();
-    const view = engine.addView({ kind: "codespace", editable: false, container, mode: "py" });
+    const view = engine.addView({ kind: "codespace", editable: false, container, element: "python" });
     await view.ready;
 
-    view.setMode("js");
+    view.show("javascript");
     await settle();
     expect(text(container)).toBe("console.log();");
-    expect(view.getMode()).toBe("js");
+    expect(view.getElement()).toBe("javascript");
 
     expect(() => view.setTheme({ background: "#ffffff" })).not.toThrow();
 
@@ -69,22 +69,22 @@ describe("added read only codespaces", () => {
   test("a new mount removes the added views", async () => {
     const engine = await mountEngine();
     const container = div();
-    await engine.addView({ kind: "codespace", editable: false, container, mode: "py" }).ready;
+    await engine.addView({ kind: "codespace", editable: false, container, element: "python" }).ready;
 
     await engine.mount({ workspaceContainer: div() });
 
     expect(container.querySelector(".cm-editor")).toBeNull();
   });
 
-  test("names are unique and modes must render text", async () => {
+  test("names are unique and views show code elements", async () => {
     const engine = await mountEngine();
-    engine.addView({ kind: "codespace", editable: false, container: div(), mode: "py", name: "right" });
+    engine.addView({ kind: "codespace", editable: false, container: div(), element: "python", name: "right" });
 
-    expect(() => engine.addView({ kind: "codespace", editable: false, container: div(), mode: "js", name: "right" })).toThrow(
+    expect(() => engine.addView({ kind: "codespace", editable: false, container: div(), element: "javascript", name: "right" })).toThrow(
       /named "right" already exists/,
     );
-    expect(() => engine.addView({ kind: "codespace", editable: false, container: div(), mode: "nope" })).toThrow(/unknown mode "nope"/);
-    expect(() => engine.addView({ kind: "codespace", editable: false, container: div(), mode: "plain" })).toThrow(/no code element/);
+    expect(() => engine.addView({ kind: "codespace", editable: false, container: div(), element: "nope" })).toThrow(/"nope" is no code element/);
+    expect(() => engine.addView({ kind: "codespace", editable: false, container: div(), element: "title" })).toThrow(/"title" is no code element/);
   });
 });
 
@@ -95,11 +95,11 @@ describe("added read only codespaces and the rest of the engine", () => {
   test("an added preview joins selection sync, and leaves it when removed", async () => {
     const engine = await mountEngine();
 
-    const first = engine.addView({ kind: "codespace", editable: false, container: div(), mode: "py" });
+    const first = engine.addView({ kind: "codespace", editable: false, container: div(), element: "python" });
     await first.ready;
     expect(editorsInSync(engine)).toBe(1);
 
-    const second = engine.addView({ kind: "codespace", editable: false, container: div(), mode: "js" });
+    const second = engine.addView({ kind: "codespace", editable: false, container: div(), element: "javascript" });
     await second.ready;
     expect(editorsInSync(engine)).toBe(2);
 
@@ -112,16 +112,20 @@ describe("added read only codespaces and the rest of the engine", () => {
     engines.push(engine);
     await engine.mount({ workspaceContainer: div(), selectionSync: false });
 
-    await engine.addView({ kind: "codespace", editable: false, container: div(), mode: "py" }).ready;
+    await engine.addView({ kind: "codespace", editable: false, container: div(), element: "python" }).ready;
 
     expect(editorsInSync(engine)).toBe(0);
   });
 
-  test("a mode an added preview shows keeps a code element", async () => {
+  test("a mode's elements changing leaves the views alone", async () => {
     const engine = await mountEngine();
-    engine.addView({ kind: "codespace", editable: false, container: div(), mode: "js" });
+    const container = div();
+    await engine.addView({ kind: "codespace", editable: false, container, element: "javascript" }).ready;
 
-    expect(() => engine.setModeElements("js", ["title"])).toThrow(/needs a code element/);
+    engine.setModeElements("js", ["title"]);
+    await settle();
+
+    expect(text(container)).toBe("console.log();");
   });
 });
 
@@ -133,18 +137,18 @@ describe("views by name", () => {
       views: { workspace: "workspace", preview: { kind: "codespace", editable: false } },
       containers: { workspace: div(), preview: div() },
     });
-    engine.show({ views: { workspace: "py", preview: "js" } });
+    engine.show({ views: { workspace: "python", preview: "javascript" } });
 
-    const named = engine.addView({ kind: "codespace", editable: false, container: div(), mode: "py", name: "right" });
-    const unnamed = engine.addView({ kind: "codespace", editable: false, container: div(), mode: "js" });
+    const named = engine.addView({ kind: "codespace", editable: false, container: div(), element: "python", name: "right" });
+    const unnamed = engine.addView({ kind: "codespace", editable: false, container: div(), element: "javascript" });
 
-    expect(engine.getViewMode("workspace")).toBe("py");
-    expect(engine.getViewMode("preview")).toBe("js");
+    expect(engine.getViewElement("workspace")).toBe("python");
+    expect(engine.getViewElement("preview")).toBe("javascript");
     expect(named.name).toBe("right");
     expect(unnamed.name).toBe("view-1");
-    expect(engine.getViewMode("view-1")).toBe("js");
-    expect(engine.getViewMode("nothing")).toBeUndefined();
-    expect(() => engine.addView({ kind: "codespace", editable: false, container: div(), mode: "py", name: "preview" })).toThrow(
+    expect(engine.getViewElement("view-1")).toBe("javascript");
+    expect(engine.getViewElement("nothing")).toBeUndefined();
+    expect(() => engine.addView({ kind: "codespace", editable: false, container: div(), element: "python", name: "preview" })).toThrow(
       /named "preview" already exists/,
     );
   });
@@ -154,14 +158,14 @@ describe("toolbars on added views", () => {
   test("an added view brings its own toolbar, acting on that view", async () => {
     const engine = await mountEngine();
     const toolbar = div();
-    const view = engine.addView({ kind: "codespace", editable: false, container: div(), mode: "js", name: "right", toolbar: { container: toolbar } });
+    const view = engine.addView({ kind: "codespace", editable: false, container: div(), element: "javascript", name: "right", toolbar: { container: toolbar } });
     await view.ready;
 
     expect(toolbar.dataset.morphicView).toBe("right");
-    expect(toolbar.querySelector(".morphic-toolbar-label")?.textContent).toBe("Mode: js");
+    expect(toolbar.querySelector(".morphic-toolbar-label")?.textContent).toBe("javascript");
 
-    view.setMode("py");
-    expect(toolbar.querySelector(".morphic-toolbar-label")?.textContent).toBe("Mode: py");
+    view.show("python");
+    expect(toolbar.querySelector(".morphic-toolbar-label")?.textContent).toBe("python");
 
     view.dispose();
     expect(toolbar.childElementCount).toBe(0);
@@ -170,7 +174,7 @@ describe("toolbars on added views", () => {
   test("each toolbar can have its own items", async () => {
     const engine = await mountEngine();
     const toolbar = div();
-    engine.addView({ kind: "codespace", editable: false, container: div(), mode: "js", toolbar: { container: toolbar, items: [] } });
+    engine.addView({ kind: "codespace", editable: false, container: div(), element: "javascript", toolbar: { container: toolbar, items: [] } });
 
     expect(toolbar.querySelector("[data-toolbar-id]")).toBeNull();
   });
@@ -201,7 +205,7 @@ test("added read only codespaces follow blocks reordered with events off", async
   say.moveBy(0, 0);
   wait.moveBy(0, 100);
   const container = div();
-  await engine.addView({ kind: "codespace", editable: false, container, mode: "js" }).ready;
+  await engine.addView({ kind: "codespace", editable: false, container, element: "javascript" }).ready;
   await settle();
   expect(text(container)).toBe("console.log();wait();");
 
@@ -218,8 +222,8 @@ describe("presets and added views", () => {
   const withPresets: MorphicBlocksFormat = {
     ...format,
     presets: [
-      { name: "a", toolbox: "py", views: { workspace: "py", right: "js" } },
-      { name: "b", toolbox: "py", views: { workspace: "py", right: "py", missing: "js" } },
+      { name: "a", toolbox: "py", views: { workspace: "python", right: "javascript" } },
+      { name: "b", toolbox: "py", views: { workspace: "python", right: "python", missing: "javascript" } },
     ],
   };
 
@@ -227,23 +231,23 @@ describe("presets and added views", () => {
     const engine = new MorphicBlocks(withPresets, { say: () => "" });
     engines.push(engine);
     await engine.mount({ workspaceContainer: div(), preset: "a" });
-    const view = engine.addView({ kind: "codespace", editable: false, container: div(), mode: "js", name: "right" });
+    const view = engine.addView({ kind: "codespace", editable: false, container: div(), element: "javascript", name: "right" });
 
     engine.applyPreset("b");
-    expect(view.getMode()).toBe("py");
+    expect(view.getElement()).toBe("python");
 
     engine.applyPreset("a");
-    expect(view.getMode()).toBe("js");
+    expect(view.getElement()).toBe("javascript");
   });
 
   test("a preset naming an unknown mode for a view is refused", () => {
     const engine = new MorphicBlocks(
-      { ...format, presets: [{ name: "a", toolbox: "py", views: { workspace: "py", right: "nope" } }] },
+      { ...format, presets: [{ name: "a", toolbox: "py", views: { workspace: "python", right: "nope" } }] },
       {},
     );
     engines.push(engine);
 
-    expect(() => engine.mount({ workspaceContainer: div() })).toThrow(/unknown mode "nope" for view "right"/);
+    expect(() => engine.mount({ workspaceContainer: div() })).toThrow(/view "right" shows "nope", which is no code element/);
   });
 });
 
@@ -257,8 +261,8 @@ describe("added codespaces", () => {
     const engine = await mountEngine();
     const python = div();
     const javascript = div();
-    await engine.addView({ kind: "codespace", container: python, mode: "py", name: "left" }).ready;
-    await engine.addView({ kind: "codespace", editable: false, container: javascript, mode: "js" }).ready;
+    await engine.addView({ kind: "codespace", container: python, element: "python", name: "left" }).ready;
+    await engine.addView({ kind: "codespace", editable: false, container: javascript, element: "javascript" }).ready;
     expect(python.classList).toContain("morphic-codespace-root");
     expect(text(python)).toBe("print()");
 
@@ -276,7 +280,7 @@ describe("added codespaces", () => {
 
   test("drops are resolved against the codespace they land in", async () => {
     const engine = await mountEngine();
-    await engine.addView({ kind: "codespace", container: div(), mode: "js", name: "left" }).ready;
+    await engine.addView({ kind: "codespace", container: div(), element: "javascript", name: "left" }).ready;
     const editor = addedEditor(engine, "left");
     // jsdom lays nothing out, so the pointer is placed on line 1, lower half.
     Object.assign(editor, {
@@ -297,7 +301,7 @@ describe("added codespaces", () => {
 
 test("the inline value editor takes focus without scrolling its view", async () => {
   const engine = await mountEngine();
-  await engine.addView({ kind: "codespace", container: div(), mode: "py", name: "left" }).ready;
+  await engine.addView({ kind: "codespace", container: div(), element: "python", name: "left" }).ready;
   const editor = (engine as unknown as {
     views: Set<{ name: string; editor: { openPlaceholderEditor(range: unknown): void; editorView: { coordsAtPos(): unknown } } }>;
   }).views.values().next().value!.editor;

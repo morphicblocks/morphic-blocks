@@ -11,8 +11,8 @@ const format: MorphicBlocksFormat = {
     { name: "text", elements: ["python"], render: { python: "text-based" } },
   ],
   presets: [
-    { name: "blocks", toolbox: "blocks", views: { workspace: "blocks" } },
-    { name: "text", toolbox: "text", views: { workspace: "blocks" } },
+    { name: "blocks", toolbox: "blocks", views: { workspace: "python" } },
+    { name: "text", toolbox: "text", views: { workspace: "python" } },
   ],
   blocks: [{ identifier: "say", elements: { python: "say()" }, shape: "statement" }],
 };

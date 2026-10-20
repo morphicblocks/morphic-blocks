@@ -41,7 +41,7 @@ describe("highlight colors", () => {
       views: { workspace: "workspace", codespace: "codespace", preview: { kind: "codespace", editable: false } },
       containers: { workspace: div(), codespace: div(), preview: div() },
     });
-    engine.show({ views: { codespace: "py", preview: "js" } });
+    engine.show({ views: { codespace: "python", preview: "javascript" } });
 
     const css = pageCss();
     const own = /([^{}]*)\{[^}]*#123456/.exec(css)?.[1]?.trim();

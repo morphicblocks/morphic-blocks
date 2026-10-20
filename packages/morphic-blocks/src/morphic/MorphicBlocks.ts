@@ -21,13 +21,13 @@ import { MorphicSelectionSync } from "./selection-sync";
 import { applyBlockShapes, createDefinitionMap, expandDefaultElements } from "./definitions";
 import { applyFont, measuredFont, readCssFont, remeasureBlocks, type MorphicBlockFont } from "./block-font";
 import { validateDefinitions } from "./validate-definitions";
-import { withCodeSettings } from "./element-types";
+import { resolveElementType, withCodeSettings } from "./element-types";
 import { formatValue } from "./value-format";
 import { MorphicStyleManager, type MorphicModeStyle } from "./styles";
 import { toModeClassToken } from "./template";
 import { DRAG_DATA_KEY, MorphicToolboxCanvas, type TileDropTarget } from "./toolbox-canvas";
 import { buildToolboxDefinition } from "./toolbox";
-import { resolveBlockView, resolveModeSourceElement } from "./view-resolver";
+import { resolveBlockView, resolveElementView, resolveModeSourceElement } from "./view-resolver";
 import { renderToolbar, toolbarItems, type MorphicToolbarHandle } from "./toolbar";
 import type {
   MorphicBehaviorContext,
@@ -99,11 +99,12 @@ function parseModeStylesFromFolder(
   return styles;
 }
 
-/** Internal resolved config: workspaceMode, toolboxMode and workspaceHost are guaranteed non-optional. */
+/** Internal resolved config: workspaceElement, toolboxMode and workspaceHost are guaranteed non-optional. */
 type MorphicResolvedMountConfig = Omit<MorphicMountConfig, "modeStyles"> & {
   /** Every mode stylesheet, from `modesFolder` and `modeStyles` combined. */
   modeStyles: MorphicModeStyle[];
-  workspaceMode: MorphicModeName;
+  /** The element the program's workspace shows. */
+  workspaceElement: string;
   toolboxMode: MorphicModeName;
   /** The views, each in its long form. */
   viewDeclarations: Record<string, MorphicViewDeclaration>;
@@ -128,8 +129,9 @@ interface AddedView {
   /** The given name, or one the engine made up. */
   name: string;
   container: HTMLElement;
-  mode: MorphicModeName;
-  /** A preview's text editor. */
+  /** The element the view shows. */
+  element: string;
+  /** A codespace's text editor. */
   editor?: MorphicCodeEditor;
   /** A workspace view's own Blockly workspace. */
   workspace?: Blockly.WorkspaceSvg;
@@ -139,8 +141,8 @@ interface AddedView {
   delete?: MorphicCodespaceDeleteOptions;
   /** Removes what the view set up besides its editor or workspace. */
   teardown?: () => void;
-  /** The handle's `setMode`, used when a preset switches the view. */
-  setMode?: (mode: MorphicModeName) => void;
+  /** The handle's `show`, used when a preset switches the view. */
+  show?: (element: string) => void;
 }
 
 /**
@@ -152,8 +154,9 @@ interface AddedView {
 interface ResolvedView {
   name: string;
   kind: MorphicViewKind;
-  mode: MorphicModeName | undefined;
-  /** The text editor of a codespace or preview. */
+  /** The element the view shows. */
+  element: string | undefined;
+  /** The text editor of a codespace. */
   editor?: MorphicCodeEditor;
   /** The Blockly workspace of a workspace view. */
   workspace?: Blockly.WorkspaceSvg;
@@ -247,7 +250,7 @@ export class MorphicBlocks extends EventTarget {
   /** Views added with `addView()`, beside the ones `mount()` sets up. */
   private readonly views = new Set<AddedView>();
   /** The mode of each added workspace, read when its blocks are built. */
-  private readonly viewWorkspaceModes = new WeakMap<Blockly.Workspace, MorphicModeName>();
+  private readonly viewWorkspaceElements = new WeakMap<Blockly.Workspace, string>();
   /** Numbers added views that are not given a name. */
   private viewCount = 0;
   private selectionSync?: MorphicSelectionSync;
@@ -381,16 +384,17 @@ export class MorphicBlocks extends EventTarget {
       (name) => viewDeclarations[name]!.kind === "workspace" && viewContainers[name],
     );
     const firstShown = Object.keys(viewDeclarations).find((name) => viewContainers[name]);
-    const modeOf = (name: string | undefined) =>
-      (name ? initialPreset?.views[name] : undefined) ?? defaultMode;
-    const workspaceMode = modeOf(programView ?? firstShown);
+    const defaultElement = this.defaultElement(config.modes ?? []);
+    const elementOf = (name: string | undefined) =>
+      (name ? initialPreset?.views[name] : undefined) ?? defaultElement;
+    const workspaceElement = elementOf(programView ?? firstShown);
 
     const workspaceHost = (programView && viewContainers[programView]) || this.createHeadlessHost();
 
     const resolvedConfig: MorphicResolvedMountConfig = {
       ...config,
       modeStyles: mergedModeStyles,
-      workspaceMode,
+      workspaceElement,
       toolboxMode,
       viewDeclarations,
       viewContainers,
@@ -470,7 +474,7 @@ export class MorphicBlocks extends EventTarget {
         kind: declaration.kind,
         name,
         container,
-        mode: modeOf(name),
+        element: elementOf(name),
         editable: declaration.editable,
         delete: declaration.delete,
         theme: config.themes?.[name] ?? config.editorTheme,
@@ -645,7 +649,7 @@ export class MorphicBlocks extends EventTarget {
       if (shown.length === 0) {
         throw new Error(`Preset "${preset.name}": "views" must name at least one view.`);
       }
-      for (const [viewName, modeName] of shown) {
+      for (const [viewName, element] of shown) {
         const declaration = views[viewName];
         // A view added later with addView() may carry the name.
         if (!declaration) {
@@ -653,13 +657,10 @@ export class MorphicBlocks extends EventTarget {
             `[MorphicBlocks] Preset "${preset.name}" names "${viewName}", which is no declared view (${Object.keys(views).join(", ")}).`,
           );
         }
-        const mode = modeByName.get(modeName);
-        if (!mode) {
-          throw new Error(`Preset "${preset.name}": unknown mode "${modeName}" for view "${viewName}".`);
-        }
-        if (declaration?.kind === "codespace" && resolveModeSourceElement(mode, this.elementTypes) === undefined) {
+        if (resolveElementType(this.elementTypes[element]) !== "code") {
           throw new Error(
-            `Preset "${preset.name}": mode "${modeName}" has no code element to render in the codespace "${viewName}".`,
+            `Preset "${preset.name}": view "${viewName}" shows "${element}", which is no code element.` +
+              (modeByName.has(element) ? ` Views show elements since 0.4.0, and "${element}" is a mode.` : ""),
           );
         }
       }
@@ -847,12 +848,6 @@ export class MorphicBlocks extends EventTarget {
       throw new Error(`setModeElements: unknown elements ${unknown.map((name) => `"${name}"`).join(", ")}.`);
     }
     const updated: MorphicModeDefinition = { ...modes[index]!, elements: [...elements] };
-    const renderedAsText = [...this.views].some((view) => view.kind === "codespace" && view.mode === mode);
-    if (renderedAsText && resolveModeSourceElement(updated, this.elementTypes) === undefined) {
-      throw new Error(
-        `setModeElements: mode "${mode}" is shown in a codespace and needs a code element.`,
-      );
-    }
     const nextModes = modes.map((m, i) => (i === index ? updated : m));
     this.validatePresets({ ...this.mountConfig, modes: nextModes });
 
@@ -865,19 +860,6 @@ export class MorphicBlocks extends EventTarget {
       this.toolboxCanvas?.rerender(this.mountConfig.toolboxMode);
       this.renderFlyoutBlocks();
     }
-    if (mode === this.mountConfig.workspaceMode) {
-      this.syncWorkspaceFont();
-      this.renderWorkspaceBlocks();
-    }
-    for (const view of this.views) {
-      if (view.mode !== mode) continue;
-      if (view.workspace) {
-        this.styleWorkspaceView(view);
-        this.renderWorkspaceView(view);
-      }
-      view.editor?.setHighlightRules(this.highlightRulesFor(view.mode));
-      view.editor?.refresh();
-    }
   }
 
   /** Mode definition by name, or `undefined`. */
@@ -886,14 +868,12 @@ export class MorphicBlocks extends EventTarget {
     return (this.mountConfig?.modes ?? []).find((m) => m.name === name);
   }
 
-  /** The element the first codespace writes, e.g. for printed values in its language. */
+  /**
+   * The element the first codespace writes, else the one the program's
+   * workspace shows, e.g. for printed values in its language.
+   */
   private codespaceElement(): string | undefined {
-    for (const view of this.views) {
-      if (view.kind !== "codespace") continue;
-      const mode = this.modeDef(view.mode);
-      return mode ? resolveModeSourceElement(mode, this.elementTypes) : undefined;
-    }
-    return undefined;
+    return [...this.views].find((view) => view.kind === "codespace")?.element ?? this.mountConfig?.workspaceElement;
   }
 
   /**
@@ -945,11 +925,11 @@ export class MorphicBlocks extends EventTarget {
   private toolbarTextFor(viewName: string): string {
     const view = this.resolveView(viewName);
     if (view?.kind === "codespace") {
-      return view.editor?.getValue() ?? this.generateModeText(view.mode).code;
+      return view.editor?.getValue() ?? this.generateElementText(view.element).code;
     }
     // An added workspace copies the program as its own mode writes it.
     if (view?.kind === "workspace" && view.workspace !== this.workspace) {
-      return this.generateModeText(view.mode).code;
+      return this.generateElementText(view.element).code;
     }
     // Workspace: derive text from the codespace if mounted, else generate via JS codegen.
     if (this.codespace) return this.codespace.getValue();
@@ -1078,7 +1058,7 @@ export class MorphicBlocks extends EventTarget {
     const view = this.resolveView(viewName);
     const { code: text, metadata } = view?.editor
       ? { code: view.editor.getValue(), metadata: view.editor.metadata }
-      : this.generateModeText(view?.mode ?? this.mountConfig?.workspaceMode);
+      : this.generateElementText(view?.element ?? this.mountConfig?.workspaceElement);
     const range = metadata.get(block.id);
     if (range?.startChar === undefined || range.endChar === undefined) return "";
     const lineStart = text.lastIndexOf("\n", range.startChar - 1) + 1;
@@ -1185,18 +1165,18 @@ export class MorphicBlocks extends EventTarget {
    * Everything left out stays as it is; showing and hiding the views'
    * containers stays the app's job.
    */
-  public show(shown: { toolbox?: MorphicModeName; views?: Record<string, MorphicModeName> }): void {
+  public show(shown: { toolbox?: MorphicModeName; views?: Record<string, string> }): void {
     if (!this.mountConfig || !this.workspace) {
       throw new Error("MorphicBlocks must be mounted before show can be used.");
     }
     if (shown.toolbox !== undefined && !this.modeDef(shown.toolbox)) {
       throw new Error(`show: unknown mode "${shown.toolbox}" for the toolbox.`);
     }
-    for (const [name, mode] of Object.entries(shown.views ?? {})) {
+    for (const [name, element] of Object.entries(shown.views ?? {})) {
       if (!this.mountConfig.viewDeclarations[name] && !this.resolveView(name)) {
         throw new Error(`show: no view named "${name}".`);
       }
-      if (!this.modeDef(mode)) throw new Error(`show: unknown mode "${mode}" for view "${name}".`);
+      this.checkViewElement("show", element);
     }
 
     if (shown.toolbox) {
@@ -1206,11 +1186,11 @@ export class MorphicBlocks extends EventTarget {
       this.bindFlyoutWorkspace();
       this.renderFlyoutBlocks();
     }
-    for (const [name, mode] of Object.entries(shown.views ?? {})) {
+    for (const [name, element] of Object.entries(shown.views ?? {})) {
       // Views without a container are not set up; the next mount takes the preset again.
       if (name === this.mountConfig.programView || (!this.mountConfig.programView && this.isHeadlessProgramFor(name))) {
-        if (mode !== this.mountConfig.workspaceMode) {
-          this.mountConfig.workspaceMode = mode;
+        if (element !== this.mountConfig.workspaceElement) {
+          this.mountConfig.workspaceElement = element;
           this.applyWorkspaceContainerClass();
           this.syncWorkspaceFont();
           this.renderWorkspaceBlocks();
@@ -1218,7 +1198,7 @@ export class MorphicBlocks extends EventTarget {
         continue;
       }
       const view = [...this.views].find((added) => added.name === name);
-      if (view && view.mode !== mode) view.setMode?.(mode);
+      if (view && view.element !== element) view.show?.(element);
     }
     this.refreshTextViews();
     for (const h of this.toolbars) h.refresh();
@@ -1239,7 +1219,7 @@ export class MorphicBlocks extends EventTarget {
   /** Moved in 0.4.0: `show()` takes its place. */
   public setModes(_modes: unknown): never {
     throw new Error(
-      'setModes was replaced by show() in 0.4.0: show({ toolbox: "<mode>", views: { "<view>": "<mode>" } }).',
+      'setModes was replaced by show() in 0.4.0: show({ toolbox: "<mode>", views: { "<view>": "<element>" } }).',
     );
   }
 
@@ -2319,28 +2299,37 @@ export class MorphicBlocks extends EventTarget {
     for (const view of this.views) view.editor?.refresh();
   }
 
-  /** The program as `mode`'s source element writes it, as a preview shows it. */
-  private generateModeText(mode: MorphicModeName | undefined): MorphicCodeGenerationResult {
-    const modeDef = this.modeDef(mode);
-    const elementName = modeDef ? resolveModeSourceElement(modeDef, this.elementTypes) : undefined;
-    if (!this.workspace || !this.mountConfig || !mode || !elementName) {
+  /** The program as `element` writes it, as a codespace shows it. */
+  private generateElementText(element: string | undefined): MorphicCodeGenerationResult {
+    if (!this.workspace || !this.mountConfig || !element) {
       return { code: "", metadata: new Map(), placeholders: [] };
     }
     return generateTextFromWorkspace(
       this.workspace,
-      mode,
+      element,
       this.definitions,
       this.elementTypes,
       this.mountConfig.modes ?? [],
-      elementName,
+      element,
     );
   }
 
-  /** Highlight rules of `mode`'s source element. */
-  private highlightRulesFor(mode: MorphicModeName): MorphicHighlightDefinition | undefined {
-    const modeDef = this.modeDef(mode);
-    const elementName = modeDef ? resolveModeSourceElement(modeDef, this.elementTypes) : undefined;
-    return elementName ? this.mountConfig?.code?.[elementName]?.highlighting : undefined;
+  /** Highlight rules of `element`. */
+  private highlightRulesFor(element: string): MorphicHighlightDefinition | undefined {
+    return this.mountConfig?.code?.[element]?.highlighting;
+  }
+
+  /**
+   * Where nothing says what a view shows: the first code element of the first
+   * mode, else the first code element at all.
+   */
+  private defaultElement(modes: MorphicModeDefinition[]): string {
+    const first = modes[0] ? resolveModeSourceElement(modes[0], this.elementTypes) : undefined;
+    return (
+      first ??
+      Object.keys(this.elementTypes).find((name) => resolveElementType(this.elementTypes[name]) === "code") ??
+      "default"
+    );
   }
 
   /**
@@ -2362,7 +2351,7 @@ export class MorphicBlocks extends EventTarget {
       throw new Error(`addView: a view named "${options.name}" already exists.`);
     }
     if (options.kind === "workspace") return this.addWorkspaceView(options);
-    this.checkTextViewMode("addView", options.mode);
+    this.checkViewElement("addView", options.element);
 
     // A codespace edits the program; one that cannot be edited only shows
     // it, so the editing marker would mislead there.
@@ -2370,10 +2359,10 @@ export class MorphicBlocks extends EventTarget {
     const editor: MorphicCodeEditor = new MorphicCodeEditor(
       options.container,
       this.workspace,
-      () => this.generateModeText(view.mode),
+      () => this.generateElementText(view.element),
       {
         theme: options.theme,
-        highlightRules: this.highlightRulesFor(options.mode),
+        highlightRules: this.highlightRulesFor(options.element),
         ...(editing
           ? {
               onDelete: (line: number, lastLine?: number) => this.deleteBlockAtCodespaceLine(editor, line, lastLine),
@@ -2394,13 +2383,13 @@ export class MorphicBlocks extends EventTarget {
       kind: options.kind,
       name,
       container: options.container,
-      mode: options.mode,
+      element: options.element,
       editor,
       editable: editing,
       delete: options.delete,
     };
     this.views.add(view);
-    applyTextViewModeClass(view.container, view.mode, rootClass);
+    applyTextViewModeClass(view.container, view.element, rootClass);
     const toolbar = options.toolbar
       ? this.mountToolbar(options.toolbar.container, {
           view: name,
@@ -2419,13 +2408,13 @@ export class MorphicBlocks extends EventTarget {
         }
         this.linkAddedView();
       }),
-      getMode: () => view.mode,
-      setMode: (mode) => {
+      getElement: () => view.element,
+      show: (element) => {
         if (!this.views.has(view)) return;
-        this.checkTextViewMode("setMode", mode);
-        view.mode = mode;
-        applyTextViewModeClass(view.container, mode, rootClass);
-        editor.setHighlightRules(this.highlightRulesFor(mode));
+        this.checkViewElement("show", element);
+        view.element = element;
+        applyTextViewModeClass(view.container, element, rootClass);
+        editor.setHighlightRules(this.highlightRulesFor(element));
         editor.refresh();
         for (const handle of this.toolbars) handle.refresh();
       },
@@ -2438,7 +2427,7 @@ export class MorphicBlocks extends EventTarget {
         this.refreshSelectionSync();
       },
     };
-    view.setMode = handle.setMode;
+    view.show = handle.show;
     return handle;
   }
 
@@ -2450,7 +2439,7 @@ export class MorphicBlocks extends EventTarget {
    */
   private addWorkspaceView(options: MorphicViewOptions): MorphicViewHandle {
     const main = this.workspace!;
-    if (!this.modeDef(options.mode)) throw new Error(`addView: unknown mode "${options.mode}".`);
+    this.checkViewElement("addView", options.element);
     let name = options.name;
     while (name === undefined || this.resolveView(name)) name = `view-${++this.viewCount}`;
 
@@ -2468,12 +2457,12 @@ export class MorphicBlocks extends EventTarget {
       move: { scrollbars: true, drag: true, wheel: true },
     });
     workspaceOwners.set(mirror, this);
-    this.viewWorkspaceModes.set(mirror, options.mode);
+    this.viewWorkspaceElements.set(mirror, options.element);
     const view: AddedView = {
       kind: "workspace",
       name,
       container: options.container,
-      mode: options.mode,
+      element: options.element,
       workspace: mirror,
       editable,
     };
@@ -2591,12 +2580,12 @@ export class MorphicBlocks extends EventTarget {
       kind: "workspace",
       name,
       ready: Promise.resolve(),
-      getMode: () => view.mode,
-      setMode: (mode) => {
+      getElement: () => view.element,
+      show: (element) => {
         if (!this.views.has(view)) return;
-        if (!this.modeDef(mode)) throw new Error(`setMode: unknown mode "${mode}".`);
-        view.mode = mode;
-        this.viewWorkspaceModes.set(mirror, mode);
+        this.checkViewElement("show", element);
+        view.element = element;
+        this.viewWorkspaceElements.set(mirror, element);
         this.styleWorkspaceView(view);
         this.renderWorkspaceView(view);
         for (const handle of this.toolbars) handle.refresh();
@@ -2607,14 +2596,14 @@ export class MorphicBlocks extends EventTarget {
         this.disposeView(view);
       },
     };
-    view.setMode = handle.setMode;
+    view.show = handle.show;
     return handle;
   }
 
-  /** The mode's classes and block font on an added workspace. */
+  /** The element's classes and block font on an added workspace. */
   private styleWorkspaceView(view: AddedView): void {
     if (!view.workspace) return;
-    applyRootModeClasses(view.container, view.mode, "workspace", "morphic-workspace-root");
+    applyRootModeClasses(view.container, view.element, "workspace", "morphic-workspace-root");
     this.syncFontOf(view.workspace, view.container);
   }
 
@@ -2627,7 +2616,7 @@ export class MorphicBlocks extends EventTarget {
     try {
       for (const block of view.workspace?.getAllBlocks(false) ?? []) {
         const definition = this.definitions.get(toCleanId(block.type));
-        if (definition) this.applyView(block as Blockly.BlockSvg, definition, view.mode, "workspace");
+        if (definition) this.applyView(block as Blockly.BlockSvg, definition, view.element, "workspace");
       }
     } finally {
       Blockly.Events.enable();
@@ -2704,7 +2693,7 @@ export class MorphicBlocks extends EventTarget {
       return {
         name,
         kind: "workspace",
-        mode: this.mountConfig.workspaceMode,
+        element: this.mountConfig.workspaceElement,
         workspace: this.workspace,
         readOnly: this.mountConfig.viewDeclarations[name]?.editable === false,
       };
@@ -2714,7 +2703,7 @@ export class MorphicBlocks extends EventTarget {
         return {
           name,
           kind: view.kind,
-          mode: view.mode,
+          element: view.element,
           editor: view.editor,
           workspace: view.workspace,
           readOnly: view.editable === false,
@@ -2724,18 +2713,19 @@ export class MorphicBlocks extends EventTarget {
     return undefined;
   }
 
-  /** The mode a view shows, by name. */
-  public getViewMode(name: string): MorphicModeName | undefined {
-    return this.resolveView(name)?.mode;
+  /** The element a view shows, by name. */
+  public getViewElement(name: string): string | undefined {
+    return this.resolveView(name)?.element;
   }
 
-  /** A text view's mode must exist and have a code element to render. */
-  private checkTextViewMode(caller: string, mode: MorphicModeName): void {
-    const modeDef = this.modeDef(mode);
-    if (!modeDef) throw new Error(`${caller}: unknown mode "${mode}".`);
-    if (resolveModeSourceElement(modeDef, this.elementTypes) === undefined) {
-      throw new Error(`${caller}: mode "${mode}" has no code element to render.`);
-    }
+  /** A view shows a code element. */
+  private checkViewElement(caller: string, element: string): void {
+    if (resolveElementType(this.elementTypes[element]) === "code") return;
+    const isMode = !!this.modeDef(element);
+    throw new Error(
+      `${caller}: "${element}" is no code element.` +
+        (isMode ? ` Views show elements since 0.4.0, and "${element}" is a mode.` : ""),
+    );
   }
 
   /**
@@ -2958,7 +2948,7 @@ export class MorphicBlocks extends EventTarget {
       // A block built in this mode at its creation only needs its drawing
       // styled. Building it again would remake its slot defaults, which
       // Blockly draws at 0,0 before connecting them, bumping blocks there.
-      const mode = this.mountConfig.workspaceMode;
+      const mode = this.mountConfig.workspaceElement;
       const managed = block as MorphicManagedBlock;
       if (managed.__morphicMode === mode && managed.__morphicContext === "workspace" && block.getSvgRoot()) {
         decorateBlockRoot(block, mode, "workspace");
@@ -3043,12 +3033,16 @@ export class MorphicBlocks extends EventTarget {
       return;
     }
     const context: MorphicRenderContext = block.workspace.isFlyout ? "toolbox" : "workspace";
-    const mode = this.viewWorkspaceModes.get(block.workspace) ?? this.resolveMode(context);
+    const mode = this.viewWorkspaceElements.get(block.workspace) ?? this.resolveMode(context);
     this.applyView(block, definition, mode, context);
     dropShadowsWhenMarker(block);
 
     const lifecycleBehavior = getLifecycleBehavior(this.behaviors[definition.identifier]);
-    lifecycleBehavior?.init?.(block, this.createBehaviorContext(block, definition, mode, context));
+    const element =
+      context === "workspace"
+        ? resolveElementView(definition, mode, this.elementTypes).elementName
+        : resolveBlockView(definition, mode, this.elementTypes, this.mountConfig?.modes ?? []).elementName;
+    lifecycleBehavior?.init?.(block, this.createBehaviorContext(block, definition, element ?? mode, context, mode));
   }
 
   private validateViews(
@@ -3090,7 +3084,7 @@ export class MorphicBlocks extends EventTarget {
     }
     return context === "toolbox"
       ? this.mountConfig.toolboxMode
-      : this.mountConfig.workspaceMode;
+      : this.mountConfig.workspaceElement;
   }
 
   private applyView(
@@ -3120,7 +3114,11 @@ export class MorphicBlocks extends EventTarget {
     const fieldMemory = ((block as MorphicManagedBlock).__morphicFieldMemory ??= new Map<string, unknown>());
     for (const [name, value] of captureFieldValues(block)) fieldMemory.set(name, value);
 
-    const view = resolveBlockView(definition, mode, this.elementTypes, this.mountConfig?.modes ?? []);
+    // Workspace blocks show an element, toolbox blocks a mode.
+    const view =
+      context === "workspace"
+        ? resolveElementView(definition, mode, this.elementTypes)
+        : resolveBlockView(definition, mode, this.elementTypes, this.mountConfig?.modes ?? []);
     // Empty-default shadows should only attach on the engine's main editing
     // workspace — not on the toolbox-canvas preview workspace (used for SVG
     // snapshots) and not on the Blockly flyout. Pass elementTypes only when
@@ -3143,7 +3141,7 @@ export class MorphicBlocks extends EventTarget {
     );
     lifecycleBehavior?.onViewApplied?.(
       block,
-      this.createBehaviorContext(block, definition, mode, context),
+      this.createBehaviorContext(block, definition, view.elementName ?? mode, context, mode),
     );
 
     // Restore field values after onViewApplied has recreated the fields
@@ -3184,7 +3182,7 @@ export class MorphicBlocks extends EventTarget {
     const container = this.mountConfig.workspaceHost;
     applyRootModeClasses(
       container,
-      this.mountConfig.workspaceMode,
+      this.mountConfig.workspaceElement,
       "workspace",
       "morphic-workspace-root",
     );
@@ -3284,7 +3282,7 @@ export class MorphicBlocks extends EventTarget {
       this.applyView(
         svgBlock,
         definition,
-        this.mountConfig.workspaceMode,
+        this.mountConfig.workspaceElement,
         "workspace",
       );
     }
@@ -3373,13 +3371,15 @@ export class MorphicBlocks extends EventTarget {
   private createBehaviorContext(
     block: Blockly.BlockSvg,
     definition: MorphicBlockDefinition,
-    mode: MorphicModeName,
+    element: string,
     context: MorphicRenderContext,
+    shown: string,
   ): MorphicBehaviorContext {
     return {
       Blockly,
       workspace: block.workspace as Blockly.WorkspaceSvg,
-      mode,
+      element,
+      ...(context === "toolbox" ? { mode: shown } : {}),
       context,
       definition,
     };

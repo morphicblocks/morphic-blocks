@@ -222,11 +222,12 @@ export interface MorphicPresetDefinition {
   /** The mode of the toolbox tiles; the mode's `render` says how they are drawn. */
   toolbox: MorphicModeName;
   /**
-   * What each view shows, by view name. The views it lists are the ones the
-   * preset shows; showing and hiding their containers is the app's job
-   * (`onPresetApplied`). Views it leaves out keep what they show.
+   * The code element each view shows, by view name, e.g. `{ "blocks": "concept", "code": "python" }`.
+   * The views it lists are the ones the preset shows; showing and hiding
+   * their containers is the app's job (`onPresetApplied`). Views it leaves
+   * out keep what they show.
    */
-  views: Record<string, MorphicModeName>;
+  views: Record<string, string>;
 }
 
 /** Kinds of view: blocks, or the program as text. */
@@ -418,7 +419,10 @@ export interface MorphicRunResult {
 export interface MorphicBehaviorContext {
   Blockly: typeof Blockly;
   workspace: Blockly.WorkspaceSvg;
-  mode: MorphicModeName;
+  /** The code element the block is drawn from. */
+  element: string;
+  /** The toolbox mode, for blocks drawn in the toolbox. */
+  mode?: MorphicModeName;
   context: MorphicRenderContext;
   definition: MorphicBlockDefinition;
 }
@@ -426,7 +430,8 @@ export interface MorphicBehaviorContext {
 export interface MorphicBehaviorProxy {
   blockId: string;
   blockType: string;
-  mode: MorphicModeName;
+  /** The code element the block is drawn from in its view. */
+  element: string;
   context: MorphicRenderContext;
   inputs: Record<string, string>;
   /**
@@ -799,8 +804,8 @@ export interface MorphicViewOptions {
   kind: MorphicViewKind;
   /** Element the view renders into. */
   container: HTMLElement;
-  /** Mode the view shows; a codespace renders its source element. */
-  mode: MorphicModeName;
+  /** The code element the view shows, e.g. `"python"`. */
+  element: string;
   /** Unique among the engine's views. */
   name?: string;
   /**
@@ -829,8 +834,10 @@ export interface MorphicViewHandle {
   readonly name: string;
   /** Settles once the view is ready; text views load their editor in the background. */
   readonly ready: Promise<void>;
-  getMode(): MorphicModeName;
-  setMode(mode: MorphicModeName): void;
+  /** The code element the view shows. */
+  getElement(): string;
+  /** Show another code element. */
+  show(element: string): void;
   /** Colours of a text view, e.g. when the app switches between light and dark. No effect on a workspace. */
   setTheme(theme: MorphicCodeEditorTheme): void;
   /** Removes the view. `mount()` again removes every added view too. */

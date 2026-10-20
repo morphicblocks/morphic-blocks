@@ -68,3 +68,19 @@ export function resolveBlockView(
   }
   return { mode, template: firstEntry[1], elementName: firstEntry[0], inputSlots: definition.inputSlots };
 }
+
+/**
+ * The workspace template for a block in a view that shows `element`: the
+ * block's own content for it, else the fallbacks of `resolveBlockView`.
+ */
+export function resolveElementView(
+  definition: MorphicBlockDefinition,
+  element: string,
+  elementTypes: Record<string, MorphicElementTypeEntry> = {},
+): MorphicResolvedView {
+  const content = definition.elements[element];
+  if (content !== undefined && resolveElementType(elementTypes[element]) === "code") {
+    return { mode: element, template: content, elementName: element, inputSlots: definition.inputSlots };
+  }
+  return resolveBlockView(definition, element, elementTypes, []);
+}

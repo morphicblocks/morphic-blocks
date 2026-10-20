@@ -41,7 +41,7 @@ async function setUp() {
   const engine = new MorphicBlocks(format, {});
   engines.push(engine);
   await engine.mount({ workspaceContainer: div(), codespaceContainer: div() });
-  engine.show({ views: { workspace: "plain", codespace: "py" } });
+  engine.show({ views: { workspace: "words", codespace: "python" } });
   const workspace = engine.getWorkspace()!;
   const make = (type: string) => {
     const block = workspace.newBlock(`morphic:${type}`) as Blockly.BlockSvg;

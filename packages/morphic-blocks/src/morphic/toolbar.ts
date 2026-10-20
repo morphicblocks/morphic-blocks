@@ -34,14 +34,14 @@ export interface MorphicToolbarHandle {
 }
 
 export const toolbarItems = {
-  /** "Mode: <name>" label for the pane's active mode. */
-  modeLabel(): MorphicToolbarItem {
+  /** The name of the element the view shows, e.g. "python". */
+  viewLabel(): MorphicToolbarItem {
     return {
-      id: "mode-label",
+      id: "view-label",
       render: (ctx) => {
         const span = document.createElement("span");
         span.className = "morphic-toolbar-label";
-        span.textContent = readModeLabel(ctx);
+        span.textContent = ctx.engine.getViewElement(ctx.view) ?? "";
         return span;
       },
     };
@@ -269,7 +269,7 @@ export const toolbarItems = {
   /** Items for a view that shows the program but cannot change it. */
   readOnlyDefaults(): MorphicToolbarItem[] {
     return [
-      toolbarItems.modeLabel(),
+      toolbarItems.viewLabel(),
       toolbarItems.spacer(),
       toolbarItems.copy(),
       toolbarItems.zoomIn(),
@@ -285,7 +285,7 @@ export const toolbarItems = {
     switch (kind) {
       case "workspace":
         return [
-          toolbarItems.modeLabel(),
+          toolbarItems.viewLabel(),
           toolbarItems.spacer(),
           toolbarItems.undo(),
           toolbarItems.redo(),
@@ -298,7 +298,7 @@ export const toolbarItems = {
         ];
       case "codespace":
         return [
-          toolbarItems.modeLabel(),
+          toolbarItems.viewLabel(),
           toolbarItems.spacer(),
           toolbarItems.undo(),
           toolbarItems.redo(),
@@ -313,11 +313,6 @@ export const toolbarItems = {
     }
   },
 };
-
-function readModeLabel(ctx: MorphicToolbarCtx): string {
-  const name = ctx.engine.getViewMode(ctx.view);
-  return name ? `Mode: ${name}` : "";
-}
 
 export function renderToolbar(
   container: HTMLElement,

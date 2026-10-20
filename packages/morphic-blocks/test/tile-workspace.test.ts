@@ -121,7 +121,7 @@ describe("text rendered tiles", () => {
       {
         elementTypes: { python: "code" },
         modes: [{ name: "py", elements: ["python"], render: { python: "text-based" } }],
-        presets: [{ name: "text", toolbox: "py", views: { workspace: "py" } }],
+        presets: [{ name: "text", toolbox: "py", views: { workspace: "python" } }],
         code: { python: { emptyStatement: "pass" } },
         blocks: [
           {

@@ -695,6 +695,7 @@ export class MorphicToolboxCanvas {
     lifecycle?.onViewApplied?.(block, {
       Blockly,
       workspace: ws,
+      element: elementName,
       mode,
       context: "toolbox",
       definition,

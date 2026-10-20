@@ -45,11 +45,11 @@ jsdom cannot answer; tests check generated text, not rendering.
 2. User provides **behaviors** (JS/TS): functions that generate code for each block type
 3. User provides **CSS files**: one per mode, using `.morphic-mode-{name}` classes
 4. `MorphicBlocks.mount()` initializes Blockly + morphic features and sets up every view it gets a container for
-5. `engine.applyPreset()` / `engine.show()` switch what the toolbox and each view show at runtime — blocks re-render
+5. `engine.applyPreset()` / `engine.show()` switch the toolbox mode and the element each view shows at runtime — blocks re-render
 
-**Views** are declared by name in the definitions (`views`, or the mount option of the same name): `{ "blocks": "workspace", "read": { "kind": "codespace", "editable": false, "delete": { … } } }`, kinds `workspace` and `codespace` (a codespace with `editable: false` is what the preview was before 0.4.0). Without `views`, there are two: `workspace` and `codespace`. `mount()` is the single setup call: it takes `containers` by view name (`workspaceContainer` / `codespaceContainer` are short for `containers.workspace` / `.codespace`), `toolboxContainer`, `codeEditorContainer` and `toolbars` by view name, plus `editorTheme` and `themes` by view name, and sets up each view it gets a container for, so the same definitions serve a full page and a small embed. The first workspace with a container holds the program (`programView`); without one, Blockly runs headless (offscreen) so the block model stays authoritative. Every other view goes through the added-view code (`addView`). `mount()` returns a promise that settles once the text editors (lazy loaded CodeMirror) are ready; the workspace is ready immediately. Selection sync is on by default when more than one view is set up (`selectionSync: false` turns it off, an object configures it), and the code editor starts hidden. Presets say what the views show; without presets the first mode is used, and `show()` switches views freely at runtime. Options moved in 0.4.0 (`previewContainer`, `previewTheme`, `toolbarContainers`, the `codespace` mount option, `setModes()`, presets with `workspace`/`codespace`/`preview` keys) fail with directions.
+**Views** are declared by name in the definitions (`views`, or the mount option of the same name): `{ "blocks": "workspace", "read": { "kind": "codespace", "editable": false, "delete": { … } } }`, kinds `workspace` and `codespace` (a codespace with `editable: false` is what the preview was before 0.4.0). Without `views`, there are two: `workspace` and `codespace`. `mount()` is the single setup call: it takes `containers` by view name (`workspaceContainer` / `codespaceContainer` are short for `containers.workspace` / `.codespace`), `toolboxContainer`, `codeEditorContainer` and `toolbars` by view name, plus `editorTheme` and `themes` by view name, and sets up each view it gets a container for, so the same definitions serve a full page and a small embed. The first workspace with a container holds the program (`programView`); without one, Blockly runs headless (offscreen) so the block model stays authoritative. Every other view goes through the added-view code (`addView`). `mount()` returns a promise that settles once the text editors (lazy loaded CodeMirror) are ready; the workspace is ready immediately. Selection sync is on by default when more than one view is set up (`selectionSync: false` turns it off, an object configures it), and the code editor starts hidden. Views show a code element, not a mode (modes are for tiles only): presets say which, without presets every view shows the first mode's code element, and `show()` switches views freely at runtime. Options moved in 0.4.0 (`previewContainer`, `previewTheme`, `toolbarContainers`, the `codespace` mount option, `setModes()`, presets with `workspace`/`codespace`/`preview` keys) fail with directions.
 
-**Added views:** `engine.addView({ kind: "codespace" | "workspace", container, mode, name?, editable?, delete?, theme?, toolbar? })` adds a view at runtime, beside the declared ones, and returns a handle (`setMode`, `setTheme`, `dispose`, `ready`). Every view has a name: declared ones their own, added ones theirs or `view-N`. Toolbars, zoom, copy and `getViewMode()` look views up by name (`resolveView` in `MorphicBlocks.ts`), so features work for every view alike. Workspaces beside the program's take a fresh copy of the program after each batch of changes (replaying single events cannot follow how the engine rebuilds slot defaults). They are editable by default: every change made in one is forwarded to the program's workspace as a Blockly event, the copy back waits while that view is dragging or editing a field, its undo is the program's, and tiles dropped on it are created there; `editable: false` makes one read only. Presets name views by name; a name that is no declared view only warns (it may be added later). Showing and hiding the containers is the host's job.
+**Added views:** `engine.addView({ kind: "codespace" | "workspace", container, element, name?, editable?, delete?, theme?, toolbar? })` adds a view at runtime, beside the declared ones, and returns a handle (`getElement`, `show`, `setTheme`, `dispose`, `ready`). Every view has a name: declared ones their own, added ones theirs or `view-N`. Toolbars, zoom, copy and `getViewElement()` look views up by name (`resolveView` in `MorphicBlocks.ts`), so features work for every view alike. Workspaces beside the program's take a fresh copy of the program after each batch of changes (replaying single events cannot follow how the engine rebuilds slot defaults). They are editable by default: every change made in one is forwarded to the program's workspace as a Blockly event, the copy back waits while that view is dragging or editing a field, its undo is the program's, and tiles dropped on it are created there; `editable: false` makes one read only. Presets name views by name; a name that is no declared view only warns (it may be added later). Showing and hiding the containers is the host's job.
 
 ### Block identifier namespacing
 
@@ -128,8 +128,8 @@ A **mode** declares which elements are visible and, by scanning for the first `t
     { "name": "syntax-text", "elements": ["title", "syntax"], "render": { "syntax": "text-based" } }
   ],
   "presets": [
-    { "name": "starter", "label": "Starter", "toolbox": "iconic",      "views": { "workspace": "lexical" } },
-    { "name": "text",    "label": "Text",    "toolbox": "syntax-text", "views": { "codespace": "syntactic" } }
+    { "name": "starter", "label": "Starter", "toolbox": "iconic",      "views": { "workspace": "block" } },
+    { "name": "text",    "label": "Text",    "toolbox": "syntax-text", "views": { "codespace": "syntax" } }
   ],
   "categories": [
     { "name": "Output", "color": "#5C81A6" }
@@ -166,19 +166,21 @@ A **mode** declares which elements are visible and, by scanning for the first `t
 | `elements` | yes      | Element names rendered on the toolbox tile |
 | `render`   | no       | How each code element is drawn on a tile: `"block-based"` (default) or `"text-based"`, by element name |
 
-A mode is purely presentational: it names a subset of elements. Its **source element** — what a codespace or preview renders when the mode is assigned to it — is the first `type: "code"` element in its `elements` array. `render` only matters while the mode is the toolbox mode (since 0.4.0; before, the preset's `toolbox` entry carried it, and `mount()` reports that place with directions).
+A mode is purely presentational and only for toolbox tiles since 0.4.0: it names a subset of elements a tile shows. Its **source element**, the first `type: "code"` element in its `elements` array, is what views show where nothing names an element (the first mode's). `render` only matters while the mode is the toolbox mode (since 0.4.0; before, the preset's `toolbox` entry carried it, and `mount()` reports that place with directions).
 
 ### Presets
 
-A **preset** says what the toolbox and each view show: `{ name, label?, toolbox, views: { <view>: <mode> } }`. `toolbox` and at least one view are required; the views it lists are the ones it shows, and views it leaves out keep what they show.
+A **preset** says what the toolbox and each view show: `{ name, label?, toolbox: <mode>, views: { <view>: <code element> } }`. `toolbox` and at least one view are required; the views it lists are the ones it shows, and views it leaves out keep what they show.
 
 The `toolbox` entry is a **mode name**; that mode's `render` decides whether each code element shows as a block or as source text on the tiles.
 
-Presets are passed via the mount config (`presets`, initial `preset`), validated at mount (unknown modes, missing code elements, duplicate names; unknown views warn), applied at runtime with `engine.applyPreset(nameOrIndex)`, and reported to the host via `onPresetApplied(preset)` for pane-visibility layout. `show({ toolbox?, views? })`, in a preset's shape, is the lower-level API.
+Presets are passed via the mount config (`presets`, initial `preset`), validated at mount (unknown modes, views showing no code element, duplicate names; unknown views warn), applied at runtime with `engine.applyPreset(nameOrIndex)`, and reported to the host via `onPresetApplied(preset)` for pane-visibility layout. `show({ toolbox?, views? })`, in a preset's shape, is the lower-level API.
 
 ### Workspace template resolution
 
-1. First `type: "code"` element listed in the mode's `elements` array
+A workspace view's blocks use the element it shows (`resolveElementView`); toolbox blocks drawn by Blockly resolve through the toolbox mode (`resolveBlockView`):
+
+1. The element the view shows, or the first `type: "code"` element listed in the mode's `elements` array
 2. Fallback: first `type: "code"` element in the block definition
 3. Fallback: element literally named `"block"` (backward compat)
 4. Fallback: first element in the definition

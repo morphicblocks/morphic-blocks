@@ -34,21 +34,21 @@ afterEach(() => {
   document.body.innerHTML = "";
 });
 
-async function printed(mode: string): Promise<string[]> {
+async function printed(element: string): Promise<string[]> {
   const engine = new MorphicBlocks(format, {
     show: () => 'console.log(true, false, null, NaN, [1, "a"], "text", 3);\n',
   });
   engines.push(engine);
   await engine.mount({ workspaceContainer: document.body.appendChild(document.createElement("div")) });
-  engine.show({ views: { workspace: mode, codespace: mode } });
+  engine.show({ views: { workspace: element } });
   engine.getWorkspace()!.newBlock("morphic:show");
   return engine.runJavaScript().output.map((line) => line.text);
 }
 
 test("values print the way the shown language writes them", async () => {
-  expect(await printed("py")).toEqual(["True False None nan [1, 'a'] text 3"]);
+  expect(await printed("python")).toEqual(["True False None nan [1, 'a'] text 3"]);
 });
 
 test("without a value format, values print as JavaScript", async () => {
-  expect(await printed("js")).toEqual(["true false null NaN 1,a text 3"]);
+  expect(await printed("javascript")).toEqual(["true false null NaN 1,a text 3"]);
 });

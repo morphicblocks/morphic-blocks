@@ -115,7 +115,7 @@ describe("%1:type", () => {
     const engine = new MorphicBlocks(twoModes, {});
     engines.push(engine);
     await engine.mount({ workspaceContainer: div() });
-    engine.show({ views: { workspace: "java", codespace: "java" } });
+    engine.show({ views: { workspace: "java" } });
     const workspace = engine.getWorkspace()!;
     const declare = workspace.newBlock("morphic:declare") as Blockly.BlockSvg;
     declare.initSvg();
@@ -123,9 +123,9 @@ describe("%1:type", () => {
     five.initSvg();
     declare.getInput("VALUE")!.connection!.connect(five.outputConnection!);
 
-    engine.show({ views: { workspace: "js", codespace: "js" } });
+    engine.show({ views: { workspace: "js" } });
     expect(declare.getField("MORPHIC_TYPE_1")).toBeNull();
-    engine.show({ views: { workspace: "java", codespace: "java" } });
+    engine.show({ views: { workspace: "java" } });
     expect(declare.getField("MORPHIC_TYPE_1")?.getText()).toBe("int");
   });
 

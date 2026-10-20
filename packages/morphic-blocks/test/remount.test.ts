@@ -12,7 +12,7 @@ const format: MorphicBlocksFormat = {
   elementTypes: { code: "code" },
   modes: [{ name: "only", elements: ["code"] }],
   views: { workspace: "workspace", codespace: "codespace", preview: { kind: "codespace", editable: false } },
-  presets: [{ name: "all", toolbox: "only", views: { workspace: "only", codespace: "only", preview: "only" } }],
+  presets: [{ name: "all", toolbox: "only", views: { workspace: "code", codespace: "code", preview: "code" } }],
   blocks: [{ identifier: "say", elements: { code: "say()" }, shape: "statement" }],
 };
 

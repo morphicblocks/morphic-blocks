@@ -36,7 +36,7 @@ async function setUp(editable = false) {
   const first = main.newBlock("morphic:say") as Blockly.BlockSvg;
   first.initSvg();
   first.render();
-  const view = engine.addView({ kind: "workspace", container: div(), mode: "js", name: "mirror", editable });
+  const view = engine.addView({ kind: "workspace", container: div(), element: "javascript", name: "mirror", editable });
   // Private: the mirror's own Blockly workspace.
   const mirror = (engine as unknown as { views: Set<{ workspace?: Blockly.WorkspaceSvg }> }).views
     .values()
@@ -82,10 +82,10 @@ describe("added workspaces", () => {
     expect(mirror.getAllBlocks(false)).toHaveLength(0);
   });
 
-  test("switch mode on their own and mirror the selection", async () => {
+  test("switch element on their own and mirror the selection", async () => {
     const { first, view, mirror } = await setUp();
 
-    view.setMode("py");
+    view.show("python");
     expect(labels(mirror.getBlockById(first.id))).toBe("print hi");
 
     Blockly.common.setSelected(first);
@@ -99,7 +99,7 @@ describe("added workspaces", () => {
     view.dispose();
     main.newBlock("morphic:say");
     await tick();
-    expect(engine.getViewMode("mirror")).toBeUndefined();
+    expect(engine.getViewElement("mirror")).toBeUndefined();
   });
 
   test("copy the program as their own mode writes it", async () => {

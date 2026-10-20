@@ -72,7 +72,7 @@ describe("toolbox width", () => {
         {
           ...format,
           modes: format.modes!.map((mode) => ({ ...mode, render: { code: "text-based" } })),
-          presets: [{ name: "text", toolbox: "python", views: { workspace: "python" } }],
+          presets: [{ name: "text", toolbox: "python", views: { workspace: "code" } }],
         },
         {},
       );
@@ -93,7 +93,7 @@ describe("keyword colors on text tiles", () => {
     elementTypes: { python: "code" },
     code: { python: { highlighting: { keywords: ["print"], colors: { keyword: "#123456" } } } },
     modes: [{ name: "py", elements: ["python"], render: { python: "text-based" } }],
-    presets: [{ name: "text", toolbox: "py", views: { workspace: "py" } }],
+    presets: [{ name: "text", toolbox: "py", views: { workspace: "python" } }],
     blocks: [{ identifier: "say", elements: { python: "print(1)" }, shape: "statement" }],
   };
 

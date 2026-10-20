@@ -12,7 +12,7 @@ const format: MorphicBlocksFormat = {
   elementTypes: { code: "code" },
   modes: [{ name: "only", elements: ["code"] }],
   views: { workspace: "workspace", codespace: "codespace", preview: { kind: "codespace", editable: false } },
-  presets: [{ name: "all", toolbox: "only", views: { workspace: "only", codespace: "only", preview: "only" } }],
+  presets: [{ name: "all", toolbox: "only", views: { workspace: "code", codespace: "code", preview: "code" } }],
   blocks: [{ identifier: "say", elements: { code: "say()" }, shape: "statement" }],
 };
 
@@ -70,7 +70,7 @@ describe("single mount call", () => {
     await engine.mount({ workspaceContainer: div(), codespaceContainer: div() });
     const before = syncOf(engine);
 
-    await engine.addView({ kind: "codespace", container: div(), mode: "only" }).ready;
+    await engine.addView({ kind: "codespace", container: div(), element: "code" }).ready;
 
     expect(syncOf(engine)).toBeDefined();
     expect(syncOf(engine)).not.toBe(before);

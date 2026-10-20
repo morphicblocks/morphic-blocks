@@ -5,12 +5,12 @@ import type { MorphicBlocksFormat } from "../src/morphic/types";
 /** Each view follows only its own mode. */
 
 const format: MorphicBlocksFormat = {
-  elementTypes: { code: "code" },
+  elementTypes: { code: "code", other: "code" },
   modes: [
     { name: "one", elements: ["code"] },
-    { name: "two", elements: ["code"] },
+    { name: "two", elements: ["other"] },
   ],
-  blocks: [{ identifier: "say", elements: { code: "say()" }, shape: "statement" }],
+  blocks: [{ identifier: "say", elements: { code: "say()", other: "say();" }, shape: "statement" }],
 };
 
 const engines: MorphicBlocks[] = [];
@@ -21,7 +21,7 @@ afterEach(() => {
   document.body.innerHTML = "";
 });
 
-describe("setModes", () => {
+describe("show", () => {
   test("a toolbox mode change leaves workspace blocks alone", async () => {
     const engine = new MorphicBlocks(format, { say: () => "say();\n" });
     engines.push(engine);
@@ -39,7 +39,7 @@ describe("setModes", () => {
     engine.show({ toolbox: "two" });
     expect(redraws).toBe(0);
 
-    engine.show({ views: { workspace: "two", codespace: "two" } });
+    engine.show({ views: { workspace: "other" } });
     expect(redraws).toBe(1);
   });
 });
@@ -77,7 +77,7 @@ describe("setModeElements", () => {
     expect(visibilityCss()).not.toContain(".morphic-mode-one > .morphic-element-title");
   });
 
-  test("workspace blocks switch to the mode's new code element", async () => {
+  test("workspace blocks keep the element their view shows", async () => {
     const engine = await mountTiles();
     const block = engine.getWorkspace()!.newBlock("morphic:say");
     block.initSvg();
@@ -86,7 +86,7 @@ describe("setModeElements", () => {
 
     engine.setModeElements("one", ["python"]);
 
-    expect(text()).toBe("print()");
+    expect(text()).toBe("say()");
   });
 
   test("the host's mode list is left alone", async () => {
@@ -97,11 +97,10 @@ describe("setModeElements", () => {
     expect(tileFormat.modes![0]!.elements).toEqual(["title", "code"]);
   });
 
-  test("unknown elements and a codespace mode without code are refused", async () => {
+  test("unknown elements are refused", async () => {
     const engine = await mountTiles({ codespaceContainer: div() });
 
     expect(() => engine.setModeElements("one", ["nope"])).toThrow(/unknown elements "nope"/);
-    expect(() => engine.setModeElements("one", ["title"])).toThrow(/needs a code element/);
   });
 });
 
@@ -116,13 +115,13 @@ describe("text view mode classes", () => {
       containers: { workspace: div(), codespace: codespaceContainer, preview: previewContainer },
     });
 
-    engine.show({ views: { codespace: "one", preview: "two" } });
-    expect(codespaceContainer.classList).toContain("morphic-mode-one");
-    expect(previewContainer.classList).toContain("morphic-mode-two");
+    engine.show({ views: { codespace: "code", preview: "other" } });
+    expect(codespaceContainer.classList).toContain("morphic-mode-code");
+    expect(previewContainer.classList).toContain("morphic-mode-other");
 
-    engine.show({ views: { codespace: "two" } });
-    expect(codespaceContainer.classList).toContain("morphic-mode-two");
-    expect(codespaceContainer.classList).not.toContain("morphic-mode-one");
+    engine.show({ views: { codespace: "other" } });
+    expect(codespaceContainer.classList).toContain("morphic-mode-other");
+    expect(codespaceContainer.classList).not.toContain("morphic-mode-code");
   });
 });
 
@@ -150,10 +149,10 @@ test("a field a mode leaves out keeps its value for the modes that show it", asy
   const block = engine.getWorkspace()!.newBlock("morphic:declare");
   block.setFieldValue("String", "TYPE");
 
-  engine.show({ views: { workspace: "python", codespace: "python" } });
+  engine.show({ views: { workspace: "python" } });
   expect(block.getField("TYPE")).toBeNull();
 
-  engine.show({ views: { workspace: "java", codespace: "java" } });
+  engine.show({ views: { workspace: "java" } });
   expect(block.getFieldValue("TYPE")).toBe("String");
 });
 

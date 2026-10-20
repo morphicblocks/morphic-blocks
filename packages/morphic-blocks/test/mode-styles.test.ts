@@ -74,6 +74,6 @@ describe("starting mode without presets", () => {
     // A folder import lists files alphabetically, so js.css comes before py.css.
     const engine = mountWith({ modesFolder: { "./modes/js.css": "/assets/js.css", "./modes/py.css": "/assets/py.css" } });
 
-    expect(engine.getViewMode("workspace")).toBe("py");
+    expect(engine.getToolboxMode()).toBe("py");
   });
 });

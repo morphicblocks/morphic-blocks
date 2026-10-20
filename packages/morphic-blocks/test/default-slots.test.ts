@@ -11,24 +11,25 @@ import type { MorphicBlocksFormat } from "../src/morphic/types";
  */
 
 const format: MorphicBlocksFormat = {
-  elementTypes: { code: "code" },
+  elementTypes: { code: "code", other: "code" },
   code: {
     code: { empty: { Number: { shadow: "math_number", fieldValues: { NUM: "1" } } } },
+    other: { empty: { Number: { shadow: "math_number", fieldValues: { NUM: "1" } } } },
   },
   modes: [
     { name: "one", elements: ["code"] },
-    { name: "two", elements: ["code"] },
+    { name: "two", elements: ["other"] },
   ],
   blocks: [
     {
       identifier: "print",
-      elements: { code: "print(%1)" },
+      elements: { code: "print(%1)", other: "print(%1);" },
       shape: "statement",
       inputSlots: { "1": { kind: "value", name: "VALUE", check: "Number" } },
     },
     {
       identifier: "not",
-      elements: { code: "not %1" },
+      elements: { code: "not %1", other: "!%1" },
       output: "Number",
       inputSlots: { "1": { kind: "value", name: "VALUE", check: "Number" } },
     },
@@ -65,7 +66,7 @@ describe("default slot values", () => {
     const print = create(workspace, "print");
     print.getInputTargetBlock("VALUE")!.setFieldValue("5", "NUM");
 
-    engine.show({ views: { workspace: "two", codespace: "two" } });
+    engine.show({ views: { workspace: "other" } });
 
     expect(slotValue(workspace.getBlockById(print.id)!)).toBe(5);
   });
