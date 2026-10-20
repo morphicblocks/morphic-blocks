@@ -115,16 +115,16 @@ A **mode** declares which elements are visible and, by scanning for the first `t
 ```json
 {
   "elementTypes": {
-    "title":  "text",
-    "text":   "text",
-    "icon":   "image",
-    "block":  "code",
-    "syntax": "code"
+    "title":       "text",
+    "description": "text",
+    "icon":        "image",
+    "block":       "code",
+    "syntax":      "code"
   },
   "modes": [
-    { "name": "iconic",    "elements": ["icon", "title", "text"] },
+    { "name": "iconic",    "elements": ["icon", "title", "description"] },
     { "name": "lexical",   "elements": ["title", "block"] },
-    { "name": "syntactic", "elements": ["title", "syntax", "text"] },
+    { "name": "syntactic", "elements": ["title", "syntax", "description"] },
     { "name": "syntax-text", "elements": ["title", "syntax"], "render": { "syntax": "text-based" } }
   ],
   "presets": [
@@ -143,7 +143,7 @@ A **mode** declares which elements are visible and, by scanning for the first `t
         "icon":   "<img src='assets/log.svg'>",
         "block":  "log %1",
         "syntax": "console.log( %1 );",
-        "text":   "Print a message"
+        "description": "Print a message"
       },
       "inputSlots": { "1": { "kind": "value", "name": "MESSAGE" } }
     }
@@ -193,7 +193,7 @@ All elements are always rendered; CSS controls visibility:
   <div class="morphic-element-icon"><img src="assets/log.svg"></div>
   <div class="morphic-element-block">log <span class="morphic-slot"></span></div>
   <div class="morphic-element-code">console.log(...);</div>
-  <div class="morphic-element-text">Print a message</div>
+  <div class="morphic-element-description">Print a message</div>
 </div>
 ```
 
