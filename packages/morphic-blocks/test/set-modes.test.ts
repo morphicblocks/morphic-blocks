@@ -104,8 +104,8 @@ describe("setModeElements", () => {
   });
 });
 
-describe("text view mode classes", () => {
-  test("codespace and preview are marked with the mode they show", async () => {
+describe("view classes", () => {
+  test("codespace and read only codespace are marked with the element they show", async () => {
     const engine = new MorphicBlocks(format, { say: () => "say();\n" });
     engines.push(engine);
     const codespaceContainer = div();
@@ -116,12 +116,12 @@ describe("text view mode classes", () => {
     });
 
     engine.show({ views: { codespace: "code", preview: "other" } });
-    expect(codespaceContainer.classList).toContain("morphic-mode-code");
-    expect(previewContainer.classList).toContain("morphic-mode-other");
+    expect(codespaceContainer.classList).toContain("morphic-shows-code");
+    expect(previewContainer.classList).toContain("morphic-shows-other");
 
     engine.show({ views: { codespace: "other" } });
-    expect(codespaceContainer.classList).toContain("morphic-mode-other");
-    expect(codespaceContainer.classList).not.toContain("morphic-mode-code");
+    expect(codespaceContainer.classList).toContain("morphic-shows-other");
+    expect(codespaceContainer.classList).not.toContain("morphic-shows-code");
   });
 });
 

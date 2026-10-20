@@ -29,16 +29,16 @@ const format: MorphicBlocksFormat = {
 };
 
 const modeStyles = {
-  py: ".morphic-workspace-root.morphic-mode-py .blocklyText { font: 700 16px monospace; }",
-  plain: ".morphic-mode-plain { color: teal; }",
+  py: ".morphic-workspace-root.morphic-shows-python .blocklyText { font: 700 16px monospace; }",
+  plain: ".morphic-shows-code { color: teal; }",
 };
 
 // jsdom does not rank competing CSS rules like a browser (the first matching
 // rule wins, whatever its order or specificity), so Blockly's own font rule
 // would always beat the mode's. Answer what a browser computes instead: block
-// text inside a py workspace, or inside a py tile's code element, is drawn in
+// text inside a workspace showing python, or inside a py tile's code element, is drawn in
 // the py font.
-const pyText = ".morphic-workspace-root.morphic-mode-py .blocklyText, .morphic-mode-py > .morphic-element-code .blocklyText";
+const pyText = ".morphic-workspace-root.morphic-shows-python .blocklyText, .morphic-mode-py > .morphic-element-code .blocklyText";
 const pyFont: Record<string, string> = { fontFamily: "monospace", fontSize: "16px", fontWeight: "700" };
 
 beforeEach(() => {

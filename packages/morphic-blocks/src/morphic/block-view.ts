@@ -2,6 +2,9 @@ import * as Blockly from "blockly";
 import {
   CONTEXT_CLASS_PREFIX,
   MODE_CLASS_PREFIX,
+  PRESET_CLASS_PREFIX,
+  SHOWS_CLASS_PREFIX,
+  VIEW_CLASS_PREFIX,
   CATEGORY_CLASS_PREFIX,
   BLOCK_CLASS_PREFIX,
   ALIGN_CENTRE,
@@ -196,24 +199,36 @@ export function applyBlockColorFromCSS(block: Blockly.BlockSvg): void {
 }
 
 /**
- * Mark a text view (codespace, preview) with the mode it shows, so a mode's
- * CSS can style it like the workspace and the tiles.
+ * Mark a view's container with combinable classes, so app CSS can style it:
+ * `morphic-view` and `morphic-view-<name>`, `morphic-shows-<element>` for
+ * the element it shows, its kind's root class (`morphic-workspace-root`,
+ * `morphic-codespace-root`) and any others given (`morphic-read-only`).
  */
-export function applyTextViewModeClass(
+export function applyViewClasses(
   root: Element,
-  mode: MorphicModeName | undefined,
-  rootClassName: string,
+  view: { name?: string; element?: string; classNames: string[] },
 ): void {
   removePrefixedClasses(root.classList, MODE_CLASS_PREFIX);
-  root.classList.add(rootClassName);
-  if (mode) {
-    root.classList.add(`${MODE_CLASS_PREFIX}${toModeClassToken(mode)}`);
-  }
+  removePrefixedClasses(root.classList, SHOWS_CLASS_PREFIX);
+  root.classList.add("morphic-view", ...view.classNames);
+  if (view.name) root.classList.add(`${VIEW_CLASS_PREFIX}${toModeClassToken(view.name)}`);
+  if (view.element) root.classList.add(`${SHOWS_CLASS_PREFIX}${toModeClassToken(view.element)}`);
 }
 
+/** Mark a view's container with the preset applied last, `morphic-preset-<name>`. */
+export function applyPresetClass(root: Element, preset: string | undefined): void {
+  removePrefixedClasses(root.classList, PRESET_CLASS_PREFIX);
+  if (preset) root.classList.add(`${PRESET_CLASS_PREFIX}${toModeClassToken(preset)}`);
+}
+
+/**
+ * Mark a block's drawing: a workspace block with the element it shows
+ * (`morphic-shows-<element>`), a toolbox block with its mode
+ * (`morphic-mode-<mode>`), and both with the context.
+ */
 export function decorateBlockRoot(
   block: Blockly.BlockSvg,
-  mode: MorphicModeName,
+  shown: string,
   context: MorphicRenderContext,
 ): void {
   const root = block.getSvgRoot();
@@ -222,8 +237,10 @@ export function decorateBlockRoot(
   }
 
   removePrefixedClasses(root.classList, MODE_CLASS_PREFIX);
+  removePrefixedClasses(root.classList, SHOWS_CLASS_PREFIX);
   removePrefixedClasses(root.classList, CONTEXT_CLASS_PREFIX);
-  root.classList.add(`${MODE_CLASS_PREFIX}${toModeClassToken(mode)}`);
+  const prefix = context === "workspace" ? SHOWS_CLASS_PREFIX : MODE_CLASS_PREFIX;
+  root.classList.add(`${prefix}${toModeClassToken(shown)}`);
   root.classList.add(`${CONTEXT_CLASS_PREFIX}${context}`);
 }
 

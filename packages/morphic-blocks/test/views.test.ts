@@ -46,7 +46,7 @@ describe("added read only codespaces", () => {
 
     expect(text(python)).toBe("print()");
     expect(text(javascript)).toBe("console.log();");
-    expect(javascript.classList).toContain("morphic-mode-javascript");
+    expect(javascript.classList).toContain("morphic-shows-javascript");
   });
 
   test("a read only codespace's element can change, and it can be removed", async () => {

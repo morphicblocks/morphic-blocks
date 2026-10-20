@@ -5,8 +5,9 @@ import {
   applyBlockView,
   applyBlockIdentifierClass,
   applyBlockColorFromCSS,
+  applyPresetClass,
   applyRootModeClasses,
-  applyTextViewModeClass,
+  applyViewClasses,
   captureFieldValues,
   decorateBlockRoot,
   isOnCanvas,
@@ -483,6 +484,7 @@ export class MorphicBlocks extends EventTarget {
     }
 
     this.activePreset = initialPreset;
+    this.applyPresetClasses();
     if (initialPreset) resolvedConfig.onPresetApplied?.(initialPreset);
 
     return this.mountViews(config, ready, ++this.mountGeneration);
@@ -515,6 +517,13 @@ export class MorphicBlocks extends EventTarget {
     if (wantsSync && this.hasTextEditor()) {
       this.enableSelectionSync(typeof wantsSync === "object" ? wantsSync : undefined);
     }
+  }
+
+  /** Mark every view's container with the preset applied last. */
+  private applyPresetClasses(): void {
+    const preset = this.activePreset?.name;
+    if (this.mountConfig?.programView) applyPresetClass(this.mountConfig.workspaceHost, preset);
+    for (const view of this.views) applyPresetClass(view.container, preset);
   }
 
   /** Whether any text editor is set up, which selection sync needs. */
@@ -570,6 +579,7 @@ export class MorphicBlocks extends EventTarget {
     );
     this.show({ toolbox: preset.toolbox, views });
     this.activePreset = preset;
+    this.applyPresetClasses();
     this.mountConfig.onPresetApplied?.(preset);
     return preset;
   }
@@ -2376,7 +2386,7 @@ export class MorphicBlocks extends EventTarget {
           : { showPlaceholderMarkers: false }),
       },
     );
-    const rootClass = editing ? "morphic-codespace-root" : "morphic-codespace-root morphic-read-only";
+    const rootClasses = editing ? ["morphic-codespace-root"] : ["morphic-codespace-root", "morphic-read-only"];
     let name = options.name;
     while (name === undefined || this.resolveView(name)) name = `view-${++this.viewCount}`;
     const view: AddedView = {
@@ -2389,7 +2399,8 @@ export class MorphicBlocks extends EventTarget {
       delete: options.delete,
     };
     this.views.add(view);
-    applyTextViewModeClass(view.container, view.element, rootClass);
+    applyViewClasses(view.container, { name, element: view.element, classNames: rootClasses });
+    applyPresetClass(view.container, this.activePreset?.name);
     const toolbar = options.toolbar
       ? this.mountToolbar(options.toolbar.container, {
           view: name,
@@ -2413,7 +2424,7 @@ export class MorphicBlocks extends EventTarget {
         if (!this.views.has(view)) return;
         this.checkViewElement("show", element);
         view.element = element;
-        applyTextViewModeClass(view.container, element, rootClass);
+        applyViewClasses(view.container, { name, element, classNames: rootClasses });
         editor.setHighlightRules(this.highlightRulesFor(element));
         editor.refresh();
         for (const handle of this.toolbars) handle.refresh();
@@ -2468,6 +2479,7 @@ export class MorphicBlocks extends EventTarget {
     };
     this.views.add(view);
     this.styleWorkspaceView(view);
+    applyPresetClass(view.container, this.activePreset?.name);
 
     // A fresh copy of the program, drawn in the view's mode.
     const copyProgram = (): void => {
@@ -2603,7 +2615,11 @@ export class MorphicBlocks extends EventTarget {
   /** The element's classes and block font on an added workspace. */
   private styleWorkspaceView(view: AddedView): void {
     if (!view.workspace) return;
-    applyRootModeClasses(view.container, view.element, "workspace", "morphic-workspace-root");
+    applyViewClasses(view.container, {
+      name: view.name,
+      element: view.element,
+      classNames: ["morphic-workspace-root", "morphic-context-workspace", ...(view.editable === false ? ["morphic-read-only"] : [])],
+    });
     this.syncFontOf(view.workspace, view.container);
   }
 
@@ -3180,12 +3196,16 @@ export class MorphicBlocks extends EventTarget {
     }
 
     const container = this.mountConfig.workspaceHost;
-    applyRootModeClasses(
-      container,
-      this.mountConfig.workspaceElement,
-      "workspace",
-      "morphic-workspace-root",
-    );
+    const programView = this.mountConfig.programView;
+    applyViewClasses(container, {
+      name: programView,
+      element: this.mountConfig.workspaceElement,
+      classNames: [
+        "morphic-workspace-root",
+        "morphic-context-workspace",
+        ...(programView && this.mountConfig.viewDeclarations[programView]?.editable === false ? ["morphic-read-only"] : []),
+      ],
+    });
     const workspaceClasses = this.resolveClassNames(
       this.mountConfig.ui?.workspaceClassName,
     );
