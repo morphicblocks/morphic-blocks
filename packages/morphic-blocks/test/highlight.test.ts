@@ -37,8 +37,11 @@ describe("highlight colors", () => {
   test("a view's own colours are more specific than any view's defaults", async () => {
     const engine = new MorphicBlocks(format, { say: () => "" });
     engines.push(engine);
-    await engine.mount({ workspaceContainer: div(), codespaceContainer: div(), previewContainer: div() });
-    engine.setModes({ codespaceMode: "py", previewMode: "js" });
+    await engine.mount({
+      views: { workspace: "workspace", codespace: "codespace", preview: { kind: "codespace", editable: false } },
+      containers: { workspace: div(), codespace: div(), preview: div() },
+    });
+    engine.show({ views: { codespace: "py", preview: "js" } });
 
     const css = pageCss();
     const own = /([^{}]*)\{[^}]*#123456/.exec(css)?.[1]?.trim();

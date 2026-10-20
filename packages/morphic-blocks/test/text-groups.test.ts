@@ -26,7 +26,7 @@ async function setUp() {
   engines.push(engine);
   const codespace = div();
   await engine.mount({ workspaceContainer: div(), codespaceContainer: codespace });
-  engine.setModes({ codespaceMode: "py" });
+  engine.show({ views: { codespace: "py" } });
   const workspace = engine.getWorkspace()!;
   const place = (y: number) => {
     const block = workspace.newBlock("morphic:say") as Blockly.BlockSvg;

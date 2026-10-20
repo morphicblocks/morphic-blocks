@@ -65,7 +65,7 @@ test("an active highlight takes the new colour when the theme changes", async ()
   const codespace = (engine as unknown as { codespace: { highlightLines(span: { fromLine: number; toLine: number }): void } }).codespace;
   codespace.highlightLines({ fromLine: 1, toLine: 1 });
 
-  engine.setCodespaceTheme({ selectionBackground: "#00ff00" });
+  engine.setViewTheme("codespace", { selectionBackground: "#00ff00" });
 
   expect(codespaceContainer.querySelector(".morphic-highlight")?.getAttribute("style")).toContain("#00ff00");
 });

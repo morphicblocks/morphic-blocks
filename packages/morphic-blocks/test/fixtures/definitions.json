@@ -14,9 +14,14 @@
     { "name": "only", "elements": ["title", "code"] },
     { "name": "only-text", "elements": ["title", "code"], "render": { "code": "text-based" } }
   ],
+  "views": {
+    "workspace": "workspace",
+    "codespace": "codespace",
+    "preview": { "kind": "codespace", "editable": false }
+  },
   "presets": [
-    { "name": "blocks", "toolbox": "only", "workspace": "only" },
-    { "name": "text", "toolbox": "only-text", "codespace": "only", "preview": "only" }
+    { "name": "blocks", "toolbox": "only", "views": { "workspace": "only" } },
+    { "name": "text", "toolbox": "only-text", "views": { "codespace": "only", "preview": "only" } }
   ],
   "blocks": [
     {

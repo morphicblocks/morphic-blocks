@@ -83,7 +83,7 @@ describe("block text font", () => {
   test("a mode without its own font goes back to Blockly's font", () => {
     const engine = mount();
 
-    engine.setModes({ workspaceMode: "plain" });
+    engine.show({ views: { workspace: "plain", codespace: "plain" } });
 
     expect(engine.getWorkspace()!.getTheme().name).toBe("classic");
     expect(constantsOf(engine).FIELD_TEXT_FONTFAMILY).toBe("sans-serif");
@@ -93,8 +93,8 @@ describe("block text font", () => {
     const engine = mount();
     const first = engine.getWorkspace()!.getTheme();
 
-    engine.setModes({ workspaceMode: "plain" });
-    engine.setModes({ workspaceMode: "py" });
+    engine.show({ views: { workspace: "plain", codespace: "plain" } });
+    engine.show({ views: { workspace: "py", codespace: "py" } });
 
     expect(engine.getWorkspace()!.getTheme()).toBe(first);
   });

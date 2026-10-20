@@ -36,10 +36,10 @@ describe("setModes", () => {
       render();
     };
 
-    engine.setModes({ toolboxMode: "two" });
+    engine.show({ toolbox: "two" });
     expect(redraws).toBe(0);
 
-    engine.setModes({ workspaceMode: "two" });
+    engine.show({ views: { workspace: "two", codespace: "two" } });
     expect(redraws).toBe(1);
   });
 });
@@ -111,13 +111,16 @@ describe("text view mode classes", () => {
     engines.push(engine);
     const codespaceContainer = div();
     const previewContainer = div();
-    await engine.mount({ workspaceContainer: div(), codespaceContainer, previewContainer });
+    await engine.mount({
+      views: { workspace: "workspace", codespace: "codespace", preview: { kind: "codespace", editable: false } },
+      containers: { workspace: div(), codespace: codespaceContainer, preview: previewContainer },
+    });
 
-    engine.setModes({ codespaceMode: "one", previewMode: "two" });
+    engine.show({ views: { codespace: "one", preview: "two" } });
     expect(codespaceContainer.classList).toContain("morphic-mode-one");
     expect(previewContainer.classList).toContain("morphic-mode-two");
 
-    engine.setModes({ codespaceMode: "two" });
+    engine.show({ views: { codespace: "two" } });
     expect(codespaceContainer.classList).toContain("morphic-mode-two");
     expect(codespaceContainer.classList).not.toContain("morphic-mode-one");
   });
@@ -147,10 +150,10 @@ test("a field a mode leaves out keeps its value for the modes that show it", asy
   const block = engine.getWorkspace()!.newBlock("morphic:declare");
   block.setFieldValue("String", "TYPE");
 
-  engine.setModes({ workspaceMode: "python" });
+  engine.show({ views: { workspace: "python", codespace: "python" } });
   expect(block.getField("TYPE")).toBeNull();
 
-  engine.setModes({ workspaceMode: "java" });
+  engine.show({ views: { workspace: "java", codespace: "java" } });
   expect(block.getFieldValue("TYPE")).toBe("String");
 });
 

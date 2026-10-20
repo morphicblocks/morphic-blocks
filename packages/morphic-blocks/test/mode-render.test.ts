@@ -11,8 +11,8 @@ const format: MorphicBlocksFormat = {
     { name: "text", elements: ["python"], render: { python: "text-based" } },
   ],
   presets: [
-    { name: "blocks", toolbox: "blocks", workspace: "blocks" },
-    { name: "text", toolbox: "text", workspace: "blocks" },
+    { name: "blocks", toolbox: "blocks", views: { workspace: "blocks" } },
+    { name: "text", toolbox: "text", views: { workspace: "blocks" } },
   ],
   blocks: [{ identifier: "say", elements: { python: "say()" }, shape: "statement" }],
 };
@@ -52,10 +52,10 @@ describe("a mode's render", () => {
 
   test("follows the toolbox mode when it switches", async () => {
     const { engine, tile } = await toolbox();
-    engine.setModes({ toolboxMode: "text" });
+    engine.show({ toolbox: "text" });
     expect(tile().querySelector("svg")).toBeNull();
 
-    engine.setModes({ toolboxMode: "blocks" });
+    engine.show({ toolbox: "blocks" });
     expect(tile().querySelector("svg")).not.toBeNull();
   });
 });
@@ -82,9 +82,9 @@ describe("the 0.3 format", () => {
     expect(() => new MorphicBlocks(old, {}).mount({ workspaceContainer: div() })).toThrow(/"text" is now "text-based"/);
   });
 
-  test("setModes no longer takes toolboxRender", async () => {
+  test("setModes points to show()", async () => {
     const { engine } = await toolbox();
 
-    expect(() => engine.setModes({ toolboxRender: { python: "text" } } as never)).toThrow(/moved into the mode/);
+    expect(() => engine.setModes({ toolboxRender: { python: "text" } })).toThrow(/replaced by show\(\)/);
   });
 });

@@ -21,6 +21,11 @@
       "type": "array",
       "items": { "$ref": "#/$defs/mode" }
     },
+    "views": {
+      "description": "The views by name; mount() sets up each one it gets a container for. The first workspace with a container holds the program.",
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/view" }
+    },
     "presets": {
       "type": "array",
       "items": { "$ref": "#/$defs/preset" }
@@ -139,18 +144,39 @@
       },
       "additionalProperties": false
     },
+    "view": {
+      "oneOf": [
+        { "enum": ["workspace", "codespace"] },
+        {
+          "type": "object",
+          "required": ["kind"],
+          "properties": {
+            "kind": { "enum": ["workspace", "codespace"] },
+            "editable": { "description": "Whether the program can be changed in the view. Default true.", "type": "boolean" },
+            "delete": {
+              "description": "How blocks are deleted in a codespace; each way is on unless set to false.",
+              "type": "object",
+              "properties": {
+                "lineButtons": { "type": "boolean" },
+                "keys": { "type": "boolean" },
+                "toolbarButton": { "type": "boolean" }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
     "preset": {
       "type": "object",
-      "required": ["name", "toolbox"],
+      "required": ["name", "toolbox", "views"],
       "properties": {
         "name": { "type": "string" },
         "label": { "type": "string" },
         "toolbox": { "description": "The mode of the toolbox tiles.", "type": "string" },
-        "workspace": { "type": "string" },
-        "codespace": { "type": "string" },
-        "preview": { "type": "string" },
         "views": {
-          "description": "Modes of views added with addView(), by view name.",
+          "description": "What each view the preset shows shows, by view name.",
           "type": "object",
           "additionalProperties": { "type": "string" }
         }

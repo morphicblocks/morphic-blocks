@@ -3,7 +3,7 @@ import type {
   MorphicToolbarCtx,
   MorphicToolbarDisplay,
   MorphicToolbarItem,
-  MorphicToolbarPane,
+  MorphicViewKind,
   MorphicRunResult,
 } from "./types";
 
@@ -20,7 +20,6 @@ const ICON_ZOOM_FIT = `<svg viewBox="0 0 16 16" width="14" height="14" fill="non
 const ICON_SAVE = `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2h8l2 2v10H3z"/><rect x="5" y="2" width="6" height="4"/><rect x="5" y="9" width="6" height="4"/></svg>`;
 const ICON_LOAD = `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8v5a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V8"/><polyline points="5 5 8 2 11 5"/><line x1="8" y1="2" x2="8" y2="10"/></svg>`;
 const ICON_RESET = `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8a5 5 0 1 0 1.5-3.5"/><polyline points="3 2 3 5 6 5"/></svg>`;
-const ICON_PREVIEW = `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8s2-4 6-4 6 4 6 4-2 4-6 4-6-4-6-4z"/><circle cx="8" cy="8" r="1.5"/></svg>`;
 
 /** Detail of the `morphic-run` event: the same result `runJavaScript` returns. */
 export type MorphicRunEventDetail = MorphicRunResult;
@@ -29,7 +28,7 @@ export interface MorphicToolbarHandle {
   refresh: () => void;
   dispose: () => void;
   /** The kind of view the toolbar acts on. */
-  pane: MorphicToolbarPane;
+  kind: MorphicViewKind;
   /** The name of the view the toolbar acts on. */
   view: string;
 }
@@ -243,25 +242,6 @@ export const toolbarItems = {
     };
   },
 
-  /**
-   * Toggle the preview pane's host container visibility. Not in defaults — the
-   * developer decides whether the user controls this. Looks for an element
-   * with `data-morphic-preview-host` and flips its `hidden` attribute.
-   */
-  togglePreview(): MorphicToolbarItem {
-    return {
-      id: "toggle-preview",
-      label: "Preview",
-      title: "Toggle preview pane",
-      icon: ICON_PREVIEW,
-      onClick: () => {
-        const host = document.querySelector<HTMLElement>("[data-morphic-preview-host]");
-        if (!host) return;
-        host.hidden = !host.hidden;
-      },
-    };
-  },
-
   readOnlyBadge(): MorphicToolbarItem {
     return {
       id: "read-only",
@@ -299,8 +279,10 @@ export const toolbarItems = {
     ];
   },
 
-  defaultsFor(pane: MorphicToolbarPane): MorphicToolbarItem[] {
-    switch (pane) {
+  /** The default items of a view of this kind; a view that shows the program without changing it gets `readOnlyDefaults()`. */
+  defaultsFor(kind: MorphicViewKind, readOnly = false): MorphicToolbarItem[] {
+    if (readOnly) return toolbarItems.readOnlyDefaults();
+    switch (kind) {
       case "workspace":
         return [
           toolbarItems.modeLabel(),
@@ -328,16 +310,6 @@ export const toolbarItems = {
           toolbarItems.zoomFit(),
           toolbarItems.clear(),
         ];
-      case "preview":
-        return [
-          toolbarItems.modeLabel(),
-          toolbarItems.spacer(),
-          toolbarItems.copy(),
-          toolbarItems.zoomIn(),
-          toolbarItems.zoomOut(),
-          toolbarItems.zoomFit(),
-          toolbarItems.readOnlyBadge(),
-        ];
     }
   },
 };
@@ -352,11 +324,11 @@ export function renderToolbar(
   config: MorphicToolbarConfig,
   ctx: MorphicToolbarCtx,
 ): MorphicToolbarHandle {
-  const items = config.items ?? toolbarItems.defaultsFor(ctx.pane);
+  const items = config.items ?? toolbarItems.defaultsFor(ctx.kind, ctx.readOnly);
   const display: MorphicToolbarDisplay = config.display ?? "icon";
 
   container.classList.add("morphic-toolbar");
-  container.setAttribute("data-morphic-pane", ctx.pane);
+  container.setAttribute("data-morphic-kind", ctx.kind);
   container.setAttribute("data-morphic-view", ctx.view);
 
   const leftGroup = document.createElement("div");
@@ -385,7 +357,7 @@ export function renderToolbar(
   container.replaceChildren(leftGroup, rightGroup);
   refresh();
 
-  return { refresh, pane: ctx.pane, view: ctx.view, dispose: () => container.replaceChildren() };
+  return { refresh, kind: ctx.kind, view: ctx.view, dispose: () => container.replaceChildren() };
 }
 
 function renderItem(

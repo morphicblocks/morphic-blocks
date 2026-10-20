@@ -97,7 +97,7 @@ describe("collapsing categories", () => {
     const { engine, container } = await toolboxWith();
     headingOf(container, "loops").click();
 
-    engine.setModes({ toolboxMode: "python" });
+    engine.show({ toolbox: "python" });
 
     expect(tilesOf(container, "loops").hidden).toBe(true);
   });
@@ -134,7 +134,7 @@ describe("categories as tabs", () => {
     container.querySelectorAll<HTMLButtonElement>(".morphic-category-tab")[1]!.click();
     expect(shown(container)).toEqual(["loops"]);
 
-    engine.setModes({ toolboxMode: "python" });
+    engine.show({ toolbox: "python" });
     expect(shown(container)).toEqual(["loops"]);
   });
 

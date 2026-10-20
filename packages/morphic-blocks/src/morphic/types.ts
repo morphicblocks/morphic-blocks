@@ -221,15 +221,27 @@ export interface MorphicPresetDefinition {
   label?: string;
   /** The mode of the toolbox tiles; the mode's `render` says how they are drawn. */
   toolbox: MorphicModeName;
-  workspace?: MorphicModeName;
-  codespace?: MorphicModeName;
-  preview?: MorphicModeName;
   /**
-   * Modes of views added with `addView()`, by view name. Applying the preset
-   * switches each listed view that exists; the app shows or hides views, as
-   * for the built-in ones.
+   * What each view shows, by view name. The views it lists are the ones the
+   * preset shows; showing and hiding their containers is the app's job
+   * (`onPresetApplied`). Views it leaves out keep what they show.
    */
-  views?: Record<string, MorphicModeName>;
+  views: Record<string, MorphicModeName>;
+}
+
+/** Kinds of view: blocks, or the program as text. */
+export type MorphicViewKind = "workspace" | "codespace";
+
+/** A view in the definitions' `views`, by name. A bare kind is the short form. */
+export interface MorphicViewDeclaration {
+  kind: MorphicViewKind;
+  /**
+   * Whether the program can be changed in the view. Default `true`. A
+   * codespace that cannot be edited shows the program as text, read only.
+   */
+  editable?: boolean;
+  /** How blocks are deleted in a codespace. */
+  delete?: MorphicCodespaceDeleteOptions;
 }
 
 /**
@@ -362,6 +374,13 @@ export interface MorphicBlocksFormat {
   elementTypes?: Record<string, MorphicElementTypeEntry>;
   /** Explicit mode definitions — which elements are visible per mode. */
   modes?: MorphicModeDefinition[];
+  /**
+   * The views, by name: `{ "blocks": "workspace", "read": { "kind": "codespace", "editable": false } }`.
+   * `mount()` sets up each one it gets a container for. The first workspace
+   * with a container holds the program. Default: a `workspace` and a
+   * `codespace` view.
+   */
+  views?: Record<string, MorphicViewKind | MorphicViewDeclaration>;
   /** Named per-view mode configurations. Used as the mount default for `presets`. */
   presets?: MorphicPresetDefinition[];
   /**
@@ -550,35 +569,34 @@ export interface MorphicJavaScriptConfig {
 
 export interface MorphicMountConfig {
   /**
-   * Container for the Blockly workspace. Optional — may be omitted when only a
-   * codespace is used. At least one of `workspaceContainer` or `codespaceContainer`
-   * must be provided. When omitted, Blockly runs headless (offscreen) so the block
-   * model stays available.
+   * The views' containers, by view name. A view without one is not set up,
+   * so the same definitions serve a full page and a small embed. At least one
+   * view needs a container. Without a workspace, Blockly runs headless
+   * (offscreen) so the block model stays available.
    */
+  containers?: Record<string, HTMLElement>;
+  /** Short for `containers.workspace`. */
   workspaceContainer?: HTMLElement;
-  /**
-   * Container for the primary text editor (codespace). Optional, but required
-   * when a preset shows the codespace. `mount()` sets the codespace up in it.
-   */
+  /** Short for `containers.codespace`. */
   codespaceContainer?: HTMLElement;
   /**
    * Container for the custom HTML toolbox. `mount()` sets the toolbox up in it,
    * which implies `canvasToolbox`.
    */
   toolboxContainer?: HTMLElement;
-  /** Container for the read-only preview. `mount()` sets the preview up in it. */
-  previewContainer?: HTMLElement;
   /**
    * Container for the generated JavaScript view, a developer tool. `mount()`
    * sets it up hidden; `showCodeEditor()` reveals it.
    */
   codeEditorContainer?: HTMLElement;
-  /** Toolbar containers per pane, set up once the text editors are ready. */
-  toolbarContainers?: Partial<Record<MorphicToolbarPane, HTMLElement>>;
-  /** Theme for the codespace and code editor set up by `mount()`. */
+  /** Toolbar containers, by view name, set up once the views are ready. */
+  toolbars?: Record<string, HTMLElement>;
+  /** Theme for the text views and the code editor. */
   editorTheme?: MorphicCodeEditorTheme;
-  /** Theme for the preview set up by `mount()`. Defaults to `editorTheme`. */
-  previewTheme?: MorphicCodeEditorTheme;
+  /** Themes of single text views, by view name, in place of `editorTheme`. */
+  themes?: Record<string, MorphicCodeEditorTheme>;
+  /** The views, in place of the definitions' `views`. */
+  views?: Record<string, MorphicViewKind | MorphicViewDeclaration>;
   /**
    * Link block and code selection across views. On by default when `mount()`
    * sets up more than one view; `false` turns it off, an object configures it.
@@ -595,8 +613,8 @@ export interface MorphicMountConfig {
   preset?: string;
   /**
    * Called after a preset is applied — at mount and on every `applyPreset` —
-   * so the host can lay out pane visibility (a view is shown iff its key is
-   * present on the preset).
+   * so the host can lay out pane visibility (the preset shows the views its
+   * `views` lists).
    */
   onPresetApplied?: (preset: MorphicPresetDefinition) => void;
   /**
@@ -607,8 +625,6 @@ export interface MorphicMountConfig {
   onWarning?: (message: string) => void;
   toolbox?: MorphicToolboxConfig;
   toolboxLayout?: MorphicToolboxLayout;
-  /** Options of the codespace `mount()` sets up. */
-  codespace?: MorphicCodespaceOptions;
   /**
    * When true, Blockly is injected without a built-in toolbox.
    * Use this when calling `mountToolbox()` to avoid Blockly toolbox type conflicts.
@@ -768,9 +784,6 @@ export interface MorphicCodeEditorTheme {
   selectionBackground?: string;
 }
 
-/** Kinds of view `addView()` adds beside the ones `mount()` sets up. */
-export type MorphicViewKind = "preview" | "codespace" | "workspace";
-
 /** Ways to delete blocks in a codespace, each on unless set to `false`. */
 export interface MorphicCodespaceDeleteOptions {
   /** The ✕ beside each line where a block starts. */
@@ -781,31 +794,25 @@ export interface MorphicCodespaceDeleteOptions {
   toolbarButton?: boolean;
 }
 
-/** Options of the codespace `mount()` sets up. */
-export interface MorphicCodespaceOptions {
-  delete?: MorphicCodespaceDeleteOptions;
-}
-
 /** A view added with `engine.addView()`. */
 export interface MorphicViewOptions {
   kind: MorphicViewKind;
   /** Element the view renders into. */
   container: HTMLElement;
-  /** Mode the view shows; a preview renders its source element. */
+  /** Mode the view shows; a codespace renders its source element. */
   mode: MorphicModeName;
-  /** Unique among the engine's added views. */
+  /** Unique among the engine's views. */
   name?: string;
   /**
-   * An added workspace shows the program as blocks in its own mode and follows
-   * every change of the main workspace. With `true`, blocks can also be
-   * dragged, connected, edited and deleted there, and tiles dropped on it; the
-   * main workspace stays the program and takes every change. Default `false`
-   * (read only).
+   * Whether the program can be changed in the view. Default `true`. An added
+   * workspace follows every change of the one that holds the program and
+   * sends its own edits there; a codespace that cannot be edited shows the
+   * program as text, read only.
    */
   editable?: boolean;
-  /** How blocks are deleted in an added codespace. */
+  /** How blocks are deleted in a codespace. */
   delete?: MorphicCodespaceDeleteOptions;
-  /** Colours of a text view, like `previewTheme`. */
+  /** Colours of a text view, like `editorTheme`. */
   theme?: MorphicCodeEditorTheme;
   /** A toolbar for this view, removed with it. Items default to its kind's. */
   toolbar?: {
@@ -885,10 +892,6 @@ export interface MorphicSelectionSyncOptions {
   codeToBlock?: boolean;
 }
 
-/** Surface a toolbar binds to. Drives stateful items (undo enabled-state,
- * language label source, what "clear" affects). */
-export type MorphicToolbarPane = "workspace" | "codespace" | "preview";
-
 /** How items render their built-in icon + label pair. */
 export type MorphicToolbarDisplay = "icon" | "label" | "both";
 
@@ -899,7 +902,9 @@ export type MorphicToolbarDisplay = "icon" | "label" | "both";
 export interface MorphicToolbarCtx {
   engine: import("./MorphicBlocks").MorphicBlocks;
   /** The kind of view the toolbar acts on. */
-  pane: MorphicToolbarPane;
+  kind: MorphicViewKind;
+  /** Whether the view shows the program without changing it. */
+  readOnly: boolean;
   /** The name of the view the toolbar acts on; pass it to engine methods such as `zoomPane`. */
   view: string;
   /** Current rendered text for the bound pane. Empty for workspace pane unless
@@ -939,10 +944,8 @@ export interface MorphicToolbarItem {
 
 /** Configuration for `engine.mountToolbar(container, config)`. */
 export interface MorphicToolbarConfig {
-  /** The view this toolbar acts on, by name: `workspace`, `codespace`, `preview`, or an added view's. */
-  view?: string;
-  /** Same as `view` for the views `mount()` sets up. One of `view` and `pane` is required. */
-  pane?: MorphicToolbarPane;
+  /** The view this toolbar acts on, by name. */
+  view: string;
   /** Items to render. When omitted, the framework uses
    * `toolbarItems.defaultsFor(<kind of view>)`. To render no items, pass `[]`. */
   items?: MorphicToolbarItem[];

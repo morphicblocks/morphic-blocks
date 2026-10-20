@@ -65,7 +65,7 @@ describe("default slot values", () => {
     const print = create(workspace, "print");
     print.getInputTargetBlock("VALUE")!.setFieldValue("5", "NUM");
 
-    engine.setModes({ workspaceMode: "two" });
+    engine.show({ views: { workspace: "two", codespace: "two" } });
 
     expect(slotValue(workspace.getBlockById(print.id)!)).toBe(5);
   });

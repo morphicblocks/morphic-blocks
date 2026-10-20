@@ -11,7 +11,8 @@ import type { MorphicBlocksFormat } from "../src/morphic/types";
 const format: MorphicBlocksFormat = {
   elementTypes: { code: "code" },
   modes: [{ name: "only", elements: ["code"] }],
-  presets: [{ name: "all", toolbox: "only", workspace: "only", codespace: "only", preview: "only" }],
+  views: { workspace: "workspace", codespace: "codespace", preview: { kind: "codespace", editable: false } },
+  presets: [{ name: "all", toolbox: "only", views: { workspace: "only", codespace: "only", preview: "only" } }],
   blocks: [{ identifier: "say", elements: { code: "say()" }, shape: "statement" }],
 };
 
@@ -38,12 +39,10 @@ describe("single mount call", () => {
     const toolbars = { workspace: div(), codespace: div(), preview: div() };
 
     await engine.mount({
-      workspaceContainer: div(),
+      containers: { workspace: div(), codespace, preview },
       toolboxContainer: toolbox,
-      codespaceContainer: codespace,
-      previewContainer: preview,
       codeEditorContainer: codeEditor,
-      toolbarContainers: toolbars,
+      toolbars,
     });
 
     expect(toolbox.querySelector("[data-block-type='say']")).not.toBeNull();
@@ -66,12 +65,12 @@ describe("single mount call", () => {
     expect(syncOf(engine)).toBeUndefined();
   });
 
-  test("mounting an editor again afterwards relinks selection sync", async () => {
+  test("a view added afterwards relinks selection sync", async () => {
     const engine = create();
     await engine.mount({ workspaceContainer: div(), codespaceContainer: div() });
     const before = syncOf(engine);
 
-    await engine.mountCodespace();
+    await engine.addView({ kind: "codespace", container: div(), mode: "only" }).ready;
 
     expect(syncOf(engine)).toBeDefined();
     expect(syncOf(engine)).not.toBe(before);

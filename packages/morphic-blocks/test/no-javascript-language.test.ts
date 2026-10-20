@@ -30,7 +30,10 @@ test("codespace and preview mount without JavaScript language support", async ()
   const codespaceContainer = div();
   const previewContainer = div();
 
-  await engine.mount({ workspaceContainer: div(), codespaceContainer, previewContainer });
+  await engine.mount({
+    views: { workspace: "workspace", codespace: "codespace", preview: { kind: "codespace", editable: false } },
+    containers: { workspace: div(), codespace: codespaceContainer, preview: previewContainer },
+  });
 
   expect(codespaceContainer.querySelector(".cm-editor")).not.toBeNull();
   expect(previewContainer.querySelector(".cm-editor")).not.toBeNull();

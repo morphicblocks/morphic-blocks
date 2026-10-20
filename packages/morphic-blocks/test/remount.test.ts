@@ -11,7 +11,8 @@ import type { MorphicBlocksFormat } from "../src/morphic/types";
 const format: MorphicBlocksFormat = {
   elementTypes: { code: "code" },
   modes: [{ name: "only", elements: ["code"] }],
-  presets: [{ name: "all", toolbox: "only", workspace: "only", codespace: "only", preview: "only" }],
+  views: { workspace: "workspace", codespace: "codespace", preview: { kind: "codespace", editable: false } },
+  presets: [{ name: "all", toolbox: "only", views: { workspace: "only", codespace: "only", preview: "only" } }],
   blocks: [{ identifier: "say", elements: { code: "say()" }, shape: "statement" }],
 };
 
@@ -32,27 +33,23 @@ afterEach(() => {
 describe("dispose and mount again", () => {
   test("an editor disposed while loading does not appear", async () => {
     const engine = create();
-    const containers = {
-      workspaceContainer: div(),
-      codespaceContainer: div(),
-      previewContainer: div(),
-      codeEditorContainer: div(),
-    };
+    const views = { workspace: div(), codespace: div(), preview: div() };
+    const config = { containers: views, codeEditorContainer: div() };
 
-    const first = engine.mount(containers);
+    const first = engine.mount(config);
     engine.dispose();
-    await Promise.all([first, engine.mount(containers)]);
+    await Promise.all([first, engine.mount(config)]);
 
-    expect(containers.codespaceContainer.querySelectorAll(".cm-editor")).toHaveLength(1);
-    expect(containers.previewContainer.querySelectorAll(".cm-editor")).toHaveLength(1);
-    expect(containers.codeEditorContainer.querySelectorAll(".cm-editor")).toHaveLength(1);
+    expect(views.codespace.querySelectorAll(".cm-editor")).toHaveLength(1);
+    expect(views.preview.querySelectorAll(".cm-editor")).toHaveLength(1);
+    expect(config.codeEditorContainer.querySelectorAll(".cm-editor")).toHaveLength(1);
   });
 
   test("toolbars follow the new workspace", async () => {
     const engine = create();
     const workspaceContainer = div();
     const toolbar = div();
-    const containers = { workspaceContainer, codespaceContainer: div(), toolbarContainers: { workspace: toolbar } };
+    const containers = { workspaceContainer, codespaceContainer: div(), toolbars: { workspace: toolbar } };
 
     await engine.mount(containers);
     engine.dispose();

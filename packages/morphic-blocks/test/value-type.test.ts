@@ -41,7 +41,7 @@ async function setUp(definitions: MorphicBlocksFormat = format) {
   const engine = new MorphicBlocks(definitions, {});
   engines.push(engine);
   await engine.mount({ workspaceContainer: div(), codespaceContainer: div() });
-  engine.setModes({ codespaceMode: "java" });
+  engine.show({ views: { codespace: "java" } });
   const workspace = engine.getWorkspace()!;
   const make = (type: string) => {
     const block = workspace.newBlock(`morphic:${type}`) as Blockly.BlockSvg;
@@ -115,7 +115,7 @@ describe("%1:type", () => {
     const engine = new MorphicBlocks(twoModes, {});
     engines.push(engine);
     await engine.mount({ workspaceContainer: div() });
-    engine.setModes({ workspaceMode: "java" });
+    engine.show({ views: { workspace: "java", codespace: "java" } });
     const workspace = engine.getWorkspace()!;
     const declare = workspace.newBlock("morphic:declare") as Blockly.BlockSvg;
     declare.initSvg();
@@ -123,9 +123,9 @@ describe("%1:type", () => {
     five.initSvg();
     declare.getInput("VALUE")!.connection!.connect(five.outputConnection!);
 
-    engine.setModes({ workspaceMode: "js" });
+    engine.show({ views: { workspace: "js", codespace: "js" } });
     expect(declare.getField("MORPHIC_TYPE_1")).toBeNull();
-    engine.setModes({ workspaceMode: "java" });
+    engine.show({ views: { workspace: "java", codespace: "java" } });
     expect(declare.getField("MORPHIC_TYPE_1")?.getText()).toBe("int");
   });
 

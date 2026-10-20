@@ -40,7 +40,7 @@ async function printed(mode: string): Promise<string[]> {
   });
   engines.push(engine);
   await engine.mount({ workspaceContainer: document.body.appendChild(document.createElement("div")) });
-  engine.setModes({ workspaceMode: mode });
+  engine.show({ views: { workspace: mode, codespace: mode } });
   engine.getWorkspace()!.newBlock("morphic:show");
   return engine.runJavaScript().output.map((line) => line.text);
 }
