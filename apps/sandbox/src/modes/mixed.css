@@ -23,7 +23,3 @@
   font-family: "Consolas", "Fira Code", monospace;
   color: var(--tile-muted-strong);
 }
-
-.morphic-workspace-root.morphic-mode-mixed .blocklyText {
-  font-family: "Consolas", "Fira Code", monospace;
-}

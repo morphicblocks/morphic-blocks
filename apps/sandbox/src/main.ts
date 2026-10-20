@@ -2,7 +2,6 @@ import {
   makeResizable,
   MorphicBlocks,
   type MorphicPresetDefinition,
-  type MorphicViewHandle,
 } from "morphic-blocks";
 import definitions from "./definitions.json";
 import { behaviors } from "./behaviors";
@@ -39,11 +38,8 @@ const modeStyles = import.meta.glob("./modes/*.css", {
 
 // ── DOM ────────────────────────────────────────────────
 
-const workspaceContainer = document.getElementById("workspace-container")!;
 const toolboxPanel = document.getElementById("toolbox-panel")!;
 const codeEditorContainer = document.getElementById("code-editor")!;
-const codespaceContainer = document.getElementById("codespace-container")!;
-const previewContainer = document.getElementById("preview-container")!;
 const workspacePane = document.getElementById("workspace-pane")!;
 const codespacePane = document.getElementById("codespace-pane")!;
 const previewPane = document.getElementById("preview-pane")!;
@@ -52,14 +48,17 @@ const gutterToolbox = document.getElementById("gutter-toolbox")!;
 const gutterCodespace = document.getElementById("gutter-codespace")!;
 const gutterPreview = document.getElementById("gutter-preview")!;
 const gutterOutput = document.getElementById("gutter-output")!;
-const workspaceToolbarEl = document.getElementById("workspace-toolbar")!;
-const codespaceToolbarEl = document.getElementById("codespace-toolbar")!;
-const previewToolbarEl = document.getElementById("preview-toolbar")!;
 const outputEl = document.getElementById("output")!;
-// Views added with engine.addView(): a preset shows the ones it names in its
-// `views` and sets their modes; the others are removed.
-const addedViewKinds = { code2: "codespace", second: "preview", mirror1: "workspace", mirror2: "workspace" } as const;
-const addedViews = new Map<string, MorphicViewHandle>();
+// Every view in the definitions' `views` has a pane here; a preset shows the
+// ones it names. Read only codespaces take the preview colours.
+const viewNames = ["workspace", "codespace", "preview", "code2", "second", "mirror1", "mirror2"];
+const readOnlyTextViews = new Set(["preview", "second"]);
+const textViews = ["codespace", "preview", "code2", "second"];
+const byId = (id: string) => document.getElementById(id)!;
+const viewContainers = Object.fromEntries(viewNames.map((name) => [name, byId(`${name}-container`)]));
+const viewToolbars = Object.fromEntries(viewNames.map((name) => [name, byId(`${name}-toolbar`)]));
+const themeOf = (name: string, theme: ThemeName) =>
+  readOnlyTextViews.has(name) ? previewThemeFor(theme) : editorThemeFor(theme);
 const modeButtonsContainer = document.getElementById("mode-buttons")!;
 const runBtn = document.getElementById("run-btn")!;
 const codeBtn = document.getElementById("code-btn")!;
@@ -142,11 +141,7 @@ function applyTheme(theme: ThemeName, syncEditors: boolean): void {
   themeSelect.value = theme;
   if (syncEditors) {
     engine.setCodeEditorTheme(editorThemeFor(theme));
-    engine.setCodespaceTheme(editorThemeFor(theme));
-    engine.setPreviewTheme(previewThemeFor(theme));
-    for (const view of addedViews.values()) {
-      view.setTheme(view.kind === "codespace" ? editorThemeFor(theme) : previewThemeFor(theme));
-    }
+    for (const name of textViews) engine.setViewTheme(name, themeOf(name, theme));
   }
   localStorage.setItem(THEME_STORAGE_KEY, theme);
 }
@@ -174,18 +169,12 @@ const engine = new MorphicBlocks(format, behaviors);
 let codespaceBasisPx: number | null = null;
 
 void engine.mount({
-  workspaceContainer,
+  containers: viewContainers,
   toolboxContainer: toolboxPanel,
-  codespaceContainer,
-  previewContainer,
   codeEditorContainer,
-  toolbarContainers: {
-    workspace: workspaceToolbarEl,
-    codespace: codespaceToolbarEl,
-    preview: previewToolbarEl,
-  },
+  toolbars: viewToolbars,
   editorTheme: editorThemeFor(currentTheme),
-  previewTheme: previewThemeFor(currentTheme),
+  themes: Object.fromEntries([...readOnlyTextViews].map((name) => [name, previewThemeFor(currentTheme)])),
   preset: presets[0]?.name,
   onPresetApplied: handlePresetApplied,
   modesFolder: modeStyles,
@@ -217,41 +206,13 @@ void engine.mount({
 });
 
 
-// ── Added views (to try engine.addView) ────────────────
-// Texts adds a second preview, Mirror two workspaces: the first editable,
-// the second read only.
-
-function showAddedViews(preset: MorphicPresetDefinition): void {
-  for (const [name, kind] of Object.entries(addedViewKinds)) {
-    const mode = preset.views?.[name];
-    document.getElementById(`${name}-pane`)!.style.display = mode ? "" : "none";
-    const existing = addedViews.get(name);
-    if (mode && !existing) {
-      addedViews.set(
-        name,
-        engine.addView({
-          kind,
-          name,
-          mode,
-          editable: name === "mirror1",
-          container: document.getElementById(`${name}-container`)!,
-          toolbar: { container: document.getElementById(`${name}-toolbar`)! },
-          theme: kind === "codespace" ? editorThemeFor(currentTheme) : previewThemeFor(currentTheme),
-        }),
-      );
-    } else if (!mode && existing) {
-      existing.dispose();
-      addedViews.delete(name);
-    }
-  }
-}
-
 // ── Preset Buttons ─────────────────────────────────────
 
 function handlePresetApplied(preset: MorphicPresetDefinition): void {
-  const showWorkspace = !!preset.workspace;
-  const showCodespace = !!preset.codespace;
-  const showPreview = !!preset.preview;
+  const shown = (name: string) => name in preset.views;
+  const showWorkspace = shown("workspace");
+  const showCodespace = shown("codespace");
+  const showPreview = shown("preview");
   workspacePane.style.display = showWorkspace ? "" : "none";
   codespacePane.style.display = showCodespace ? "" : "none";
   codespacePane.style.flex =
@@ -261,7 +222,9 @@ function handlePresetApplied(preset: MorphicPresetDefinition): void {
         ? `0 0 ${codespaceBasisPx}px`
         : "";
   previewPane.style.display = showPreview ? "" : "none";
-  showAddedViews(preset);
+  for (const name of ["code2", "second", "mirror1", "mirror2"]) {
+    byId(`${name}-pane`).style.display = shown(name) ? "" : "none";
+  }
 
   if (RESIZABLE_PANES) {
     gutterCodespace.hidden = !(showWorkspace && showCodespace);
@@ -292,10 +255,7 @@ updateActiveButton();
 // ── Tile elements and block font (to try setModeElements and refresh) ──
 
 const tileElementsList = document.getElementById("tile-elements-list")!;
-const toolboxModeName = (): string | undefined => {
-  const toolbox = engine.getActivePreset()?.toolbox;
-  return typeof toolbox === "string" ? toolbox : toolbox?.mode;
-};
+const toolboxModeName = (): string | undefined => engine.getActivePreset()?.toolbox;
 
 function renderTileElements(): void {
   const mode = definitions.modes?.find((m) => m.name === toolboxModeName());

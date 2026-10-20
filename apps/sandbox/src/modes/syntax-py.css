@@ -19,12 +19,11 @@
   color: var(--tile-muted-strong);
 }
 
-.morphic-workspace-root.morphic-mode-syntax-py .blocklyText {
+.morphic-workspace-root.morphic-shows-python .blocklyText {
   font-family: "Consolas", "Fira Code", monospace;
 }
 
-/* The codespace and preview carry the mode too. */
-.morphic-codespace-root.morphic-mode-syntax-py,
-.morphic-preview-root.morphic-mode-syntax-py {
+/* Text views carry the element they show too. */
+.morphic-codespace-root.morphic-shows-python {
   border-top: 3px solid #3776ab;
 }

@@ -19,6 +19,6 @@
   color: var(--tile-muted-strong);
 }
 
-.morphic-workspace-root.morphic-mode-syntax-js .blocklyText {
+.morphic-workspace-root.morphic-shows-javascript .blocklyText {
   font-family: "Consolas", "Fira Code", monospace;
 }

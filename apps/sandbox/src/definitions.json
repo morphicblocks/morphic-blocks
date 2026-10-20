@@ -215,7 +215,8 @@
     },
     {
       "name": "syntax-py",
-      "elements": ["title", "python"]
+      "elements": ["title", "python"],
+      "render": { "python": "text-based" }
     },
     {
       "name": "syntax-js",
@@ -223,85 +224,76 @@
     },
     {
       "name": "mixed",
-      "elements": ["title", "concept", "python"]
+      "elements": ["title", "concept", "python"],
+      "render": { "concept": "block-based", "python": "text-based" }
     },
     {
       "name": "four-code",
-      "elements": ["title", "concept", "python", "javascript", "go"]
+      "elements": ["title", "concept", "python", "javascript", "go"],
+      "render": { "concept": "block-based", "python": "block-based", "javascript": "text-based", "go": "text-based" }
     }
   ],
+  "views": {
+    "workspace": "workspace",
+    "codespace": "codespace",
+    "preview": { "kind": "codespace", "editable": false },
+    "code2": "codespace",
+    "second": { "kind": "codespace", "editable": false },
+    "mirror1": "workspace",
+    "mirror2": { "kind": "workspace", "editable": false }
+  },
   "presets": [
-    {
-      "name": "iconic",
-      "label": "Iconic",
-      "toolbox": "simple",
-      "workspace": "pseudo"
-    },
+    { "name": "iconic", "label": "Iconic", "toolbox": "simple", "views": { "workspace": "concept" } },
     {
       "name": "conceptual",
       "label": "Conceptual",
       "toolbox": "pseudo",
-      "workspace": "pseudo",
-      "preview": "syntax-py"
+      "views": { "workspace": "concept", "preview": "python" }
     },
     {
       "name": "syntactic",
       "label": "Syntactic",
       "toolbox": "pseudo",
-      "workspace": "syntax-py",
-      "preview": "syntax-py"
+      "views": { "workspace": "python", "preview": "python" }
     },
     {
       "name": "textual",
       "label": "Textual",
-      "toolbox": { "mode": "syntax-py", "render": { "python": "text" } },
-      "codespace": "syntax-py",
-      "preview": "syntax-js"
+      "toolbox": "syntax-py",
+      "views": { "codespace": "python", "preview": "javascript" }
     },
     {
       "name": "hybrid",
       "label": "Hybrid",
-      "toolbox": {
-        "mode": "mixed",
-        "render": { "concept": "block", "python": "text" }
-      },
-      "workspace": "pseudo",
-      "codespace": "syntax-py",
-      "preview": "syntax-js"
+      "toolbox": "mixed",
+      "views": { "workspace": "concept", "codespace": "python", "preview": "javascript" }
     },
     {
       "name": "four",
       "label": "Four",
-      "toolbox": {
-        "mode": "four-code",
-        "render": { "concept": "block", "python": "block", "javascript": "text", "go": "text" }
-      },
-      "workspace": "pseudo",
-      "preview": "syntax-js"
+      "toolbox": "four-code",
+      "views": { "workspace": "concept", "preview": "javascript" }
     },
     {
       "name": "texts",
       "label": "Texts",
       "toolbox": "pseudo",
-      "codespace": "syntax-py",
-      "preview": "syntax-py",
-      "views": { "code2": "syntax-js", "second": "syntax-js" }
+      "views": { "codespace": "python", "preview": "python", "code2": "javascript", "second": "javascript" }
     },
     {
       "name": "mirror",
       "label": "Mirror",
       "toolbox": "pseudo",
-      "workspace": "pseudo",
-      "views": { "mirror1": "syntax-py", "mirror2": "syntax-js" }
+      "views": { "workspace": "concept", "mirror1": "python", "mirror2": "javascript" }
     },
     {
       "name": "arabic",
       "label": "Arabic",
       "toolbox": "pseudo",
-      "workspace": "pseudo",
-      "codespace": "pseudo"
+      "views": { "workspace": "concept", "codespace": "concept" }
     }
   ],
+
   "categories": [
     {
       "name": "Output",
