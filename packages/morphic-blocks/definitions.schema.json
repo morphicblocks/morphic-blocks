@@ -153,6 +153,7 @@
           "properties": {
             "kind": { "enum": ["workspace", "codespace"] },
             "editable": { "description": "Whether the program can be changed in the view. Default true.", "type": "boolean" },
+            "rtl": { "description": "Right to left (true) or left to right (false). Left out, a workspace follows blockly.rtl and a codespace the page.", "type": "boolean" },
             "delete": {
               "description": "How blocks are deleted in a codespace; each way is on unless set to false.",
               "type": "object",

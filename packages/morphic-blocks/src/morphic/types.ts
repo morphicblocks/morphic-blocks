@@ -241,6 +241,11 @@ export interface MorphicViewDeclaration {
    * codespace that cannot be edited shows the program as text, read only.
    */
   editable?: boolean;
+  /**
+   * Right to left (`true`) or left to right (`false`). Left out, a workspace
+   * follows `blockly.rtl` and a codespace the page around it.
+   */
+  rtl?: boolean;
   /** How blocks are deleted in a codespace. */
   delete?: MorphicCodespaceDeleteOptions;
 }
@@ -815,6 +820,8 @@ export interface MorphicViewOptions {
    * program as text, read only.
    */
   editable?: boolean;
+  /** Right to left or left to right; left out, the view follows the program's workspace or the page. */
+  rtl?: boolean;
   /** How blocks are deleted in a codespace. */
   delete?: MorphicCodespaceDeleteOptions;
   /** Colours of a text view, like `editorTheme`. */

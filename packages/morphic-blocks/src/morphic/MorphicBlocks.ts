@@ -433,6 +433,7 @@ export class MorphicBlocks extends EventTarget {
     this.workspace = Blockly.inject(resolvedConfig.workspaceHost, {
       ...blocklyOptions,
       ...(programEditable ? {} : { readOnly: true }),
+      ...(programView && viewDeclarations[programView]!.rtl !== undefined ? { rtl: viewDeclarations[programView]!.rtl } : {}),
       // Without a folder of its own, Blockly loads its images and sounds from
       // Google's server. The default is the app's own copy next to the page
       // (`npx morphic-blocks copy-media`); a host sets `media` to choose.
@@ -477,6 +478,7 @@ export class MorphicBlocks extends EventTarget {
         container,
         element: elementOf(name),
         editable: declaration.editable,
+        rtl: declaration.rtl,
         delete: declaration.delete,
         theme: config.themes?.[name] ?? config.editorTheme,
       });
@@ -2399,6 +2401,8 @@ export class MorphicBlocks extends EventTarget {
       delete: options.delete,
     };
     this.views.add(view);
+    // A text view follows the page around it unless it is told otherwise.
+    if (options.rtl !== undefined) options.container.dir = options.rtl ? "rtl" : "ltr";
     applyViewClasses(view.container, { name, element: view.element, classNames: rootClasses });
     applyPresetClass(view.container, this.activePreset?.name);
     const toolbar = options.toolbar
@@ -2464,7 +2468,7 @@ export class MorphicBlocks extends EventTarget {
       renderer: host.renderer,
       rendererOverrides: host.rendererOverrides ?? undefined,
       theme: this.baseTheme ?? host.theme,
-      rtl: host.RTL,
+      rtl: options.rtl ?? host.RTL,
       move: { scrollbars: true, drag: true, wheel: true },
     });
     workspaceOwners.set(mirror, this);
