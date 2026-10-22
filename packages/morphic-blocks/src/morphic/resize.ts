@@ -24,6 +24,11 @@ export interface MorphicResizeOptions {
   invert?: boolean;
   /** Called with the new pixel size on every move (e.g. to trigger a reflow). */
   onResize?: (size: number) => void;
+  /**
+   * Pixels an arrow key moves the divider; with Shift five times as far.
+   * Default 10. Home and End go to `min` and `max`.
+   */
+  step?: number;
 }
 
 export interface MorphicResizeHandle {
@@ -35,8 +40,8 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 /**
- * Make `gutter` drag-resize `opts.target`. Returns a handle whose `dispose()`
- * detaches the listener.
+ * Make `gutter` drag-resize `opts.target`, with the pointer or the keyboard.
+ * Returns a handle whose `dispose()` detaches the listeners.
  */
 export function makeResizable(
   gutter: HTMLElement,
@@ -45,14 +50,24 @@ export function makeResizable(
   const { target, axis, invert = false, onResize } = opts;
   const min = opts.min ?? 0;
   const max = opts.max ?? Number.POSITIVE_INFINITY;
+  const step = opts.step ?? 10;
+
+  const sizeNow = (): number => {
+    const rect = target.getBoundingClientRect();
+    return axis === "x" ? rect.width : rect.height;
+  };
+  const resizeTo = (wanted: number): void => {
+    const size = clamp(wanted, min, max);
+    target.style.flexBasis = `${size}px`;
+    onResize?.(size);
+  };
 
   const onPointerDown = (down: PointerEvent): void => {
     // Primary button only.
     if (down.button !== 0) return;
     down.preventDefault();
 
-    const rect = target.getBoundingClientRect();
-    const startSize = axis === "x" ? rect.width : rect.height;
+    const startSize = sizeNow();
     const startPos = axis === "x" ? down.clientX : down.clientY;
 
     const prevUserSelect = document.body.style.userSelect;
@@ -65,9 +80,7 @@ export function makeResizable(
     const onMove = (move: PointerEvent): void => {
       const pos = axis === "x" ? move.clientX : move.clientY;
       const delta = pos - startPos;
-      const size = clamp(startSize + (invert ? -delta : delta), min, max);
-      target.style.flexBasis = `${size}px`;
-      onResize?.(size);
+      resizeTo(startSize + (invert ? -delta : delta));
     };
 
     const onUp = (): void => {
@@ -83,9 +96,33 @@ export function makeResizable(
     gutter.addEventListener("lostpointercapture", onUp);
   };
 
+  // The keyboard moves the divider too: the arrow keys along its axis, a
+  // larger step with Shift, Home and End to the limits.
+  const [back, forward] = axis === "x" ? ["ArrowLeft", "ArrowRight"] : ["ArrowUp", "ArrowDown"];
+  const onKeyDown = (key: KeyboardEvent): void => {
+    const distance = key.shiftKey ? step * 5 : step;
+    if (key.key === back || key.key === forward) {
+      const toward = key.key === forward ? distance : -distance;
+      resizeTo(sizeNow() + (invert ? -toward : toward));
+    } else if (key.key === "Home") {
+      resizeTo(min);
+    } else if (key.key === "End" && Number.isFinite(max)) {
+      resizeTo(max);
+    } else {
+      return;
+    }
+    key.preventDefault();
+  };
+  // Reachable with Tab unless the host decided otherwise.
+  if (!gutter.hasAttribute("tabindex")) gutter.tabIndex = 0;
+
   gutter.addEventListener("pointerdown", onPointerDown);
+  gutter.addEventListener("keydown", onKeyDown);
 
   return {
-    dispose: () => gutter.removeEventListener("pointerdown", onPointerDown),
+    dispose: () => {
+      gutter.removeEventListener("pointerdown", onPointerDown);
+      gutter.removeEventListener("keydown", onKeyDown);
+    },
   };
 }
