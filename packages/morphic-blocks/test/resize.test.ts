@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "vitest";
 import { makeResizable } from "../src";
 
-/** A divider resizes its pane with the keyboard too. */
+/** A divider resizes its pane with the keyboard too, and screen readers announce it. */
 
 afterEach(() => {
   document.body.innerHTML = "";
@@ -62,5 +62,27 @@ describe("resizing with the keyboard", () => {
     const { gutter } = setUp();
 
     expect(gutter.tabIndex).toBe(0);
+  });
+});
+
+describe("a divider for screen readers", () => {
+  test("is a separator that names its orientation and the pane's size", () => {
+    const { gutter, press } = setUp({ max: 400 });
+
+    expect(gutter.getAttribute("role")).toBe("separator");
+    expect(gutter.getAttribute("aria-orientation")).toBe("vertical");
+    expect(gutter.getAttribute("aria-valuemin")).toBe("100");
+    expect(gutter.getAttribute("aria-valuemax")).toBe("400");
+    expect(gutter.getAttribute("aria-valuenow")).toBe("200");
+
+    press("ArrowRight");
+    expect(gutter.getAttribute("aria-valuenow")).toBe("210");
+  });
+
+  test("lies flat between panes above each other", () => {
+    const { gutter } = setUp({ axis: "y" });
+
+    expect(gutter.getAttribute("aria-orientation")).toBe("horizontal");
+    expect(gutter.hasAttribute("aria-valuemax")).toBe(false);
   });
 });

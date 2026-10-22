@@ -56,9 +56,20 @@ export function makeResizable(
     const rect = target.getBoundingClientRect();
     return axis === "x" ? rect.width : rect.height;
   };
+  // Screen readers announce the divider and the pane's size in pixels; a
+  // divider between panes side by side stands upright.
+  const announce = (size: number): void => gutter.setAttribute("aria-valuenow", String(Math.round(size)));
+  gutter.setAttribute("role", "separator");
+  gutter.setAttribute("aria-orientation", axis === "x" ? "vertical" : "horizontal");
+  gutter.setAttribute("aria-valuemin", String(min));
+  if (Number.isFinite(max)) gutter.setAttribute("aria-valuemax", String(max));
+  if (target.id && !gutter.hasAttribute("aria-controls")) gutter.setAttribute("aria-controls", target.id);
+  announce(sizeNow());
+
   const resizeTo = (wanted: number): void => {
     const size = clamp(wanted, min, max);
     target.style.flexBasis = `${size}px`;
+    announce(size);
     onResize?.(size);
   };
 
