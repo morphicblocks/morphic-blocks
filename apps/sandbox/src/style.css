@@ -305,8 +305,14 @@ body {
 }
 
 .gutter:hover,
-.gutter:active {
+.gutter:active,
+.gutter:focus-visible {
   background: var(--accent);
+}
+
+/* Reached with Tab, moved with the arrow keys. */
+.gutter:focus-visible {
+  outline: none;
 }
 
 .editor-pane {
