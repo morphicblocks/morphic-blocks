@@ -127,13 +127,19 @@ export function makeResizable(
   // Reachable with Tab unless the host decided otherwise.
   if (!gutter.hasAttribute("tabindex")) gutter.tabIndex = 0;
 
+  // A pane hidden when this was set up measured 0; the size is read again
+  // when someone arrives on the divider.
+  const onFocus = (): void => announce(sizeNow());
+
   gutter.addEventListener("pointerdown", onPointerDown);
   gutter.addEventListener("keydown", onKeyDown);
+  gutter.addEventListener("focus", onFocus);
 
   return {
     dispose: () => {
       gutter.removeEventListener("pointerdown", onPointerDown);
       gutter.removeEventListener("keydown", onKeyDown);
+      gutter.removeEventListener("focus", onFocus);
     },
   };
 }

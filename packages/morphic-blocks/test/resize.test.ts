@@ -79,6 +79,15 @@ describe("a divider for screen readers", () => {
     expect(gutter.getAttribute("aria-valuenow")).toBe("210");
   });
 
+  test("reads the size again on focus, for a pane hidden when it was set up", () => {
+    const { target, gutter } = setUp();
+    target.getBoundingClientRect = () => ({ width: 320, height: 320 }) as DOMRect;
+
+    gutter.dispatchEvent(new FocusEvent("focus"));
+
+    expect(gutter.getAttribute("aria-valuenow")).toBe("320");
+  });
+
   test("lies flat between panes above each other", () => {
     const { gutter } = setUp({ axis: "y" });
 
