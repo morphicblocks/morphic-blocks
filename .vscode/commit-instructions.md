@@ -16,7 +16,7 @@ Valid examples:
 ♻️ refactor(core): simplify validation flow
 🎨 style(lint): format backend source files
 🖌️ ui(theme): adjust spacing and colors
-📚 docs(readme): clarify setup steps
+📝 docs(readme): clarify setup steps
 🧪 test(service): add retry logic tests
 🔧 chore(deps): update lint dependencies
 🏗️ build(ci): cache package manager files
@@ -29,20 +29,20 @@ Emoji + type map:
 
 - `✨ feat` new feature
 - `🐛 fix` bug fix
-- `📚 docs` documentation only
+- `📝 docs` documentation only
 - `♻️ refactor` code restructure without behavior change
 - `🎨 style` formatting-only changes
 - `🖌️ ui` UI-only changes (no logic changes)
 - `🧪 test` add/update tests
 - `🔧 chore` maintenance/tooling/deps
-- `💚 ci` CI/CD changes
+- `👷 ci` CI/CD changes
 - `⚡ perf` performance improvements
 - `🏗️ build` build/package changes
 - `⏪ revert` revert a prior commit
 - `🚚 move` move/rename resources
 - `🗑️ del` remove files/code
 - `🔒 sec` security changes
-- `🎯 demo` demo/playground updates
+- `🎯 demo` sandbox, demo, and playground apps
 - `🧩 examples` sample code/snippets
 - `🔑 key` key/token handling (never commit secrets)
 - `⚙️ infra` infrastructure/ops changes
@@ -54,7 +54,7 @@ Emoji + type map:
 - `📦 pack` packaging/distribution metadata
 - `🔗 api` API contract changes
 - `🌐 lang` i18n/l10n changes
-- `♿ access` accessibility improvements
+- `🤝 access` accessibility improvements
 - `🐳 docker` containerization changes
 - `⬆️ upgrade` dependency upgrades
 - `⬇️ downgrade` dependency downgrades
@@ -72,11 +72,17 @@ Hard rules (MUST):
 - Generate exactly one commit message.
 - Output exactly one line only.
 - Do not output a body, footer, bullets, or alternatives.
-- Do not include multiple clauses separated by `;`, `and`, `&`, or `/`.
+- Do not join two changes with `;`, `and`, `&`, or `/` (a noun pair such as
+  "light and dark themes" is fine).
 - Subject must be lowercase, imperative, and no trailing period.
-- Subject max length is 50 characters.
 - Entire commit line max length is 72 characters.
 - Use one logical change only.
+
+Body (when written by hand or by an agent):
+
+- A fix gets a short body in the present tense about the issue.
+- Other commits get a body only when the reason is not obvious.
+- Agents end the message with their `Co-Authored-By:` line.
 
 Fail examples (invalid):
 
@@ -92,5 +98,4 @@ Pre-send self-check:
 
 - Is it one line?
 - Is there exactly one message?
-- Is subject <= 50 chars?
 - Is full line <= 72 chars?
