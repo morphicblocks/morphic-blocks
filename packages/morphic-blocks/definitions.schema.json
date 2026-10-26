@@ -257,7 +257,23 @@
           "required": ["value"],
           "properties": {
             "value": { "type": "string" },
-            "label": { "type": "string" },
+            "label": {
+              "description": "Text, or a picture shown on the block instead of text (text views still write the value).",
+              "oneOf": [
+                { "type": "string" },
+                {
+                  "type": "object",
+                  "required": ["src"],
+                  "properties": {
+                    "src": { "type": "string" },
+                    "alt": { "type": "string", "description": "What screen readers say. Default: the value." },
+                    "width": { "type": "number", "description": "Default 16." },
+                    "height": { "type": "number", "description": "Default 16." }
+                  },
+                  "additionalProperties": false
+                }
+              ]
+            },
             "display": {
               "type": "object",
               "description": "Per-element display text (element name → shown text). Overrides label/value when that element is rendered; the value still drives execution and codegen.",

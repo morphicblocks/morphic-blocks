@@ -48,6 +48,7 @@ export type {
   MorphicCodeGenerationResult,
   MorphicCodeMetadata,
   MorphicConnectionSpec,
+  MorphicDropdownImage,
   MorphicDropdownOption,
   MorphicFieldDefinition,
   MorphicInputAlign,

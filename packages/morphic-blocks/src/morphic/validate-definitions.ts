@@ -217,7 +217,11 @@ export function validateDefinitions(
     for (const [name, fieldDef] of Object.entries(def.fields ?? {})) {
       if (fieldDef?.type !== "dropdown") continue;
       for (const option of fieldDef.options) {
-        if (typeof option !== "object" || Array.isArray(option) || !option.display) continue;
+        if (typeof option !== "object" || Array.isArray(option)) continue;
+        if (option.label && typeof option.label === "object" && typeof option.label.src !== "string") {
+          errors.push(`Block "${id}": fields["${name}"] option "${option.value}" has an image label without "src".`);
+        }
+        if (!option.display) continue;
         for (const element of Object.keys(option.display)) {
           if (!codeElementNames.has(element)) {
             warnings.push(

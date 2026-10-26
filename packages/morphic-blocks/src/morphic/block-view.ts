@@ -462,19 +462,28 @@ function createFieldFromDefinition(
 /**
  * Normalise a declared dropdown option to Blockly's `[displayText, value]`.
  * When rendering element `elementName`, a per-element `display` entry wins over
- * `label`, which wins over the bare `value`.
+ * `label`, which wins over the bare `value`. An image label becomes Blockly's
+ * image option.
  */
 function toBlocklyDropdownOption(
   option: MorphicDropdownOption,
   elementName?: string,
-): [string, string] {
+): Blockly.MenuOption {
   if (typeof option === "string") return [option, option];
   if (Array.isArray(option)) {
     const [value, label] = option;
     return [label ?? value, value];
   }
   const display = elementName ? option.display?.[elementName] : undefined;
-  return [display ?? option.label ?? option.value, option.value];
+  if (display !== undefined) return [display, option.value];
+  const label = option.label;
+  if (label && typeof label === "object") {
+    return [
+      { src: label.src, alt: label.alt ?? option.value, width: label.width ?? 16, height: label.height ?? 16 },
+      option.value,
+    ];
+  }
+  return [label ?? option.value, option.value];
 }
 
 function captureConnectedChildren(

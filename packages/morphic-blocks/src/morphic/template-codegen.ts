@@ -548,7 +548,8 @@ function fieldEditTarget(
     if (Array.isArray(raw)) {
       options = (raw as unknown[])
         .filter((entry): entry is [unknown, unknown] => Array.isArray(entry) && entry.length >= 2)
-        .map(([label, value]) => [String(label), String(value)] as [string, string]);
+        // An image choice lists its value in text views.
+        .map(([label, value]) => [typeof label === "string" ? label : String(value), String(value)] as [string, string]);
     }
   } else if (field instanceof Blockly.FieldTextInput) {
     fieldType = "text";
@@ -618,7 +619,8 @@ function detectAtomicEdit(block: Blockly.Block): MorphicPlaceholderEditTarget | 
       if (Array.isArray(raw)) {
         options = raw
           .filter((entry): entry is [unknown, unknown] => Array.isArray(entry) && entry.length >= 2)
-          .map(([label, value]) => [String(label), String(value)] as [string, string]);
+          // An image choice lists its value in text views.
+        .map(([label, value]) => [typeof label === "string" ? label : String(value), String(value)] as [string, string]);
       }
     }
   }

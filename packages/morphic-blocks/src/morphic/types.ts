@@ -164,11 +164,25 @@ export type MorphicInputAlign = "left" | "centre" | "right";
  *   - `"=="`                        → value = label = `"=="`
  *   - `["-", "−"]`                  → value `"-"`, shown as `"−"` on the block
  *   - `{ value, label?, display? }` → explicit object form
+ *
+ * `label` can also be an image ({@link MorphicDropdownImage}): the block shows
+ * the picture, text views still write the value.
  */
 export type MorphicDropdownOption =
   | string
   | [value: string, label: string]
-  | { value: string; label?: string; display?: Record<string, string> };
+  | { value: string; label?: string | MorphicDropdownImage; display?: Record<string, string> };
+
+/**
+ * A picture shown as a dropdown choice on the block. `alt` (what screen
+ * readers say) defaults to the option's value; the size defaults to 16 × 16.
+ */
+export interface MorphicDropdownImage {
+  src: string;
+  alt?: string;
+  width?: number;
+  height?: number;
+}
 
 /**
  * A field declared directly on a block (rendered at the `%FIELDNAME` token
