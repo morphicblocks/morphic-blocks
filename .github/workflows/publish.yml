@@ -19,5 +19,6 @@ jobs:
       - run: bun run build:package
       - run: bun run test
       - run: npm install -g npm@latest
+      # A release tagged themes-v… publishes the themes package, any other the framework.
       - run: npm publish --provenance --access public
-        working-directory: packages/morphic-blocks
+        working-directory: ${{ startsWith(github.event.release.tag_name, 'themes-') && 'packages/themes' || 'packages/morphic-blocks' }}
