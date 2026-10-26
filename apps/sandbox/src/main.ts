@@ -3,6 +3,7 @@ import {
   MorphicBlocks,
   type MorphicPresetDefinition,
 } from "morphic-blocks";
+import { standard } from "@morphicblocks/themes";
 import definitions from "./definitions.json";
 import { behaviors } from "./behaviors";
 import "./style.css";
@@ -71,7 +72,11 @@ type ThemeName = "dark" | "creme" | "light";
 
 const THEME_STORAGE_KEY = "morphic-sandbox-theme";
 
+// Open the sandbox with ?packaged-themes to try @morphicblocks/themes in the text views.
+const PACKAGED_THEMES = query.has("packaged-themes");
+
 const editorThemeFor = (name: ThemeName) => {
+  if (PACKAGED_THEMES) return name === "dark" ? standard.dark : standard.light;
   if (name === "dark") {
     return {
       background: "#0f1117",
@@ -100,6 +105,7 @@ const editorThemeFor = (name: ThemeName) => {
 };
 
 const previewThemeFor = (name: ThemeName) => {
+  if (PACKAGED_THEMES) return name === "dark" ? standard.dark : standard.light;
   if (name === "dark") {
     return {
       background: "#161a24",
@@ -163,6 +169,18 @@ themeSelect.addEventListener("change", () => {
 
 const engine = new MorphicBlocks(format, behaviors);
 
+// The "info" element (custom) on tiles: a button that tells what the block does.
+function infoButton(content: string): HTMLElement {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "tile-info";
+  button.textContent = "i";
+  button.title = content;
+  button.setAttribute("aria-label", `About this block: ${content}`);
+  button.addEventListener("click", () => window.alert(content));
+  return button;
+}
+
 // Remembered codespace width (px) from a divider drag; re-applied across
 // presets since a preset switch otherwise resets the codespace flex.
 // Declared before mount() because onPresetApplied fires during mount.
@@ -183,6 +201,9 @@ void engine.mount({
     keyboard: query.get("keyboard") !== "off",
     layout: query.has("tabs") ? "tabs" : "stacked",
     scrollbar: query.has("scrollbar"),
+    // Screen readers name tiles after the hidden "spoken" element where a block has one.
+    label: "spoken",
+    custom: { info: infoButton },
   },
   blockly: {
     rtl: RTL,

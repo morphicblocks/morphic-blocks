@@ -8,7 +8,9 @@
     "concept": "code",
     "python": "code",
     "javascript": "code",
-    "go": "code"
+    "go": "code",
+    "info": "custom",
+    "spoken": "text"
   },
   "code": {
     "concept": {
@@ -207,7 +209,7 @@
   "modes": [
     {
       "name": "simple",
-      "elements": ["icon", "title", "description"]
+      "elements": ["icon", "title", "description", "info"]
     },
     {
       "name": "pseudo",
@@ -331,7 +333,9 @@
         "concept": "Output %1",
         "python": "print(%1)",
         "javascript": "console.log(%1);",
-        "go": "fmt.Println(%1)"
+        "go": "fmt.Println(%1)",
+        "info": "Writes a value to the output",
+        "spoken": "Print block: writes a value to the output"
       },
       "inputSlots": {
         "1": {
@@ -575,6 +579,62 @@
         "TEXT": {
           "type": "text",
           "default": "hello"
+        }
+      },
+      "output": "String"
+    },
+    {
+      "identifier": "text_color",
+      "category": "Values",
+      "elements": {
+        "icon": "icons/text_value.svg",
+        "title": "Color",
+        "description": "A color picked from swatches",
+        "concept": "Color %COLOR",
+        "python": "\"%COLOR\"",
+        "javascript": "\"%COLOR\"",
+        "go": "\"%COLOR\"",
+        "info": "Picks a color from swatches",
+        "spoken": "Color block: a color name as text"
+      },
+      "fields": {
+        "COLOR": {
+          "type": "dropdown",
+          "options": [
+            { "value": "red", "label": { "color": "#e53935" } },
+            { "value": "green", "label": { "color": "#43a047" } },
+            { "value": "blue", "label": { "color": "#1e88e5" } },
+            { "value": "yellow", "label": { "color": "#fdd835" } }
+          ],
+          "default": "red"
+        }
+      },
+      "output": "String"
+    },
+    {
+      "identifier": "text_arrow",
+      "category": "Values",
+      "elements": {
+        "icon": "icons/text_value.svg",
+        "title": "Direction",
+        "description": "A direction picked from arrows",
+        "concept": "Direction %DIR",
+        "python": "\"%DIR\"",
+        "javascript": "\"%DIR\"",
+        "go": "\"%DIR\"",
+        "info": "Picks a direction from arrows",
+        "spoken": "Direction block: a direction as text"
+      },
+      "fields": {
+        "DIR": {
+          "type": "dropdown",
+          "options": [
+            { "value": "left", "label": { "src": "icons/arrow_left.svg" } },
+            { "value": "right", "label": { "src": "icons/arrow_right.svg" } },
+            { "value": "up", "label": { "src": "icons/arrow_up.svg" } },
+            { "value": "down", "label": { "src": "icons/arrow_down.svg" } }
+          ],
+          "default": "right"
         }
       },
       "output": "String"

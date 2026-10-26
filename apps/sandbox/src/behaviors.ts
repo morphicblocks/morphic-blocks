@@ -75,6 +75,14 @@ export const behaviors: MorphicBehaviorMap = {
     return proxy.quoted.TEXT ?? '""';
   },
 
+  // Dropdowns that show swatches and arrows; the value is the word.
+  text_color(proxy) {
+    return JSON.stringify(proxy.fields.COLOR || "red");
+  },
+  text_arrow(proxy) {
+    return JSON.stringify(proxy.fields.DIR || "right");
+  },
+
   m_logic_boolean(proxy) {
     // The dropdown option value is already "true" / "false".
     return proxy.fields.BOOL || "false";

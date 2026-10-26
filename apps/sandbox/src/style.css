@@ -581,6 +581,24 @@ body {
   cursor: grabbing;
 }
 
+/* The "info" custom element: a small round button on tiles. */
+.tile-info {
+  width: 18px;
+  height: 18px;
+  margin-top: 6px;
+  padding: 0;
+  border: 1px solid var(--block-border-hover);
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  font: italic 600 11px/1 Georgia, serif;
+  cursor: pointer;
+}
+
+.tile-info:focus-visible {
+  outline: 2px solid var(--accent, #55bdcb);
+}
+
 /* Slot placeholders in toolbox tiles */
 .morphic-toolbox-slot {
   display: inline-block;

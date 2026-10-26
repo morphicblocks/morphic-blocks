@@ -11,6 +11,7 @@
         "@codemirror/lang-javascript": "^6.2.3",
         "@codemirror/state": "^6.5.2",
         "@codemirror/view": "^6.36.5",
+        "@morphicblocks/themes": "workspace:*",
         "morphic-blocks": "workspace:*",
         "react": "^18.3.0",
         "react-dom": "^18.3.0",
