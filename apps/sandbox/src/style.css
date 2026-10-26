@@ -599,6 +599,41 @@ body {
   outline: 2px solid var(--accent, #55bdcb);
 }
 
+/* The Color and Direction menus (classes from the framework): the
+   choices in one row, an outline instead of Blockly's check mark. */
+.morphic-menu-COLOR,
+.morphic-menu-DIR {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+}
+
+.morphic-menu-COLOR .blocklyMenuItem,
+.morphic-menu-DIR .blocklyMenuItem {
+  min-width: 0;
+  padding: 4px;
+}
+
+.morphic-menu-COLOR .blocklyMenuItemCheckbox,
+.morphic-menu-DIR .blocklyMenuItemCheckbox {
+  display: none;
+}
+
+.morphic-menu-COLOR img,
+.morphic-menu-DIR img {
+  display: block;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  outline: 3px solid transparent;
+  outline-offset: 1px;
+}
+
+.morphic-menu-COLOR .blocklyMenuItemSelected img,
+.morphic-menu-DIR .blocklyMenuItemSelected img {
+  outline-color: var(--accent, #55bdcb);
+}
+
 /* Slot placeholders in toolbox tiles */
 .morphic-toolbox-slot {
   display: inline-block;
