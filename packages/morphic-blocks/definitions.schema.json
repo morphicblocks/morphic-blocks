@@ -258,14 +258,15 @@
           "properties": {
             "value": { "type": "string" },
             "label": {
-              "description": "Text, or a picture shown on the block instead of text (text views still write the value).",
+              "description": "Text, or a picture (image file or color swatch) shown on the block instead of text (text views still write the value).",
               "oneOf": [
                 { "type": "string" },
                 {
                   "type": "object",
-                  "required": ["src"],
+                  "oneOf": [{ "required": ["src"] }, { "required": ["color"] }],
                   "properties": {
                     "src": { "type": "string" },
+                    "color": { "type": "string", "description": "A CSS color drawn as a swatch, e.g. #e53935." },
                     "alt": { "type": "string", "description": "What screen readers say. Default: the value." },
                     "width": { "type": "number", "description": "Default 16." },
                     "height": { "type": "number", "description": "Default 16." }

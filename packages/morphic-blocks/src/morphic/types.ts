@@ -174,15 +174,16 @@ export type MorphicDropdownOption =
   | { value: string; label?: string | MorphicDropdownImage; display?: Record<string, string> };
 
 /**
- * A picture shown as a dropdown choice on the block. `alt` (what screen
- * readers say) defaults to the option's value; the size defaults to 16 × 16.
+ * A picture shown as a dropdown choice on the block: an image file (`src`) or
+ * a swatch the framework draws in a CSS color (`color`, e.g. `"#e53935"`).
+ * `alt` (what screen readers say) defaults to the option's value; the size
+ * defaults to 16 × 16.
  */
-export interface MorphicDropdownImage {
-  src: string;
+export type MorphicDropdownImage = ({ src: string; color?: never } | { color: string; src?: never }) & {
   alt?: string;
   width?: number;
   height?: number;
-}
+};
 
 /**
  * A field declared directly on a block (rendered at the `%FIELDNAME` token

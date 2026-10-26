@@ -218,8 +218,9 @@ export function validateDefinitions(
       if (fieldDef?.type !== "dropdown") continue;
       for (const option of fieldDef.options) {
         if (typeof option !== "object" || Array.isArray(option)) continue;
-        if (option.label && typeof option.label === "object" && typeof option.label.src !== "string") {
-          errors.push(`Block "${id}": fields["${name}"] option "${option.value}" has an image label without "src".`);
+        const image = option.label;
+        if (image && typeof image === "object" && typeof image.src !== "string" && typeof image.color !== "string") {
+          errors.push(`Block "${id}": fields["${name}"] option "${option.value}" has an image label without "src" or "color".`);
         }
         if (!option.display) continue;
         for (const element of Object.keys(option.display)) {

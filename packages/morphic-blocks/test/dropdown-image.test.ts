@@ -18,6 +18,7 @@ const format: MorphicBlocksFormat = {
           options: [
             { value: "left", label: { src: "icons/left.svg" } },
             { value: "right", label: { src: "icons/right.svg", alt: "to the right", width: 24, height: 20 } },
+            { value: "red", label: { color: "#e53935" } },
           ],
         },
       },
@@ -54,6 +55,17 @@ describe("an image dropdown choice", () => {
     expect(options[1]).toEqual([{ src: "icons/right.svg", alt: "to the right", width: 24, height: 20 }, "right"]);
   });
 
+  test("draws a color as a swatch", async () => {
+    const { block } = await setUp();
+    const [image, value] = (block.getField("WAY") as Blockly.FieldDropdown).getOptions()[2]!;
+
+    expect(value).toBe("red");
+    expect(image).toMatchObject({ alt: "red", width: 16, height: 16 });
+    const src = (image as { src: string }).src;
+    expect(src.startsWith("data:image/svg+xml,")).toBe(true);
+    expect(decodeURIComponent(src)).toContain('fill="#e53935"');
+  });
+
   test("writes its value in text views", async () => {
     const { block, codespace } = await setUp();
     block.setFieldValue("right", "WAY");
@@ -61,10 +73,10 @@ describe("an image dropdown choice", () => {
     await vi.waitFor(() => expect(codespace.getValue()).toBe("go right"), { timeout: 3000 });
   });
 
-  test("needs a src", () => {
+  test("needs a src or a color", () => {
     const broken = structuredClone(format);
     (broken.blocks[0]!.fields!.WAY as { options: unknown[] }).options = [{ value: "up", label: { alt: "up" } }];
 
-    expect(() => new MorphicBlocks(broken, {}).mount({ workspaceContainer: div() })).toThrow(/image label without "src"/);
+    expect(() => new MorphicBlocks(broken, {}).mount({ workspaceContainer: div() })).toThrow(/image label without "src" or "color"/);
   });
 });

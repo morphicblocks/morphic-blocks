@@ -478,12 +478,20 @@ function toBlocklyDropdownOption(
   if (display !== undefined) return [display, option.value];
   const label = option.label;
   if (label && typeof label === "object") {
-    return [
-      { src: label.src, alt: label.alt ?? option.value, width: label.width ?? 16, height: label.height ?? 16 },
-      option.value,
-    ];
+    const width = label.width ?? 16;
+    const height = label.height ?? 16;
+    const src = label.color !== undefined ? colorSwatch(label.color, width, height) : label.src!;
+    return [{ src, alt: label.alt ?? option.value, width, height }, option.value];
   }
   return [label ?? option.value, option.value];
+}
+
+/** A rounded square in `color`, as an SVG image address (no file, no request). */
+function colorSwatch(color: string, width: number, height: number): string {
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">` +
+    `<rect width="${width}" height="${height}" rx="3" fill="${color.replace(/["<>&]/g, "")}"/></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
 
 function captureConnectedChildren(
