@@ -9,9 +9,9 @@
   "scripts": {
     "dev": "bun run --cwd apps/sandbox dev",
     "build": "bun run build:package && bun run build:sandbox",
-    "build:package": "bun run --cwd packages/morphic-blocks build",
+    "build:package": "bun run --cwd packages/morphic-blocks build && bun run --cwd packages/themes build",
     "build:sandbox": "bun run --cwd apps/sandbox build",
-    "test": "bun run --cwd packages/morphic-blocks test",
+    "test": "bun run --cwd packages/morphic-blocks test && bun run --cwd packages/themes test",
     "preview": "bun run --cwd apps/sandbox preview"
   }
 }

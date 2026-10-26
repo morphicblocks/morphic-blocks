@@ -1,0 +1,42 @@
+{
+  "name": "@morphicblocks/themes",
+  "version": "0.1.0",
+  "description": "Ready-made themes for Morphic Blocks code views",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/morphicblocks/morphic-blocks.git",
+    "directory": "packages/themes"
+  },
+  "homepage": "https://morphicblocks.com",
+  "bugs": "https://github.com/morphicblocks/morphic-blocks/issues",
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "test": "vitest run"
+  },
+  "keywords": [
+    "morphic-blocks",
+    "themes",
+    "codemirror"
+  ],
+  "license": "Apache-2.0",
+  "peerDependencies": {
+    "morphic-blocks": "^0.4.0"
+  },
+  "devDependencies": {
+    "morphic-blocks": "workspace:*",
+    "typescript": "^5.8.2",
+    "vitest": "^5.0.1"
+  }
+}

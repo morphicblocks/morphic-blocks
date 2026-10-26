@@ -1,0 +1,22 @@
+{
+  "light": {
+    "fontSize": "14px",
+    "fontFamily": "monospace",
+    "lineHeight": 1.5,
+    "background": "#ffffff",
+    "foreground": "#000000",
+    "gutterBackground": "#ffffff",
+    "gutterForeground": "#237893",
+    "selectionBackground": "#add6ff"
+  },
+  "dark": {
+    "fontSize": "14px",
+    "fontFamily": "monospace",
+    "lineHeight": 1.5,
+    "background": "#1e1e1e",
+    "foreground": "#d4d4d4",
+    "gutterBackground": "#1e1e1e",
+    "gutterForeground": "#858585",
+    "selectionBackground": "#264f78"
+  }
+}
