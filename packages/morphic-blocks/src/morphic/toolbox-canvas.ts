@@ -487,6 +487,15 @@ export class MorphicToolboxCanvas {
    * images by their alt text. The identifier when the mode shows nothing.
    */
   private tileName(definition: MorphicBlockDefinition, modeOrder: string[]): string {
+    const { label } = this.options;
+    const labelElement = typeof label === "function" ? label(this.currentMode) : label;
+    const labelContent = labelElement === undefined ? undefined : definition.elements[labelElement];
+    if (labelContent !== undefined) {
+      const holder = document.createElement("div");
+      holder.innerHTML = labelContent;
+      const text = holder.textContent?.trim();
+      if (text) return text;
+    }
     const parts: string[] = [];
     for (const name of modeOrder) {
       const content = definition.elements[name];

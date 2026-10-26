@@ -552,6 +552,13 @@ export interface MorphicToolboxDisplayOptions {
    * Enter or Space there does not add the block.
    */
   custom?: Record<string, MorphicElementRenderer>;
+  /**
+   * The element whose text names each tile for screen readers (its
+   * `aria-label`), e.g. a `spoken` text element no mode lists; a function
+   * gets the toolbox mode and returns the element's name. A block without
+   * that element is named by what its tile shows, as without this option.
+   */
+  label?: string | ((mode: string) => string);
 }
 
 export interface MorphicToolboxConfig extends MorphicToolboxDisplayOptions {

@@ -768,6 +768,7 @@ export class MorphicBlocks extends EventTarget {
       layout: options?.layout ?? toolbox?.layout,
       scrollbar: options?.scrollbar ?? toolbox?.scrollbar,
       custom: options?.custom ?? toolbox?.custom,
+      label: options?.label ?? toolbox?.label,
     };
     for (const [element, entry] of Object.entries(this.elementTypes)) {
       if (resolveElementType(entry) === "custom" && !canvasOptions.custom?.[element]) {
