@@ -388,7 +388,7 @@ export function validateDefinitions(
   }
 }
 
-const ELEMENT_TYPES: readonly string[] = ["text", "code", "image"];
+const ELEMENT_TYPES: readonly string[] = ["text", "code", "image", "custom"];
 const SLOT_KINDS: readonly string[] = ["value", "statement"];
 const FIELD_TYPES: readonly string[] = ["dropdown", "text", "number", "checkbox"];
 

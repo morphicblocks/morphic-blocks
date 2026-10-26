@@ -47,7 +47,7 @@
   "additionalProperties": false,
   "$defs": {
     "elementType": {
-      "enum": ["text", "code", "image"]
+      "enum": ["text", "code", "image", "custom"]
     },
     "elementTypeEntry": {
       "oneOf": [

@@ -767,7 +767,13 @@ export class MorphicBlocks extends EventTarget {
       onCategoryToggle: options?.onCategoryToggle ?? toolbox?.onCategoryToggle,
       layout: options?.layout ?? toolbox?.layout,
       scrollbar: options?.scrollbar ?? toolbox?.scrollbar,
+      custom: options?.custom ?? toolbox?.custom,
     };
+    for (const [element, entry] of Object.entries(this.elementTypes)) {
+      if (resolveElementType(entry) === "custom" && !canvasOptions.custom?.[element]) {
+        warnFor(this.mountConfig)(`[MorphicBlocks] The custom element "${element}" has no function in toolbox.custom; tiles show its content as text.`);
+      }
+    }
     if (canvasOptions.layout === "tabs" && !canvasOptions.categories?.length) {
       warnFor(this.mountConfig)('[MorphicBlocks] The toolbox layout "tabs" needs categories; the tiles show as a flat list.');
     }

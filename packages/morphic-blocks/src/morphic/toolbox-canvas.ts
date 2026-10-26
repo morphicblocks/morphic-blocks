@@ -416,7 +416,13 @@ export class MorphicToolboxCanvas {
         ? normalizeImageValue(content, resolveImageSize(elementEntry))
         : content;
 
-      if (asBlock) {
+      if (elementType === "custom") {
+        el.dataset.morphicCustom = "";
+        const renderer = this.options.custom?.[elementName];
+        const drawn = renderer?.(content, { block: definition.identifier, element: elementName, mode: this.currentMode }) ?? content;
+        if (typeof drawn === "string") el.textContent = drawn;
+        else el.appendChild(drawn);
+      } else if (asBlock) {
         this.syncPreviewFont(elementName);
         const svg = this.createBlockPreviewSvg(definition, this.currentMode, elementName);
         if (svg) {
@@ -444,7 +450,16 @@ export class MorphicToolboxCanvas {
       tile.appendChild(el);
     }
 
+    // A press on a control inside a custom element is for the control, not a drag.
+    let pressedControl = false;
+    tile.addEventListener("pointerdown", (e: PointerEvent) => {
+      pressedControl = isCustomControl(e.target);
+    }, true);
     tile.addEventListener("dragstart", (e: DragEvent) => {
+      if (pressedControl) {
+        e.preventDefault();
+        return;
+      }
       e.dataTransfer?.setData(DRAG_DATA_KEY, definition.identifier);
     });
     if (this.options.touch !== false) {
@@ -457,6 +472,7 @@ export class MorphicToolboxCanvas {
       tile.setAttribute("aria-label", this.tileName(definition, modeOrder));
       tile.addEventListener("keydown", (e: KeyboardEvent) => {
         if (e.key !== "Enter" && e.key !== " ") return;
+        if (e.target !== tile) return;
         e.preventDefault();
         this.onChoose?.(definition.identifier);
       });
@@ -476,6 +492,8 @@ export class MorphicToolboxCanvas {
       const content = definition.elements[name];
       if (content === undefined) continue;
       const type = resolveElementType(this.elementTypes[name]);
+      // A custom element's controls are named on their own.
+      if (type === "custom") continue;
       if (type === "code") {
         const code = this.createCodeText(definition, this.currentMode, name);
         if (code?.trim()) parts.push(code.trim());
@@ -509,6 +527,7 @@ export class MorphicToolboxCanvas {
   private attachTouchDrag(tile: HTMLElement, blockType: string): void {
     tile.addEventListener("pointerdown", (down: PointerEvent) => {
       if (down.pointerType === "mouse" || !down.isPrimary) return;
+      if (isCustomControl(down.target)) return;
 
       const rect = tile.getBoundingClientRect();
       let ghost: HTMLElement | undefined;
@@ -824,4 +843,11 @@ export class MorphicToolboxCanvas {
         category.name.toLowerCase(),
     );
   }
+}
+
+/** A button, link, input or editable spot inside a custom element. */
+function isCustomControl(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) return false;
+  const control = target.closest("button, a[href], input, select, textarea, [contenteditable]");
+  return control !== null && control.closest("[data-morphic-custom]") !== null;
 }

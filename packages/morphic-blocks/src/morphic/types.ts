@@ -7,8 +7,26 @@ export type MorphicModeName = string;
  * - "text"  — rendered as an HTML label; never shown in the workspace
  * - "code"  — template with %N placeholders; rendered as a Blockly block in the workspace or as text in the codespace
  * - "image" — rendered as an <img> in the toolbox tile; never shown in the workspace
+ * - "custom" — drawn on the toolbox tile by the app's renderer (`toolbox.custom`); never shown in the workspace
  */
-export type MorphicElementType = "text" | "code" | "image";
+export type MorphicElementType = "text" | "code" | "image" | "custom";
+
+/** What a renderer of a `custom` element is drawing. */
+export interface MorphicElementRenderContext {
+  /** The block's identifier. */
+  block: string;
+  /** The element's name. */
+  element: string;
+  /** The toolbox mode. */
+  mode: string;
+}
+
+/**
+ * Draws a `custom` element on a toolbox tile from the block's content for it:
+ * a button, a player, anything. A string is shown as text. Called again on
+ * every redraw of the toolbox.
+ */
+export type MorphicElementRenderer = (content: string, context: MorphicElementRenderContext) => Node | string;
 
 /**
  * Configuration for a value slot's empty-state default. Keyed by slot
@@ -528,6 +546,12 @@ export interface MorphicToolboxDisplayOptions {
    * rule wins. Works when the container is the element that scrolls.
    */
   scrollbar?: boolean;
+  /**
+   * How each `custom` element is drawn on the tiles, by element name.
+   * Pressing a button, link or input inside one does not drag the tile, and
+   * Enter or Space there does not add the block.
+   */
+  custom?: Record<string, MorphicElementRenderer>;
 }
 
 export interface MorphicToolboxConfig extends MorphicToolboxDisplayOptions {
