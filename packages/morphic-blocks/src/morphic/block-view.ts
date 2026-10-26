@@ -445,7 +445,7 @@ function createFieldFromDefinition(
   switch (def.type) {
     case "dropdown": {
       const options = def.options.map((o) => toBlocklyDropdownOption(o, elementName));
-      const field = new Blockly.FieldDropdown(options);
+      const field = new MorphicDropdown(options);
       if (def.default !== undefined) field.setValue(def.default);
       return field;
     }
@@ -484,6 +484,20 @@ function toBlocklyDropdownOption(
     return [{ src, alt: label.alt ?? option.value, width, height }, option.value];
   }
   return [label ?? option.value, option.value];
+}
+
+/**
+ * A declared dropdown whose open menu carries classes for app CSS:
+ * `morphic-menu` and `morphic-menu-<FIELD>` (the field's name), e.g. to lay
+ * picture choices out in a grid or hide the check marks.
+ */
+class MorphicDropdown extends Blockly.FieldDropdown {
+  protected override showEditor_(event?: MouseEvent): void {
+    super.showEditor_(event);
+    const menu = this.menu_?.getElement();
+    menu?.classList.add("morphic-menu");
+    if (this.name) menu?.classList.add(`morphic-menu-${this.name}`);
+  }
 }
 
 /** A rounded square in `color`, as an SVG image address (no file, no request). */
