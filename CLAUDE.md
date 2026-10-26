@@ -13,14 +13,15 @@ morphic-blocks/
 ├── apps/
 │   └── sandbox/             # Dev app showing the framework in use
 ├── packages/
-│   └── morphic-blocks/      # Core framework (the library)
-│       └── test/            # Vitest tests, run in jsdom
+│   ├── morphic-blocks/      # Core framework (the library)
+│   │   └── test/            # Vitest tests, run in jsdom
+│   └── themes/              # @morphicblocks/themes: code view themes, one JSON file per family ({ light, dark }), e.g. standard
 └── CLAUDE.md
 ```
 
 ### Tests
 
-`bun run test` (repo root) runs the framework tests with Vitest in jsdom. Run
+`bun run test` (repo root) runs the framework tests with Vitest in jsdom, then the themes package's. Run
 them after every framework change, and add a test for each fix or feature that
 fails without the change. `test/setup-dom.ts` stubs the text measuring calls
 jsdom cannot answer; tests check generated text, not rendering.
@@ -103,6 +104,9 @@ A **Morphic Block** is the fundamental unit. It has named **elements** — the v
 | `text`  | Rendered as HTML label  | Never shown                                                |
 | `code`  | Rendered as Blockly SVG | Used as Blockly template (`<img>` in content → FieldImage) |
 | `image` | Rendered as `<img>`     | Never shown                                                |
+| `custom` | Drawn by the app's renderer (`toolbox.custom`, by element name) | Never shown                    |
+
+A `custom` element's renderer gets the block's content and `{ block, element, mode }` and returns a node (a button, a player) or text; presses on controls inside it neither drag the tile nor add the block. `toolbox.label` names tiles for screen readers after an element (a string, or a function of the toolbox mode, e.g. a hidden `spoken-de` text element); blocks without it keep the default name, what the tile shows.
 
 Element names (`title`, `icon`, `block`, `syntax`, …) are fully free-form. The type is declared once globally in `elementTypes` — not repeated per block.
 
@@ -250,7 +254,7 @@ These are *potential* applications, not currently deployed. They are worth keepi
 - ~~**Drag value blocks into value slots**~~ (numbers, strings, variables) — toolbox tile drop + grip-drag inside codespace; drops follow the workspace's connection checks (since 0.3.0; before, value drops ignored the slot's type).
 - ~~**Right-click drag inside codespace**~~ — secondary-button (or Ctrl-click on macOS) drag with capture-phase mousedown; hover affordances: blue outline on innermost editable placeholder, grey background on innermost non-atomic block.
 - ~~**Inline field edits for atomic placeholders**~~ — text / number / dropdown editors overlaid on the placeholder range; shadows materialise to real blocks on first edit. Atomic = exactly one named field, no value inputs. `FieldVariable` and `FieldCheckbox`, plus plugin / developer custom fields, are deferred (option menu and rationale recorded outside the repo).
-- ~~**Declarable inline fields**~~ — a `fields` map on a block definition builds dropdown / text / number / checkbox fields at the `%FIELDNAME` token, so field-carrying blocks need no behavior for display. Dropdown options are `value` (generated + shown in text) plus an optional block-only `label` (no serialization key). Undeclared `%FIELDNAME` tokens still fall through to `onViewApplied` for custom fields; `kind: "dummy"` was removed (it only ever anchored a behavior-attached field). Type: `MorphicFieldDefinition`.
+- ~~**Declarable inline fields**~~ — a `fields` map on a block definition builds dropdown / text / number / checkbox fields at the `%FIELDNAME` token, so field-carrying blocks need no behavior for display. Dropdown options are `value` (generated + shown in text) plus an optional block-only `label` (no serialization key); a `label` can be an image (`{ src, alt?, width?, height? }`) or a color swatch (`{ color }`, drawn as an SVG data address), default 16 × 16, `alt` defaulting to the value. Undeclared `%FIELDNAME` tokens still fall through to `onViewApplied` for custom fields; `kind: "dummy"` was removed (it only ever anchored a behavior-attached field). Type: `MorphicFieldDefinition`.
 - ~~**Per-mode field rendering** (representation axis)~~ — a dropdown option's object form takes an optional `display` map keyed by **element name** (like the `code` section), making the *shown* text mode-aware while the stored `value` stays single. Resolution when element `E` renders: block `display[E] ?? label ?? value`, codespace/preview `display[E] ?? value`; execution / codegen / serialization always use the value. Covers Python `True`/`False` vs JS/Go `true`/`false`, `and`/`&&`, `None`/`null`/`nil`. Only `dropdown` is affected. This is the *representation* axis; **natural-language translation** (option labels per human language, e.g. `Monday`/`Montag`, plus descriptions and string content) remains a separate, deferred locale layer — best as an external translation table merged at load, orthogonal to modes.
 
 ### Upcoming
