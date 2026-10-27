@@ -42,8 +42,8 @@ public/blockly-media` before `dev` and `build` instead. You can still load them
 from Blockly's server; see
 [Privacy & External Requests](https://docs.morphicblocks.com/guides/privacy/).
 
-The text views (codespace, preview, code editor) use CodeMirror. Install it
-only if you use them:
+The text views (codespace, code editor) use CodeMirror. Install it only if
+you use them:
 
 ```sh
 npm i @codemirror/state @codemirror/view @codemirror/lang-javascript
@@ -110,23 +110,24 @@ engine.mount({
 });
 
 // Switch the representation at runtime; the same blocks re-render.
-engine.setModes({ workspaceMode: "python", toolboxMode: "python" });
+engine.show({ toolbox: "python", views: { workspace: "python" } });
 ```
 
 ## How it works
 
 1. **Definitions** name each block's elements: labels, images and code
    templates.
-2. **Modes** choose which elements show, one CSS file per mode styles them.
-3. **Views** (workspace, toolbox, codespace, preview) each show a mode, and
-   presets switch them together.
+2. **Modes** choose which elements the toolbox tiles show; one CSS file per
+   mode styles them.
+3. **Views** (workspaces and codespaces, declared by name) each show a code
+   element, and presets switch the toolbox and the views together.
 
 ## Features
 
 - **One definition, many representations:** define a block once and show it
   as icons, blocks or source text, switchable at runtime.
-- **Blocks and text side by side:** an editable text view of the program, a
-  read only preview and selection that follows across views.
+- **Blocks and text side by side:** editable and read-only text views of the
+  program, any number of views, and selection that follows across them.
 - **Config driven:** blocks in JSON, behaviors in TypeScript, one CSS file per
   mode, with no duplication per representation.
 - **Headless and embeddable:** bring your own UI; the framework stays unstyled.
@@ -135,6 +136,8 @@ engine.setModes({ workspaceMode: "python", toolboxMode: "python" });
   or show as tabs.
 - **No external requests:** the framework never contacts another server,
   Blockly's media included.
+- **Themes:** ready-made code view colors in
+  [`@morphicblocks/themes`](https://www.npmjs.com/package/@morphicblocks/themes).
 
 ## Documentation
 
