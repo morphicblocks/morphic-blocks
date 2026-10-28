@@ -329,9 +329,10 @@ export function validateDefinitions(
         errors.push(`Mode "${mode.name}": render "${value}" is now "${value}-based" (render.${element}).`);
       } else if (value !== "block-based" && value !== "text-based") {
         errors.push(`Mode "${mode.name}": render.${element} must be "block-based" or "text-based".`);
-      } else if (!codeElementNames.has(element) || !mode.elements.includes(element)) {
+      } else if (!codeElementNames.has(element)) {
+        // A code element the mode does not list yet still counts: setModeElements() can add it.
         warnings.push(
-          `Mode "${mode.name}": render.${element} names no code element of the mode — it changes nothing.`,
+          `Mode "${mode.name}": render.${element} names no code element — it changes nothing.`,
         );
       }
     }

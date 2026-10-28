@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import { MorphicBlocks } from "../src";
 import type { MorphicBlocksFormat } from "../src/morphic/types";
 
@@ -57,6 +57,26 @@ describe("a mode's render", () => {
 
     engine.show({ toolbox: "blocks" });
     expect(tile().querySelector("svg")).not.toBeNull();
+  });
+});
+
+describe("render's check", () => {
+  test("warns about a name that is no code element", () => {
+    const onWarning = vi.fn();
+    const typo = { ...format, modes: [{ name: "blocks", elements: ["python"], render: { pyton: "text-based" } }], presets: undefined } as MorphicBlocksFormat;
+
+    void new MorphicBlocks(typo, {}).mount({ workspaceContainer: div(), onWarning });
+
+    expect(onWarning).toHaveBeenCalledWith(expect.stringContaining("render.pyton names no code element"));
+  });
+
+  test("accepts a code element the mode lists only later", () => {
+    const onWarning = vi.fn();
+    const later = { ...format, elementTypes: { python: "code", js: "code" }, modes: [{ name: "blocks", elements: ["python"], render: { js: "text-based" } }], presets: undefined } as MorphicBlocksFormat;
+
+    void new MorphicBlocks(later, {}).mount({ workspaceContainer: div(), onWarning });
+
+    expect(onWarning).not.toHaveBeenCalledWith(expect.stringContaining("render.js"));
   });
 });
 
