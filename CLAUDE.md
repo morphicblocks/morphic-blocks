@@ -48,7 +48,7 @@ jsdom cannot answer; tests check generated text, not rendering.
 4. `MorphicBlocks.mount()` initializes Blockly + morphic features and sets up every view it gets a container for
 5. `engine.applyPreset()` / `engine.show()` switch the toolbox mode and the element each view shows at runtime — blocks re-render
 
-**Views** are declared by name in the definitions (`views`, or the mount option of the same name): `{ "blocks": "workspace", "read": { "kind": "codespace", "editable": false, "delete": { … } } }`, kinds `workspace` and `codespace` (a codespace with `editable: false` is what the preview was before 0.4.0); `rtl: true | false` sets a view's direction (left out, a workspace follows `blockly.rtl` and a codespace the page). Without `views`, there are two: `workspace` and `codespace`. `mount()` is the single setup call: it takes `containers` by view name (`workspaceContainer` / `codespaceContainer` are short for `containers.workspace` / `.codespace`), `toolboxContainer`, `codeEditorContainer` and `toolbars` by view name, plus `editorTheme` and `themes` by view name, and sets up each view it gets a container for, so the same definitions serve a full page and a small embed. The first workspace with a container holds the program (`programView`); without one, Blockly runs headless (offscreen) so the block model stays authoritative. Every other view goes through the added-view code (`addView`). `mount()` returns a promise that settles once the text editors (lazy loaded CodeMirror) are ready; the workspace is ready immediately. Selection sync is on by default when more than one view is set up (`selectionSync: false` turns it off, an object configures it), and the code editor starts hidden. Views show a code element, not a mode (modes are for tiles only): presets say which, without presets every view shows the first mode's code element, and `show()` switches views freely at runtime. View containers get combinable classes for app CSS: `morphic-view`, `morphic-view-<name>`, `morphic-shows-<element>`, `morphic-preset-<name>` (the preset applied last), `morphic-workspace-root` / `morphic-codespace-root` and `morphic-read-only`; workspace blocks get `morphic-shows-<element>` too, tiles keep `morphic-mode-<mode>` (not `morphic-element-`, since every class starting with it is hidden by the mode visibility CSS). Options moved in 0.4.0 (`previewContainer`, `previewTheme`, `toolbarContainers`, the `codespace` mount option, `setModes()`, presets with `workspace`/`codespace`/`preview` keys) fail with directions.
+**Views** are declared by name in the definitions (`views`, or the mount option of the same name): `{ "blocks": "workspace", "read": { "kind": "codespace", "editable": false, "delete": { … } } }`, kinds `workspace` and `codespace` (a codespace with `editable: false` is what the preview was before 0.4.0); `rtl: true | false` sets a view's direction (left out, a workspace follows `blockly.rtl` and a codespace the page). Without `views`, there are two: `workspace` and `codespace`. `mount()` is the single setup call: it takes `containers` by view name (`workspaceContainer` / `codespaceContainer` are short for `containers.workspace` / `.codespace`), `toolboxContainer`, `codeEditorContainer` and `toolbars` by view name, plus `editorTheme` and `themes` by view name, and sets up each view it gets a container for, so the same definitions serve a full page and a small embed. The first workspace with a container holds the program (`programView`); without one, Blockly runs headless (offscreen) so the block model stays authoritative, showing what the preset gives the first declared workspace view, else the first view with a container (`headlessProgramView`). Every other view goes through the added-view code (`addView`). `mount()` returns a promise that settles once the text editors (lazy loaded CodeMirror) are ready; the workspace is ready immediately. Selection sync is on by default when more than one view is set up (`selectionSync: false` turns it off, an object configures it), and the code editor starts hidden. Views show a code element, not a mode (modes are for tiles only): presets say which, without presets every view shows the first mode's code element, and `show()` switches views freely at runtime. View containers get combinable classes for app CSS: `morphic-view`, `morphic-view-<name>`, `morphic-shows-<element>`, `morphic-preset-<name>` (the preset applied last), `morphic-workspace-root` / `morphic-codespace-root` and `morphic-read-only`; workspace blocks get `morphic-shows-<element>` too, tiles keep `morphic-mode-<mode>` (not `morphic-element-`, since every class starting with it is hidden by the mode visibility CSS). Options moved in 0.4.0 (`previewContainer`, `previewTheme`, `toolbarContainers`, the `codespace` mount option, `setModes()`, presets with `workspace`/`codespace`/`preview` keys) fail with directions.
 
 **Added views:** `engine.addView({ kind: "codespace" | "workspace", container, element, name?, editable?, delete?, theme?, toolbar? })` adds a view at runtime, beside the declared ones, and returns a handle (`getElement`, `show`, `setTheme`, `dispose`, `ready`). Every view has a name: declared ones their own, added ones theirs or `view-N`. Toolbars, zoom, copy and `getViewElement()` look views up by name (`resolveView` in `MorphicBlocks.ts`), so features work for every view alike. Workspaces beside the program's take a fresh copy of the program after each batch of changes (replaying single events cannot follow how the engine rebuilds slot defaults). They are editable by default: every change made in one is forwarded to the program's workspace as a Blockly event, the copy back waits while that view is dragging or editing a field, its undo is the program's, and tiles dropped on it are created there; `editable: false` makes one read only. Presets name views by name; a name that is no declared view only warns (it may be added later). Showing and hiding the containers is the host's job.
 
@@ -108,7 +108,7 @@ A **Morphic Block** is the fundamental unit. It has named **elements** — the v
 
 A `custom` element's renderer gets the block's content and `{ block, element, mode }` and returns a node (a button, a player) or text; presses on controls inside it neither drag the tile nor add the block. `toolbox.label` names tiles for screen readers after an element (a string, or a function of the toolbox mode, e.g. a hidden `spoken-de` text element); blocks without it keep the default name, what the tile shows.
 
-Element names (`title`, `icon`, `block`, `syntax`, …) are fully free-form. The type is declared once globally in `elementTypes` — not repeated per block.
+Element names (`title`, `icon`, `concept`, `python`, …) are fully free-form; recommended patterns (modes `…Tiles`, presets `…Preset`, views `…Pane`) and the framework words that warn as names are in the docs' Naming page (`FRAMEWORK_WORDS` in `validate-definitions.ts`). The type is declared once globally in `elementTypes` — not repeated per block.
 
 An `image` value can be a **bare file path** (`"icons/log.svg"` — auto-wrapped as `<img>`, sized via the element's `size` config, default 16×16) or explicit **`<img>` HTML** (`"<img src='icons/log.svg'>"`). Both work.
 
@@ -122,18 +122,18 @@ A **mode** declares which elements are visible and, by scanning for the first `t
     "title":       "text",
     "description": "text",
     "icon":        "image",
-    "block":       "code",
-    "syntax":      "code"
+    "concept":     "code",
+    "python":      "code"
   },
   "modes": [
-    { "name": "iconic",    "elements": ["icon", "title", "description"] },
-    { "name": "lexical",   "elements": ["title", "block"] },
-    { "name": "syntactic", "elements": ["title", "syntax", "description"] },
-    { "name": "syntax-text", "elements": ["title", "syntax"], "render": { "syntax": "text-based" } }
+    { "name": "icon-tiles",       "elements": ["icon", "title", "description"] },
+    { "name": "concept-tiles",    "elements": ["title", "concept"] },
+    { "name": "python-tiles",     "elements": ["title", "python", "description"] },
+    { "name": "python-text-tiles", "elements": ["title", "python"], "render": { "python": "text-based" } }
   ],
   "presets": [
-    { "name": "starter", "label": "Starter", "toolbox": "iconic",      "views": { "workspace": "block" } },
-    { "name": "text",    "label": "Text",    "toolbox": "syntax-text", "views": { "codespace": "syntax" } }
+    { "name": "icon-preset", "label": "Starter", "toolbox": "icon-tiles",       "views": { "workspace": "concept" } },
+    { "name": "text-preset", "label": "Text",    "toolbox": "python-text-tiles", "views": { "codespace": "python" } }
   ],
   "categories": [
     { "name": "Output", "color": "#5C81A6" }
@@ -143,10 +143,10 @@ A **mode** declares which elements are visible and, by scanning for the first `t
       "identifier": "log_message",
       "category": "Output",
       "elements": {
-        "title":  "Print",
-        "icon":   "<img src='assets/log.svg'>",
-        "block":  "log %1",
-        "syntax": "console.log( %1 );",
+        "title":   "Print",
+        "icon":    "<img src='assets/log.svg'>",
+        "concept": "log %1",
+        "python":  "print(%1)",
         "description": "Print a message"
       },
       "inputSlots": { "1": { "kind": "value", "name": "MESSAGE" } }
@@ -178,7 +178,7 @@ A **preset** says what the toolbox and each view show: `{ name, label?, toolbox:
 
 The `toolbox` entry is a **mode name**; that mode's `render` decides whether each code element shows as a block or as source text on the tiles.
 
-Presets are passed via the mount config (`presets`, initial `preset`), validated at mount (unknown modes, views showing no code element, duplicate names; unknown views warn), applied at runtime with `engine.applyPreset(nameOrIndex)`, and reported to the host via `onPresetApplied(preset)` for pane-visibility layout. `show({ toolbox?, views? })`, in a preset's shape, is the lower-level API.
+Presets are passed via the mount config (`presets`, initial `preset`), validated at mount (unknown modes, views showing no code element, duplicate names; unknown views, names reused across kinds and framework words as names warn), applied at runtime with `engine.applyPreset(nameOrIndex)`, and reported to the host via `onPresetApplied(preset)` for pane-visibility layout. `show({ toolbox?, views? })`, in a preset's shape, is the lower-level API.
 
 ### Workspace template resolution
 
@@ -194,11 +194,11 @@ A workspace view's blocks use the element it shows (`resolveElementView`); toolb
 All elements are always rendered; CSS controls visibility:
 
 ```html
-<div class="morphic-block morphic-mode-iconic morphic-block-log_message"
+<div class="morphic-block morphic-mode-icon-tiles morphic-block-log_message"
      style="--morphic-block-color: #5C81A6">
   <div class="morphic-element-icon"><img src="assets/log.svg"></div>
-  <div class="morphic-element-block">log <span class="morphic-slot"></span></div>
-  <div class="morphic-element-code">console.log(...);</div>
+  <div class="morphic-element-concept">log <span class="morphic-slot"></span></div>
+  <div class="morphic-element-python">print(...)</div>
   <div class="morphic-element-description">Print a message</div>
 </div>
 ```
