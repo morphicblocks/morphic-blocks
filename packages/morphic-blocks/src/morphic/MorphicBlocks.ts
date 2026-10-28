@@ -613,6 +613,7 @@ export class MorphicBlocks extends EventTarget {
       presets: config.presets,
       code: config.code,
       categories: config.toolbox?.categories,
+      views: Object.keys(config.views ?? this.formatViews ?? {}),
     });
     // Moved in 0.4.0: named here so an upgrade fails with directions.
     const moved: Record<string, string> = {

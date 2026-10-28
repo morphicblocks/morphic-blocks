@@ -2,7 +2,7 @@ import * as Blockly from "blockly";
 import { getLifecycleBehavior } from "./behavior-runtime";
 import { BLOCK_SHAPES, DEFAULT_ELEMENT } from "./definitions";
 import { resolveElementType } from "./element-types";
-import { parseTemplate } from "./template";
+import { parseTemplate, toModeClassToken } from "./template";
 import type {
   MorphicBehaviorMap,
   MorphicBlockDefinition,
@@ -26,6 +26,8 @@ export interface ValidateDefinitionsArgs {
   presets?: MorphicPresetDefinition[];
   code?: Record<string, MorphicCodeElementConfig>;
   categories?: MorphicToolboxCategory[];
+  /** Names of the views the developer declared (not the defaults). */
+  views?: string[];
 }
 
 export interface DefinitionValidationResult {
@@ -47,7 +49,7 @@ export interface DefinitionValidationResult {
 export function validateDefinitions(
   args: ValidateDefinitionsArgs,
 ): DefinitionValidationResult {
-  const { definitions, elementTypes, behaviors, modes, presets, code, categories } = args;
+  const { definitions, elementTypes, behaviors, modes, presets, code, categories, views } = args;
   const errors: string[] = [];
   const warnings: string[] = [];
 
@@ -359,8 +361,9 @@ export function validateDefinitions(
   }
 
   // (10) Cross-namespace name collisions. A name reused as an element, a mode,
-  // and/or a preset is legal (they're separate maps) but easy to confuse — e.g.
-  // a mode named after its source element makes `python` mean three things.
+  // a preset, a view and/or a category is legal (they're separate maps) but
+  // easy to confuse — e.g. a mode named after its source element makes
+  // `python` mean three things.
   const namespacesByName = new Map<string, Set<string>>();
   const noteName = (name: string, namespace: string): void => {
     const set = namespacesByName.get(name) ?? new Set<string>();
@@ -370,11 +373,30 @@ export function validateDefinitions(
   for (const name of declaredElementNames) noteName(name, "element");
   for (const mode of modes ?? []) noteName(mode.name, "mode");
   for (const preset of presets ?? []) noteName(preset.name, "preset");
+  for (const view of views ?? []) noteName(view, "view");
+  for (const category of categories ?? []) noteName(category.name, "category");
   for (const [name, namespaces] of namespacesByName) {
     if (namespaces.size > 1) {
       warnings.push(
         `Name "${name}" is used as ${[...namespaces].sort().join(" and ")} — reusing a name ` +
-          `across element / mode / preset is allowed but confusing; consider distinct names.`,
+          `across element / mode / preset / view / category is allowed but confusing; consider distinct names.`,
+      );
+    }
+    // (11) A class keeps the name as written, except what a class cannot hold;
+    // the app's CSS then needs the changed name. Category labels may have spaces.
+    const kinds = [...namespaces].filter((kind) => kind !== "category");
+    if (kinds.length > 0 && /[^A-Za-z0-9_-]/.test(name)) {
+      warnings.push(
+        `Name "${name}" (${kinds.sort().join(", ")}) has characters a CSS class cannot hold; ` +
+          `its classes use "${toModeClassToken(name)}".`,
+      );
+    }
+    // (12) A framework word as a name reads like the framework's own thing.
+    const word = name.toLowerCase();
+    if (FRAMEWORK_WORDS.includes(word)) {
+      warnings.push(
+        `Name "${name}" (${[...namespaces].sort().join(", ")}) is a Morphic Blocks word — name it after what it is ` +
+          `in your app (e.g. "python", "icon-tiles", "editor-pane").`,
       );
     }
   }
@@ -390,6 +412,12 @@ export function validateDefinitions(
 }
 
 const ELEMENT_TYPES: readonly string[] = ["text", "code", "image", "custom"];
+
+/** Words the framework uses for its own things; as a developer's name they confuse readers. */
+const FRAMEWORK_WORDS: readonly string[] = [
+  "workspace", "codespace", "preview", "toolbox", "mode", "preset", "view", "element",
+  "block", "blocks", "tile", "tiles", "category", ...ELEMENT_TYPES,
+];
 const SLOT_KINDS: readonly string[] = ["value", "statement"];
 const FIELD_TYPES: readonly string[] = ["dropdown", "text", "number", "checkbox"];
 
