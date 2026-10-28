@@ -210,6 +210,19 @@ const workspaceOwners = new WeakMap<Blockly.Workspace, MorphicBlocks>();
 const fallbackOwners = new Map<string, MorphicBlocks>();
 
 /**
+ * The view whose element the hidden program workspace takes when no
+ * workspace has a container: the first declared workspace (a preset can name
+ * it, e.g. an element that keeps every field), else the first view shown.
+ */
+function headlessProgramView(
+  declarations: Record<string, MorphicViewDeclaration>,
+  containers: Record<string, HTMLElement | undefined>,
+): string | undefined {
+  const names = Object.keys(declarations);
+  return names.find((name) => declarations[name]!.kind === "workspace") ?? names.find((name) => containers[name]);
+}
+
+/**
  * Blockly marks a block as an insertion marker (the preview drawn while
  * dragging) only after its `init`, which already gave it default shadows.
  * When the dragged block replaces an occupied slot, Blockly moves the old
@@ -384,11 +397,10 @@ export class MorphicBlocks extends EventTarget {
     const programView = Object.keys(viewDeclarations).find(
       (name) => viewDeclarations[name]!.kind === "workspace" && viewContainers[name],
     );
-    const firstShown = Object.keys(viewDeclarations).find((name) => viewContainers[name]);
     const defaultElement = this.defaultElement(config.modes ?? []);
     const elementOf = (name: string | undefined) =>
       (name ? initialPreset?.views[name] : undefined) ?? defaultElement;
-    const workspaceElement = elementOf(programView ?? firstShown);
+    const workspaceElement = elementOf(programView ?? headlessProgramView(viewDeclarations, viewContainers));
 
     const workspaceHost = (programView && viewContainers[programView]) || this.createHeadlessHost();
 
@@ -1207,15 +1219,16 @@ export class MorphicBlocks extends EventTarget {
     }
     for (const [name, element] of Object.entries(shown.views ?? {})) {
       // Views without a container are not set up; the next mount takes the preset again.
-      if (name === this.mountConfig.programView || (!this.mountConfig.programView && this.isHeadlessProgramFor(name))) {
-        if (element !== this.mountConfig.workspaceElement) {
-          this.mountConfig.workspaceElement = element;
-          this.applyWorkspaceContainerClass();
-          this.syncWorkspaceFont();
-          this.renderWorkspaceBlocks();
-        }
-        continue;
+      const programFollows = this.mountConfig.programView
+        ? name === this.mountConfig.programView
+        : name === headlessProgramView(this.mountConfig.viewDeclarations, this.mountConfig.viewContainers ?? {});
+      if (programFollows && element !== this.mountConfig.workspaceElement) {
+        this.mountConfig.workspaceElement = element;
+        this.applyWorkspaceContainerClass();
+        this.syncWorkspaceFont();
+        this.renderWorkspaceBlocks();
       }
+      // A codespace the hidden program follows still shows the element itself.
       const view = [...this.views].find((added) => added.name === name);
       if (view && view.element !== element) view.show?.(element);
     }
@@ -1224,15 +1237,6 @@ export class MorphicBlocks extends EventTarget {
     // A previous selection can refer to a presentation that's no longer
     // visible, leaving stale highlights in views the user can no longer reach.
     this.selectionSync?.clearAll();
-  }
-
-  /**
-   * Without a workspace view the hidden program workspace follows the first
-   * shown view, so its blocks are built from what that view shows.
-   */
-  private isHeadlessProgramFor(name: string): boolean {
-    const containers = this.mountConfig?.viewContainers ?? {};
-    return Object.keys(this.mountConfig?.viewDeclarations ?? {}).find((view) => containers[view]) === name;
   }
 
   /** Moved in 0.4.0: `show()` takes its place. */
