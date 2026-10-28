@@ -58,19 +58,19 @@ A block is defined once, with one element per representation:
 {
   "elementTypes": {
     "title":      "text",
-    "conceptual": "code",
+    "concept":    "code",
     "python":     "code"
   },
   "modes": [
-    { "name": "conceptual", "elements": ["title", "conceptual"] },
-    { "name": "python",     "elements": ["title", "python"] }
+    { "name": "concept-tiles", "elements": ["title", "concept"] },
+    { "name": "python-tiles",  "elements": ["title", "python"] }
   ],
   "blocks": [
     {
       "identifier": "text_print",
       "elements": {
         "title":      "Print",
-        "conceptual": "Output %1",
+        "concept":    "Output %1",
         "python":     "print(%1)"
       },
       "inputSlots": {
@@ -110,7 +110,7 @@ engine.mount({
 });
 
 // Switch the representation at runtime; the same blocks re-render.
-engine.show({ toolbox: "python", views: { workspace: "python" } });
+engine.show({ toolbox: "python-tiles", views: { workspace: "python" } });
 ```
 
 ## How it works
