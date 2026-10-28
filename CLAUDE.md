@@ -2,16 +2,16 @@
 
 ## What This Project Is
 
-Morphic Blocks is a TypeScript framework built on top of Google Blockly. Its purpose is to render Blockly blocks in multiple **modes** (e.g., iconic, lexical, syntactic), facilitating the transition between block-based and text-based programming — or between any given visual representation modes.
+Morphic Blocks is a TypeScript framework built on top of Google Blockly. It shows one block model in multiple representations (icons, words, code in any language, as blocks or as text), for the transition between block-based and text-based programming, or between any other representations. **Modes** decide what the toolbox tiles show; **views** (workspaces and codespaces) each show one code element.
 
-It is designed as a **reusable library** that developers embed in their own apps. It should not lock users into specific UI components.
+It is a **reusable library** that developers embed in their own apps; it must not lock them into specific UI components. The user docs are at <https://docs.morphicblocks.com> (EN + DE, source in <https://github.com/morphicblocks/docs>); details belong there, not here or in the READMEs.
 
 ## Repository Structure
 
 ```text
 morphic-blocks/
 ├── apps/
-│   └── sandbox/             # Dev app showing the framework in use
+│   └── sandbox/             # Dev app and test bed for every feature
 ├── packages/
 │   ├── morphic-blocks/      # Core framework (the library)
 │   │   └── test/            # Vitest tests, run in jsdom
@@ -21,281 +21,102 @@ morphic-blocks/
 
 ### Tests
 
-`bun run test` (repo root) runs the framework tests with Vitest in jsdom, then the themes package's. Run
-them after every framework change, and add a test for each fix or feature that
-fails without the change. `test/setup-dom.ts` stubs the text measuring calls
-jsdom cannot answer; tests check generated text, not rendering.
+`bun run test` (repo root) runs the framework tests with Vitest in jsdom, then the themes package's. Run them after every framework change, and add a test for each fix or feature that fails without the change. `test/setup-dom.ts` stubs the text measuring calls jsdom cannot answer; tests check generated text, not rendering.
 
 ## Framework Architecture (`packages/morphic-blocks`)
 
 ### Key files
 
-- `src/morphic/MorphicBlocks.ts` — Main orchestration class (`mount`, `show`, `applyPreset`, `generateJavaScript`)
-- `src/morphic/block-view.ts` — Block rendering, mode class application, connection management
-- `src/morphic/block-namespace.ts` — Clean ↔ `morphic:` Blockly-type translation (collision isolation)
-- `src/morphic/template.ts` — Template parsing (`%1` placeholders, `<img>` tags)
-- `src/morphic/codegen.ts` — One-way code generation via behavior functions
-- `src/morphic/view-resolver.ts` — Mode fallback logic
-- `src/morphic/styles.ts` — CSS/style management, mode coverage validation
-- `src/morphic/types.ts` — All TypeScript types
-- `cli/` — the Node side, the only code with Node types (`cli/tsconfig.json`): `index.ts` is the `morphic-blocks copy-media <folder>` command (built to `dist/cli.js`, the package's `bin`); `plugin.ts` the bundler plugin (unplugin) that copies the media on dev/build start, handed out per bundler by `vite.ts`, `webpack.ts`, `rspack.ts`, `rollup.ts`, `esbuild.ts` (package subpaths `morphic-blocks/vite` …); both use `copy-media.ts`. Built by `vite.cli.config.ts`, types by `cli/tsconfig.build.json`
+- `src/morphic/MorphicBlocks.ts`: Main orchestration class (`mount`, `show`, `applyPreset`, `addView`, `generateJavaScript`)
+- `src/morphic/block-view.ts`: Block rendering, class application, fields (`MorphicDropdown`), connection management
+- `src/morphic/block-namespace.ts`: Clean ↔ `morphic:` Blockly-type translation (collision isolation)
+- `src/morphic/template.ts`: Template parsing (`%1`, `%NAME`, `<img>`), `toModeClassToken` (names into classes)
+- `src/morphic/codegen.ts`: One-way code generation via behavior functions
+- `src/morphic/view-resolver.ts`: Which element a block's template comes from (`resolveElementView` for views, `resolveBlockView` for tiles)
+- `src/morphic/toolbox-canvas.ts`: The HTML toolbox (tiles, categories, drag, keyboard, custom elements)
+- `src/morphic/styles.ts`: CSS/style management, mode coverage validation
+- `src/morphic/validate-definitions.ts`: Mount-time checks (errors stop the mount, warnings go to `onWarning`); every message is listed on the docs' Errors & Warnings page
+- `src/morphic/types.ts`: All TypeScript types
+- `cli/`: the Node side, the only code with Node types (`cli/tsconfig.json`): `index.ts` is the `morphic-blocks copy-media <folder>` command (built to `dist/cli.js`, the package's `bin`); `plugin.ts` the bundler plugin (unplugin) that copies Blockly's media on dev/build start, handed out per bundler by `vite.ts`, `webpack.ts`, `rspack.ts`, `rollup.ts`, `esbuild.ts` (package subpaths `morphic-blocks/vite` …); both use `copy-media.ts`. Built by `vite.cli.config.ts`, types by `cli/tsconfig.build.json`
 
 ### How it works
 
-1. User provides **definitions** (JSON): each block has an `elements` map (element name → content)
-2. User provides **behaviors** (JS/TS): functions that generate code for each block type
-3. User provides **CSS files**: one per mode, using `.morphic-mode-{name}` classes
-4. `MorphicBlocks.mount()` initializes Blockly + morphic features and sets up every view it gets a container for
-5. `engine.applyPreset()` / `engine.show()` switch the toolbox mode and the element each view shows at runtime — blocks re-render
+1. **Definitions** (JSON): `elementTypes`, `modes`, optional `views` and `presets`, `code` settings per code element, `categories`, `blocks` (each with an `elements` map, element name → content). The docs' Definitions Format page has every field.
+2. **Behaviors** (JS/TS): functions that generate the JavaScript for each block type.
+3. **CSS**: one stylesheet per mode, using `.morphic-mode-<mode>` classes.
+4. `mount()` sets up Blockly and every view it gets a container for; `applyPreset()` / `show()` switch the toolbox mode and the element each view shows at runtime.
 
-**Views** are declared by name in the definitions (`views`, or the mount option of the same name): `{ "blocks": "workspace", "read": { "kind": "codespace", "editable": false, "delete": { … } } }`, kinds `workspace` and `codespace` (a codespace with `editable: false` is what the preview was before 0.4.0); `rtl: true | false` sets a view's direction (left out, a workspace follows `blockly.rtl` and a codespace the page). Without `views`, there are two: `workspace` and `codespace`. `mount()` is the single setup call: it takes `containers` by view name (`workspaceContainer` / `codespaceContainer` are short for `containers.workspace` / `.codespace`), `toolboxContainer`, `codeEditorContainer` and `toolbars` by view name, plus `editorTheme` and `themes` by view name, and sets up each view it gets a container for, so the same definitions serve a full page and a small embed. The first workspace with a container holds the program (`programView`); without one, Blockly runs headless (offscreen) so the block model stays authoritative, showing what the preset gives the first declared workspace view, else the first view with a container (`headlessProgramView`). Every other view goes through the added-view code (`addView`). `mount()` returns a promise that settles once the text editors (lazy loaded CodeMirror) are ready; the workspace is ready immediately. Selection sync is on by default when more than one view is set up (`selectionSync: false` turns it off, an object configures it), and the code editor starts hidden. Views show a code element, not a mode (modes are for tiles only): presets say which, without presets every view shows the first mode's code element, and `show()` switches views freely at runtime. View containers get combinable classes for app CSS: `morphic-view`, `morphic-view-<name>`, `morphic-shows-<element>`, `morphic-preset-<name>` (the preset applied last), `morphic-workspace-root` / `morphic-codespace-root` and `morphic-read-only`; workspace blocks get `morphic-shows-<element>` too, tiles keep `morphic-mode-<mode>` (not `morphic-element-`, since every class starting with it is hidden by the mode visibility CSS). Options moved in 0.4.0 (`previewContainer`, `previewTheme`, `toolbarContainers`, the `codespace` mount option, `setModes()`, presets with `workspace`/`codespace`/`preview` keys) fail with directions.
+**Views** are declared by name (`views` in the definitions or mount): `{ "editor-pane": "workspace", "read-pane": { "kind": "codespace", "editable": false, "delete": { … }, "rtl": false } }`. Without `views`, there are two: `workspace` and `codespace`. `mount()` takes `containers` by view name (`workspaceContainer` / `codespaceContainer` are short for `containers.workspace` / `.codespace`), `toolboxContainer`, `codeEditorContainer`, `toolbars` and `themes` by view name, and `editorTheme`; a view without a container is skipped, so the same definitions serve a full page and a small embed. The first workspace with a container holds the program (`programView`); without one, Blockly runs headless so the block model stays authoritative, showing what the preset gives the first declared workspace view, else the first view with a container (`headlessProgramView`). Every other view goes through the added-view code. `mount()` returns a promise that settles once the text editors (lazy loaded CodeMirror) are ready. Selection sync is on when more than one view is set up; the code editor starts hidden.
 
-**Added views:** `engine.addView({ kind: "codespace" | "workspace", container, element, name?, editable?, delete?, theme?, toolbar? })` adds a view at runtime, beside the declared ones, and returns a handle (`getElement`, `show`, `setTheme`, `dispose`, `ready`). Every view has a name: declared ones their own, added ones theirs or `view-N`. Toolbars, zoom, copy and `getViewElement()` look views up by name (`resolveView` in `MorphicBlocks.ts`), so features work for every view alike. Workspaces beside the program's take a fresh copy of the program after each batch of changes (replaying single events cannot follow how the engine rebuilds slot defaults). They are editable by default: every change made in one is forwarded to the program's workspace as a Blockly event, the copy back waits while that view is dragging or editing a field, its undo is the program's, and tiles dropped on it are created there; `editable: false` makes one read only. Presets name views by name; a name that is no declared view only warns (it may be added later). Showing and hiding the containers is the host's job.
+Views show a **code element**, not a mode: presets say which, without presets every view shows the first mode's code element. View containers get `morphic-view`, `morphic-view-<name>`, `morphic-shows-<element>`, `morphic-preset-<name>`, `morphic-workspace-root` / `morphic-codespace-root` and `morphic-read-only`; workspace blocks get `morphic-shows-<element>`, tiles `morphic-mode-<mode>` (never `morphic-element-`, since every class starting with it is hidden by the mode visibility CSS). Names go into classes as written: only characters a class cannot hold become `-`, and such a name warns with the class it gets (categories, being labels, do not warn). Options moved in 0.3.0 and 0.4.0 fail at mount with directions.
+
+**Added views:** `addView({ kind, container, element, name?, editable?, delete?, theme?, toolbar? })` returns a handle (`getElement`, `show`, `setTheme`, `dispose`, `ready`). Every view has a name (added ones `view-N` by default); toolbars, zoom, copy and `getViewElement()` look views up by name (`resolveView`). Workspaces beside the program's take a fresh copy of the program after each batch of changes (replaying single events cannot follow how the engine rebuilds slot defaults); they are editable by default, forwarding every change to the program's workspace, and `editable: false` makes one read only. A preset naming an unknown view only warns (it may be added later). Showing and hiding the containers is the host's job.
 
 ### Block identifier namespacing
 
-Definitions and behaviors use **clean, free-form identifiers** (`text_print`, `logic_if`). Internally, blocks are registered with Blockly under a namespaced type — `morphic:<identifier>` — so a developer's identifier can never collide with a Blockly built-in (naming a block `logic_boolean` would otherwise clobber the stock block that shadows and connection checks depend on). `block-namespace.ts` owns this translation:
+Definitions and behaviors use **clean, free-form identifiers** (`text_print`). Blockly gets them namespaced, `morphic:<identifier>`, so an identifier can never clobber a Blockly built-in (`logic_boolean` would break stock shadows). `block-namespace.ts` owns this: `toBlocklyType(id)` / `toCleanId(type)`, and `resolveBlocklyType(ref, definitions)`, which treats a reference as a morphic block **iff** its clean id is in the definitions, else as a Blockly stock type (`math_number`). The namespace appears only in Blockly registration, `newBlock`, toolbox `type` entries, `generator.forBlock` and serialized state; strip a live `block.type` with `toCleanId` before any definitions/behaviors lookup.
 
-- `toBlocklyType(id)` / `toCleanId(type)` — convert between the two forms
-- `resolveBlocklyType(ref, definitions)` — resolve a developer-facing reference (a `default.shadow` / `default.placeholder`, a toolbox block list entry, or a drag payload): it is a morphic block **iff** its clean id is in the definitions map (then namespaced), otherwise it is a Blockly stock type and passes through unchanged (e.g. `math_number`)
+### Templates and fields
 
-The namespace is an internal Blockly-type detail — it appears only in `Blockly.Blocks[…]` registration, `newBlock`, the toolbox `type` entries, `generator.forBlock[…]`, and serialized workspace state. Everything developer-facing (the `definitions` map, the `behaviors` map, the `behaviorProxy.blockType`) stays keyed by the clean id. When reading a live `block.type`, strip it with `toCleanId` before any definitions/behaviors lookup.
+- `%1`, `%2`: input slots (Blockly inputs; substituted in text)
+- `%FIELDNAME`: a field: the one declared in the block's `fields` map (dropdown, text, number, checkbox), or one a behavior attaches in `onViewApplied`
+- `%1:type`: the type of slot 1's value, named per language in `code.<element>.types` (`value-type.ts`)
+- `<img src="...">`: image fields; plain text: labels
+- Text rendering keeps the template's line breaks and indentation as written
 
-### Template syntax
+A dropdown option is `value` (generated, serialized, shown in text) plus a block-only `label`: text, an image (`{ src }`) or a color swatch (`{ color }`); `display`, keyed by element name, sets the shown text per language (`True`/`true`). An open menu gets `morphic-menu` and `morphic-menu-<FIELD>`; the look stays the app's.
 
-- `%1`, `%2` — input slots (auto-create Blockly inputs; also substituted in text rendering)
-- `%FIELDNAME` — field value (uppercase alpha token; substituted in text rendering; ignored by Blockly block rendering because behaviors attach fields via `onViewApplied`)
-- `%1:type` — name of the type of slot 1's value (its block's output check, or the slot's check while empty), looked up in the element's `code.<element>.types` (`default` when nothing fits); a label in blocks that follows the value (`value-type.ts`)
-- `<img src="...">` — image/SVG fields
-- Plain text — label fields
+## Elements, modes, presets
 
-**Whitespace and indentation:** Text-mode rendering preserves whatever the template contains. Authors control line breaks and indent:
+| Element type | Toolbox tile | Workspace block |
+| --- | --- | --- |
+| `text` | HTML label | never shown |
+| `code` | a Blockly block, or source text (the mode's `render`) | the Blockly template |
+| `image` | `<img>` (a bare path is wrapped, sized by the element's `size`, default 16) | never shown |
+| `custom` | drawn by the app's function in `toolbox.custom` | never shown |
 
-- `"if ( %1 ) { %2 }"` → single line
-- `"if ( %1 ) {\n  %2\n}"` → multi-line with indent
+- A **mode** (`{ name, elements, render? }`) lists the elements a tile shows; `render` says per code element `"block-based"` (default) or `"text-based"`. All elements are rendered on every tile; CSS hides the ones the mode does not list.
+- A **preset** (`{ name, label?, toolbox: <mode>, views: { <view>: <code element> } }`) says what the toolbox and each view show; views it leaves out keep theirs. `onPresetApplied(preset)` lets the host lay out its panes.
+- `toolbox.label` names tiles for screen readers after an element (e.g. a hidden `spoken-de`); presses on controls inside a custom element neither drag the tile nor add the block.
+- Names: the docs' Naming page recommends kebab-case and a suffix per kind (`…-tiles`, `…-preset`, `…-pane`), other styles work too; a framework word as a name (`FRAMEWORK_WORDS`) and a name used for two kinds warn. An element cannot be called `default`.
+
+**The HTML toolbox** (`toolboxContainer` / `mountToolbox`) replaces Blockly's flyout. Tiles are HTML; code shown as a block is drawn in a hidden Blockly workspace that takes `media`, `renderer`, `theme` and `rtl` from the host workspace and never loads sounds. Its default styles use `:where()`, so app CSS always wins.
 
 ## Sandbox (`apps/sandbox`)
 
-Local dev app. Uses `import.meta.glob()` to auto-discover mode CSS files by filename. Seeds a demo workspace on load. Shows live code generation and execution. Serves Blockly's media itself: the package's Vite plugin (`morphic-blocks/vite` in `vite.config.ts`, resolved to the built `dist/vite.js`, so build the package first) copies it into `public/blockly-media/` when `dev` or `build` starts, where the framework's default `blockly.media` points.
+Dev app and test bed for every feature; change it freely, commit it separately. It imports the framework from its source (an alias in `vite.config.ts`), so `bun run dev` picks up framework changes without a build; the themes package and the media plugin are read from their builds (`bun run build:package`). Mode CSS files are found by filename (`src/modes/<mode>.css`). Three themes (`Dark`, `Light`, `Creme`, CSS variables in `src/style.css`, stored under `morphic-sandbox-theme`); `?packaged-themes` uses `@morphicblocks/themes` for the code views.
 
-### Themes
+**Light theme: Leibniz University Hannover colors** (<https://www.corporate.uni-hannover.de/die-marke/farben>): primary `#00509B`, `#C8D317`; secondary `#99B9D8`, `#DEE574`; typography `#000000`, `#666666`, `#b2b2b2`, `#e5e5e5`; this lab `#55bdcb`; backgrounds white. The greens are kept for branding moments and unused in the demo.
 
-The sandbox ships three themes selectable via the header dropdown: `Dark`, `Light`, and `Creme`. Theme state persists in `localStorage` under `morphic-sandbox-theme`. CSS variables are defined per theme in `src/style.css` (`:root` for Dark, `[data-theme="light"]`, `[data-theme="creme"]`); editor and preview themes are wired in `src/main.ts`. The `Creme` theme is a warm off-white (Solarized-style, `#fdf6e3`).
+## Roadmap
 
-**Light theme — Leibniz University Hannover corporate identity colors.** Source: <https://www.corporate.uni-hannover.de/die-marke/farben>
+**Upcoming:** a natural-language locale layer (an external translation table per locale, orthogonal to modes); the hidden program picking its element itself (the first code element with every field and slot); `runJavaScript({ globals })`; presets that name their toolbox blocks; CodeMirror themes as `editorTheme`; inline edits for `FieldVariable` / `FieldCheckbox`; bidirectional sync (text back to blocks); draft blocks for invalid code; optional Monaco; a package architecture refactor as the final cleanup.
 
-| Role | Hex |
-|---|---|
-| Primary | `#00509B`, `#C8D317` |
-| Secondary | `#99B9D8`, `#DEE574` |
-| Typography | `#000000`, `#666666`, `#b2b2b2`, `#e5e5e5` |
-| Department (this lab) | `#55bdcb` |
-
-The `Light` theme uses these colors plus white (`#ffffff`) for backgrounds. Greens (`#C8D317`, `#DEE574`) are reserved for explicit branding moments and are not currently used in the demo.
-
-## Core Concept: Morphic Block
-
-A **Morphic Block** is the fundamental unit. It has named **elements** — the visual parts it can show. Each element name is **free-form**; its **type** drives rendering behavior.
-
-### Element types
-
-| Type    | Toolbox tile            | Workspace block                                            |
-|---------|-------------------------|------------------------------------------------------------|
-| `text`  | Rendered as HTML label  | Never shown                                                |
-| `code`  | Rendered as Blockly SVG | Used as Blockly template (`<img>` in content → FieldImage) |
-| `image` | Rendered as `<img>`     | Never shown                                                |
-| `custom` | Drawn by the app's renderer (`toolbox.custom`, by element name) | Never shown                    |
-
-A `custom` element's renderer gets the block's content and `{ block, element, mode }` and returns a node (a button, a player) or text; presses on controls inside it neither drag the tile nor add the block. `toolbox.label` names tiles for screen readers after an element (a string, or a function of the toolbox mode, e.g. a hidden `spoken-de` text element); blocks without it keep the default name, what the tile shows.
-
-Element names (`title`, `icon`, `concept`, `python`, …) are fully free-form; recommended patterns (modes `…Tiles`, presets `…Preset`, views `…Pane`) and the framework words that warn as names are in the docs' Naming page (`FRAMEWORK_WORDS` in `validate-definitions.ts`). The type is declared once globally in `elementTypes` — not repeated per block.
-
-An `image` value can be a **bare file path** (`"icons/log.svg"` — auto-wrapped as `<img>`, sized via the element's `size` config, default 16×16) or explicit **`<img>` HTML** (`"<img src='icons/log.svg'>"`). Both work.
-
-A **mode** declares which elements are visible and, by scanning for the first `type: "code"` element listed, determines which template is used in the workspace.
-
-## definitions.json Structure
-
-```json
-{
-  "elementTypes": {
-    "title":       "text",
-    "description": "text",
-    "icon":        "image",
-    "concept":     "code",
-    "python":      "code"
-  },
-  "modes": [
-    { "name": "icon-tiles",       "elements": ["icon", "title", "description"] },
-    { "name": "concept-tiles",    "elements": ["title", "concept"] },
-    { "name": "python-tiles",     "elements": ["title", "python", "description"] },
-    { "name": "python-text-tiles", "elements": ["title", "python"], "render": { "python": "text-based" } }
-  ],
-  "presets": [
-    { "name": "icon-preset", "label": "Starter", "toolbox": "icon-tiles",       "views": { "workspace": "concept" } },
-    { "name": "text-preset", "label": "Text",    "toolbox": "python-text-tiles", "views": { "codespace": "python" } }
-  ],
-  "categories": [
-    { "name": "Output", "color": "#5C81A6" }
-  ],
-  "blocks": [
-    {
-      "identifier": "log_message",
-      "category": "Output",
-      "elements": {
-        "title":   "Print",
-        "icon":    "<img src='assets/log.svg'>",
-        "concept": "log %1",
-        "python":  "print(%1)",
-        "description": "Print a message"
-      },
-      "inputSlots": { "1": { "kind": "value", "name": "MESSAGE" } }
-    }
-  ]
-}
-```
-
-- `elementTypes` — global registry mapping element names to their type (`text`, `code`, `image`)
-- `modes` — explicit mode definitions; mode names are arbitrary (no coupling to element names)
-- `presets` — named per-view mode configurations (see below)
-- `code` — how each code element's language is written, keyed by element name: `stringQuote`, `empty` (defaults for empty value slots, keyed by `check`), `emptyStatement` (written into empty statement slots, e.g. `pass`), `types` (names `%1:type` writes, keyed by type), `highlighting` and `values` (how `runJavaScript()` output writes printed values while the element is shown; `value-format.ts`). Internally folded onto the element entries (`withCodeSettings` in `element-types.ts`)
-- `categories` — optional metadata (name, color); blocks reference them by name
-- `blocks` — flat array; per-block `elements` are plain `name: content` strings
-
-### Mode fields
-
-| Field      | Required | Purpose                                    |
-|------------|----------|--------------------------------------------|
-| `name`     | yes      | Mode identifier                            |
-| `elements` | yes      | Element names rendered on the toolbox tile |
-| `render`   | no       | How each code element is drawn on a tile: `"block-based"` (default) or `"text-based"`, by element name |
-
-A mode is purely presentational and only for toolbox tiles since 0.4.0: it names a subset of elements a tile shows. Its **source element**, the first `type: "code"` element in its `elements` array, is what views show where nothing names an element (the first mode's). `render` only matters while the mode is the toolbox mode (since 0.4.0; before, the preset's `toolbox` entry carried it, and `mount()` reports that place with directions).
-
-### Presets
-
-A **preset** says what the toolbox and each view show: `{ name, label?, toolbox: <mode>, views: { <view>: <code element> } }`. `toolbox` and at least one view are required; the views it lists are the ones it shows, and views it leaves out keep what they show.
-
-The `toolbox` entry is a **mode name**; that mode's `render` decides whether each code element shows as a block or as source text on the tiles.
-
-Presets are passed via the mount config (`presets`, initial `preset`), validated at mount (unknown modes, views showing no code element, duplicate names; unknown views, names reused across kinds and framework words as names warn), applied at runtime with `engine.applyPreset(nameOrIndex)`, and reported to the host via `onPresetApplied(preset)` for pane-visibility layout. `show({ toolbox?, views? })`, in a preset's shape, is the lower-level API.
-
-### Workspace template resolution
-
-A workspace view's blocks use the element it shows (`resolveElementView`); toolbox blocks drawn by Blockly resolve through the toolbox mode (`resolveBlockView`):
-
-1. The element the view shows, or the first `type: "code"` element listed in the mode's `elements` array
-2. Fallback: first `type: "code"` element in the block definition
-3. Fallback: element literally named `"block"` (backward compat)
-4. Fallback: first element in the definition
-
-## Rendered HTML (Morphic Block tile)
-
-All elements are always rendered; CSS controls visibility:
-
-```html
-<div class="morphic-block morphic-mode-icon-tiles morphic-block-log_message"
-     style="--morphic-block-color: #5C81A6">
-  <div class="morphic-element-icon"><img src="assets/log.svg"></div>
-  <div class="morphic-element-concept">log <span class="morphic-slot"></span></div>
-  <div class="morphic-element-python">print(...)</div>
-  <div class="morphic-element-description">Print a message</div>
-</div>
-```
-
-## Custom Toolbox (`toolboxContainer` / `mountToolbox`)
-
-`mount({ toolboxContainer })`, or `engine.mountToolbox(container, options?)` later, replaces Blockly's built-in flyout (a toolbox container implies `canvasToolbox`):
-
-- Renders Morphic Block tiles as HTML (no off-screen Blockly workspaces)
-- Drag-and-drop: dragging a tile into the workspace creates the actual Blockly block
-- Optional category grouping via `<div data-category="...">` wrappers, each with a heading button (`.morphic-category-heading`, the category name) and its tiles in `.morphic-category-tiles`; headings collapse and expand (`collapsible`, `collapsed`, `onCategoryToggle`, state kept across redraws), or `layout: "tabs"` shows one category at a time (`.morphic-category-tabs`); the width is measured with every category open, collapsing comes after
-- The container gets `morphic-toolbox` plus `morphic-toolbox-more-above` / `-more-below` while tiles are hidden there; by default the scrollbar is hidden and the edges fade (styles in `styles.ts` with `:where()`, so app CSS wins), `scrollbar: true` keeps it
-- Re-renders on `show({ toolbox })`
-- Options: `{ blocks?: string[], categories?: MorphicToolboxCategory[] }`
-- Block tiles are drawn in a hidden Blockly workspace that takes `media`, `renderer`, `rendererOverrides`, `theme` and `rtl` from the host workspace's options and never loads sounds
-
-```ts
-engine.mountToolbox(container, {
-  categories: [{ name: 'Output', color: '#5C81A6' }]
-})
-```
-
-## Use Cases
-
-The primary motivating use case is **gradual block-to-text programming transition** (covered by the companion short paper). Because the element-type and mode system decouple block content from presentation, the same architecture can serve several other applications without framework changes — only new modes, elements, and CSS:
-
-- **Localization / internationalization** — same blocks with different natural-language labels per mode (English, German, Spanish, Arabic, …). Classrooms in any language without rewriting block logic.
-- **Accessibility** — alternate modes for high-contrast, large-text, dyslexia-friendly, or screen-reader-optimized rendering.
-- **Age-appropriate rendering** — icon-centric mode for young learners; verbose-text mode for older learners. Same lesson content, multiple age groups.
-- **Comparative programming education** — render the same program in Python, Java, and C++ syntax side-by-side to show how concepts translate across languages.
-- **Expert vs novice views** — compact (icon / short-label) mode for experts, verbose (full-text / description) mode for novices. Same codebase, tailored rendering.
-- **Domain-specific visual languages** — custom modes for music composition, robotics, data science, game design, etc., each with domain-appropriate visuals.
-- **Documentation-enriched blocks** — render descriptions, examples, or rationale alongside blocks for learning or onboarding.
-
-These are *potential* applications, not currently deployed. They are worth keeping in mind when evaluating feature-design decisions — the framework's value extends beyond the transition use case.
-
-## Planned Features (Roadmap)
-
-### Completed
-
-- ~~**CodeMirror text editor integration**~~ — optional code editor with lazy loading
-- ~~**Block metadata mapping**~~ — maps block IDs to generated code positions
-- ~~**Block ↔ code selection sync**~~ — multi-editor (code editor, codespace, preview)
-- ~~**Codespace** — editable-by-structure text view of the workspace
-- ~~**Preview editor** — read-only view of the preview mode's source element
-- ~~**Drag from toolbox / grip into codespace**~~ with drop-position indicator
-- ~~**Slot-based drop resolution**~~ — drops into empty `for`/`if` bodies and statement chains, not just before/after the parent
-- ~~**Same-chain reorder via grip**~~ — active-source exclusion makes drop-on-self a real move
-- ~~**Indent compounding**~~ in template-codegen across nesting depth
-- ~~**Per-element empty-slot defaults**~~ via the `code` section (`code.<element>.empty: { Number, String, Boolean, default }`)
-- ~~**Empty-area click clears highlight**~~ in codespace/preview
-- ~~**Definition-driven syntax highlighting**~~ — `code.<element>.highlighting` in definitions (the `code` section, keyed by element name) (matches the codespace/preview modes' source elements); each entry: `{ keywords, strings, comment, numbers, colors }`. Implementation: CodeMirror 6 `ViewPlugin` + `Decoration.mark` (no `StreamLanguage` — keeps highlighting decoupled from language behavior); runtime swap via `Compartment` on `setModes()`. Type: `MorphicHighlightDefinition`.
-- ~~**Drag value blocks into value slots**~~ (numbers, strings, variables) — toolbox tile drop + grip-drag inside codespace; drops follow the workspace's connection checks (since 0.3.0; before, value drops ignored the slot's type).
-- ~~**Right-click drag inside codespace**~~ — secondary-button (or Ctrl-click on macOS) drag with capture-phase mousedown; hover affordances: blue outline on innermost editable placeholder, grey background on innermost non-atomic block.
-- ~~**Inline field edits for atomic placeholders**~~ — text / number / dropdown editors overlaid on the placeholder range; shadows materialise to real blocks on first edit. Atomic = exactly one named field, no value inputs. `FieldVariable` and `FieldCheckbox`, plus plugin / developer custom fields, are deferred (option menu and rationale recorded outside the repo).
-- ~~**Declarable inline fields**~~ — a `fields` map on a block definition builds dropdown / text / number / checkbox fields at the `%FIELDNAME` token, so field-carrying blocks need no behavior for display. Dropdown options are `value` (generated + shown in text) plus an optional block-only `label` (no serialization key); a `label` can be an image (`{ src, alt?, width?, height? }`) or a color swatch (`{ color }`, drawn as an SVG data address), default 16 × 16, `alt` defaulting to the value. An open dropdown's menu gets the classes `morphic-menu` and `morphic-menu-<FIELD>` for app CSS (`MorphicDropdown` in `block-view.ts`); the look stays the app's. Undeclared `%FIELDNAME` tokens still fall through to `onViewApplied` for custom fields; `kind: "dummy"` was removed (it only ever anchored a behavior-attached field). Type: `MorphicFieldDefinition`.
-- ~~**Per-mode field rendering** (representation axis)~~ — a dropdown option's object form takes an optional `display` map keyed by **element name** (like the `code` section), making the *shown* text mode-aware while the stored `value` stays single. Resolution when element `E` renders: block `display[E] ?? label ?? value`, codespace/preview `display[E] ?? value`; execution / codegen / serialization always use the value. Covers Python `True`/`False` vs JS/Go `true`/`false`, `and`/`&&`, `None`/`null`/`nil`. Only `dropdown` is affected. This is the *representation* axis; **natural-language translation** (option labels per human language, e.g. `Monday`/`Montag`, plus descriptions and string content) remains a separate, deferred locale layer — best as an external translation table merged at load, orthogonal to modes.
-
-### Upcoming
-
-- **Natural-language / locale layer** — translate human-readable text (dropdown option labels like `Monday`/`Montag`, descriptions, domain/node labels, string literals) across natural languages, orthogonal to the representation modes. Likely an external translation table keyed by locale, merged at load. Separate from per-mode field rendering (which is the representation axis).
-- **Codespace / preview editor toolbar** (Task 16)
-- **Use empty defaults in the Blockly block view** as well (cosmetic)
-- **Bidirectional sync** — AST parsing converts text back to blocks (future, separate paper)
-- **Error recovery / draft blocks** — handles incomplete/invalid code gracefully
-- **Headless UI components** (terminal, sidebar, info panel, resizable panes) — unstyled
-- **Monaco editor (optional)** — separate entry point (`morphic-blocks/monaco`)
-- **Package architecture refactor** — split framework into plugin/feature modules (e.g. `core/`, `codespace/`, `toolbox/`, `selection-sync/`, `highlight/`); ports-and-adapters or similar; planned as the final cleanup after feature surface stabilises.
-
-### Removed
-
-- ~~**Multi-language code generation**~~ — **Not needed.** Blockly's built-in language generators (Python, Lua, Dart, PHP) only cover Blockly's stock blocks, not custom Morphic blocks. Since behaviors already produce whatever code strings the developer writes, the "language" is fully controlled by the developer. Multi-language *display* is already handled by the element system (e.g., a `"syntax"` element can show Python, Java, or any syntax). Multi-language *execution* is impractical in a web framework where JavaScript is the runtime. Adding per-language behavior maps would create maintenance overhead with no real benefit.
+**Not planned:** multi-language code generation. Behaviors already write whatever code the developer wants, elements already show any language, and execution is JavaScript, so per-language generators would add upkeep without benefit.
 
 ## Conventions
 
-- **TypeScript only** — avoid plain JavaScript in the framework package
-- **Ask before implementing** — always discuss and get approval before writing or changing code
-- **Don't restrict users** — UI components should be unstyled/headless so developers can style them freely
-- **Library scope** — the framework is an embeddable library, not a standalone app
-- **No unnecessary abstraction** — minimum complexity for the current task
-- **No external requests:** the framework never loads anything from another server; `test/no-external-requests.test.ts` fails on any address in `src/`. Anything external stays the host's choice (config, or a plugin later)
+- **TypeScript only** in the framework package
+- **Ask before implementing**: discuss and get approval before writing or changing code
+- **Don't restrict users**: UI stays unstyled/headless; the app styles it
+- **Library scope**: an embeddable library, not a standalone app
+- **No unnecessary abstraction**: minimum complexity for the current task
+- **No external requests**: the framework never loads anything from another server; `test/no-external-requests.test.ts` fails on any address in `src/`
 
 ## Commit Workflow
 
-1. Before committing, always suggest **three** commit message options
-2. Follow the emoji-style Conventional Commits format defined in `.vscode/commit-instructions.md`
-3. Mark the recommended option with **(recommended)** so the user can see which one you prefer
-4. The user picks one; then commit with the chosen message
-5. Add Claude Code's default co-author line, which names the model (e.g. `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`), so the history shows which model built a change; leave it out only when the user says to be the main author
+1. For a single change, or when the user asks for options, suggest **three** commit messages and mark the recommended one with **(recommended)**; for several changes at once, one message per commit is enough
+2. Never commit before the user approves the message(s)
+3. Follow the emoji-style Conventional Commits format defined in `.vscode/commit-instructions.md`
+4. Add Claude Code's default co-author line, which names the model (e.g. `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`), so the history shows which model built a change; leave it out only when the user says to be the main author
 
 ## Release Workflow (npm)
 
-Publishing happens in CI (`.github/workflows/publish.yml`) via OIDC trusted publishing, triggered by a GitHub **Release**. A published version is immutable — it can't be overwritten or edited, only superseded by a new version. Before telling the developer to cut a release, **run a pre-flight and remind them of it**:
+Publishing runs in CI (`.github/workflows/publish.yml`) via OIDC trusted publishing when a GitHub **Release** is published; a tag `themes-v…` publishes the themes package, any other the framework. A published version is immutable, so before telling the developer to cut a release, **run a pre-flight and remind them of it**:
 
-1. **Reproduce the CI build locally** — the same install (lockfile in sync), build, and packaging steps CI runs must succeed. A drifted lockfile or build failure aborts the publish.
-2. **Inspect the package contents** — confirm only the intended files ship and nothing internal leaks in.
-3. **Docs ↔ reality agreement** — verify README, install/usage instructions, and metadata match the actual `package.json` (dependencies vs peers, exports, version, etc.). Correct any claim that no longer holds.
-4. **Version** — bump `package.json` for any republish; the npm page (README included) only refreshes on a new version.
+1. **Reproduce the CI build locally**: install with the lockfile in sync, build, type check (tests included), test, pack.
+2. **Inspect the package contents**: only the intended files ship.
+3. **Docs ↔ reality**: README, install and usage instructions match `package.json` (dependencies vs peers, exports, version).
+4. **Version**: bump `package.json`; the npm page only refreshes on a new version.
 
-Remind the developer of these checks before every release.
+The full routine, including testing the playground apps against the local build (local package references are never committed), the release notes (they replace upgrade pages and a changelog) and moving the apps to the published version, is the local `release` skill.
