@@ -64,6 +64,27 @@ describe("view classes", () => {
     expect(classes(containers.code, "morphic-preset-")).toEqual(["morphic-preset-next"]);
   });
 
+  test("keep a name as written", async () => {
+    const engine = new MorphicBlocks(
+      {
+        ...format,
+        modes: [{ name: "iconTiles", elements: ["concept"] }],
+        views: { "editor-pane": "workspace", read_pane: { kind: "codespace", editable: false } },
+        presets: [{ name: "Start Preset", toolbox: "iconTiles", views: { "editor-pane": "concept", read_pane: "python" } }],
+      },
+      {},
+    );
+    engines.push(engine);
+    const containers = { "editor-pane": div(), read_pane: div() };
+    const toolbox = div();
+    await engine.mount({ containers, toolboxContainer: toolbox });
+
+    expect(containers["editor-pane"].classList).toContain("morphic-view-editor-pane");
+    expect(containers.read_pane.classList).toContain("morphic-view-read_pane");
+    expect(containers.read_pane.classList).toContain("morphic-preset-Start-Preset");
+    expect(toolbox.querySelector(".morphic-block")?.classList).toContain("morphic-mode-iconTiles");
+  });
+
   test("mark workspace blocks with the element, tiles keep their mode", async () => {
     const { engine, toolbox } = await setUp();
     const block = engine.getWorkspace()!.newBlock("morphic:say") as Blockly.BlockSvg;

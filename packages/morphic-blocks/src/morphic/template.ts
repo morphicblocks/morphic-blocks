@@ -112,8 +112,13 @@ export function normalizeTemplateText(text: string): string {
   return text.replace(/\s+/g, " ").trim();
 }
 
+/**
+ * A name as a CSS class part. The name is kept as written (`icon-tiles`,
+ * `iconTiles`, `icon_tiles` all work), so the app's CSS uses the same name as
+ * its definitions; only characters a class cannot hold become `-`.
+ */
 export function toModeClassToken(mode: string): string {
-  return mode.trim().toLowerCase().replace(/[^a-z0-9_-]+/g, "-");
+  return mode.trim().replace(/[^A-Za-z0-9_-]+/g, "-");
 }
 
 /**

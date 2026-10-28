@@ -66,17 +66,17 @@ describe("collapsing categories", () => {
   test("all start open, and a click on a heading collapses and expands", async () => {
     const toggles: [string, boolean][] = [];
     const { container } = await toolboxWith({ onCategoryToggle: (name, collapsed) => toggles.push([name, collapsed]) });
-    const heading = headingOf(container, "loops");
+    const heading = headingOf(container, "Loops");
 
-    expect(tilesOf(container, "loops").hidden).toBe(false);
+    expect(tilesOf(container, "Loops").hidden).toBe(false);
     expect(heading.getAttribute("aria-expanded")).toBe("true");
 
     heading.click();
-    expect(tilesOf(container, "loops").hidden).toBe(true);
+    expect(tilesOf(container, "Loops").hidden).toBe(true);
     expect(heading.getAttribute("aria-expanded")).toBe("false");
 
     heading.click();
-    expect(tilesOf(container, "loops").hidden).toBe(false);
+    expect(tilesOf(container, "Loops").hidden).toBe(false);
     expect(toggles).toEqual([
       ["Loops", true],
       ["Loops", false],
@@ -85,28 +85,28 @@ describe("collapsing categories", () => {
 
   test("start collapsed: all, or the ones named", async () => {
     const all = await toolboxWith({ collapsed: true });
-    expect(tilesOf(all.container, "loops").hidden).toBe(true);
-    expect(tilesOf(all.container, "output-text").hidden).toBe(true);
+    expect(tilesOf(all.container, "Loops").hidden).toBe(true);
+    expect(tilesOf(all.container, "Output-Text").hidden).toBe(true);
 
     const some = await toolboxWith({ collapsed: ["Loops"] });
-    expect(tilesOf(some.container, "loops").hidden).toBe(true);
-    expect(tilesOf(some.container, "output-text").hidden).toBe(false);
+    expect(tilesOf(some.container, "Loops").hidden).toBe(true);
+    expect(tilesOf(some.container, "Output-Text").hidden).toBe(false);
   });
 
   test("stay collapsed when the tiles are drawn again", async () => {
     const { engine, container } = await toolboxWith();
-    headingOf(container, "loops").click();
+    headingOf(container, "Loops").click();
 
     engine.show({ toolbox: "python" });
 
-    expect(tilesOf(container, "loops").hidden).toBe(true);
+    expect(tilesOf(container, "Loops").hidden).toBe(true);
   });
 
   test("can be switched off, leaving plain headings", async () => {
     const { container } = await toolboxWith({ collapsible: false, collapsed: true });
 
-    expect(headingOf(container, "loops").tagName).toBe("DIV");
-    expect(tilesOf(container, "loops").hidden).toBe(false);
+    expect(headingOf(container, "Loops").tagName).toBe("DIV");
+    expect(tilesOf(container, "Loops").hidden).toBe(false);
   });
 });
 
@@ -123,7 +123,7 @@ describe("categories as tabs", () => {
     expect(container.classList.contains("morphic-toolbox-tabs")).toBe(true);
     expect(tabs.map((tab) => tab.textContent)).toEqual(["Output & Text", "Loops"]);
     expect(tabs.map((tab) => tab.getAttribute("aria-selected"))).toEqual(["true", "false"]);
-    expect(shown(container)).toEqual(["output-text"]);
+    expect(shown(container)).toEqual(["Output-Text"]);
     // The tabs name the categories, so no headings above the tiles.
     expect(headings()).toEqual([]);
   });
@@ -132,10 +132,10 @@ describe("categories as tabs", () => {
     const { engine, container } = await toolboxWith({ layout: "tabs" });
 
     container.querySelectorAll<HTMLButtonElement>(".morphic-category-tab")[1]!.click();
-    expect(shown(container)).toEqual(["loops"]);
+    expect(shown(container)).toEqual(["Loops"]);
 
     engine.show({ toolbox: "python" });
-    expect(shown(container)).toEqual(["loops"]);
+    expect(shown(container)).toEqual(["Loops"]);
   });
 
   test("keep tiles without a category in view", async () => {
