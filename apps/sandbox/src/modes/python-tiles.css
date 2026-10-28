@@ -1,19 +1,19 @@
 /* =============================================
-   Mode: Syntax (Python) — code-style tile and workspace blocks
+   Mode: python-tiles — code-style tile and workspace blocks
    ============================================= */
 
-.morphic-block.morphic-mode-syntax-py {
+.morphic-block.morphic-mode-python-tiles {
   padding: 12px 16px;
 }
 
-.morphic-mode-syntax-py > .morphic-element-title {
+.morphic-mode-python-tiles > .morphic-element-title {
   font-size: 14px;
   font-weight: 600;
   margin-bottom: 6px;
   font-family: system-ui, sans-serif;
 }
 
-.morphic-mode-syntax-py > .morphic-element-python {
+.morphic-mode-python-tiles > .morphic-element-python {
   font-size: 13px;
   font-family: "Consolas", "Fira Code", monospace;
   color: var(--tile-muted-strong);

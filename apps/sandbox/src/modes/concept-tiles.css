@@ -1,18 +1,18 @@
 /* =============================================
-   Mode: Pseudo — natural language labels
+   Mode: concept-tiles — natural language labels
    ============================================= */
 
-.morphic-block.morphic-mode-pseudo {
+.morphic-block.morphic-mode-concept-tiles {
   padding: 14px 16px;
 }
 
-.morphic-mode-pseudo > .morphic-element-title {
+.morphic-mode-concept-tiles > .morphic-element-title {
   font-size: 14px;
   font-weight: 600;
   margin-bottom: 6px;
 }
 
-.morphic-mode-pseudo > .morphic-element-concept {
+.morphic-mode-concept-tiles > .morphic-element-concept {
   font-size: 13px;
   color: var(--tile-muted-strong);
 }

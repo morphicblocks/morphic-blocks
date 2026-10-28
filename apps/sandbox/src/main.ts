@@ -24,7 +24,7 @@ const format = RTL
   : {
       ...definitions,
       blocks: definitions.blocks.filter((block) => block.identifier !== "rtl_test"),
-      presets: definitions.presets?.filter((preset) => preset.name !== "arabic"),
+      presets: definitions.presets?.filter((preset) => preset.name !== "arabic-preset"),
     };
 const presets = format.presets ?? [];
 
@@ -52,12 +52,22 @@ const gutterOutput = document.getElementById("gutter-output")!;
 const outputEl = document.getElementById("output")!;
 // Every view in the definitions' `views` has a pane here; a preset shows the
 // ones it names. Read only codespaces take the preview colours.
-const viewNames = ["workspace", "codespace", "preview", "code2", "second", "mirror1", "mirror2"];
-const readOnlyTextViews = new Set(["preview", "second"]);
-const textViews = ["codespace", "preview", "code2", "second"];
+// The views by name, and the page part each one sits in (its id prefix).
+const viewParts: Record<string, string> = {
+  "editor-pane": "workspace",
+  "text-pane": "codespace",
+  "read-pane": "preview",
+  "text2-pane": "code2",
+  "read2-pane": "second",
+  "mirror-pane": "mirror1",
+  "mirror-read-pane": "mirror2",
+};
+const viewNames = Object.keys(viewParts);
+const readOnlyTextViews = new Set(["read-pane", "read2-pane"]);
+const textViews = ["text-pane", "read-pane", "text2-pane", "read2-pane"];
 const byId = (id: string) => document.getElementById(id)!;
-const viewContainers = Object.fromEntries(viewNames.map((name) => [name, byId(`${name}-container`)]));
-const viewToolbars = Object.fromEntries(viewNames.map((name) => [name, byId(`${name}-toolbar`)]));
+const viewContainers = Object.fromEntries(viewNames.map((name) => [name, byId(`${viewParts[name]}-container`)]));
+const viewToolbars = Object.fromEntries(viewNames.map((name) => [name, byId(`${viewParts[name]}-toolbar`)]));
 const themeOf = (name: string, theme: ThemeName) =>
   readOnlyTextViews.has(name) ? previewThemeFor(theme) : editorThemeFor(theme);
 const modeButtonsContainer = document.getElementById("mode-buttons")!;
@@ -231,9 +241,9 @@ void engine.mount({
 
 function handlePresetApplied(preset: MorphicPresetDefinition): void {
   const shown = (name: string) => name in preset.views;
-  const showWorkspace = shown("workspace");
-  const showCodespace = shown("codespace");
-  const showPreview = shown("preview");
+  const showWorkspace = shown("editor-pane");
+  const showCodespace = shown("text-pane");
+  const showPreview = shown("read-pane");
   workspacePane.style.display = showWorkspace ? "" : "none";
   codespacePane.style.display = showCodespace ? "" : "none";
   codespacePane.style.flex =
@@ -243,8 +253,8 @@ function handlePresetApplied(preset: MorphicPresetDefinition): void {
         ? `0 0 ${codespaceBasisPx}px`
         : "";
   previewPane.style.display = showPreview ? "" : "none";
-  for (const name of ["code2", "second", "mirror1", "mirror2"]) {
-    byId(`${name}-pane`).style.display = shown(name) ? "" : "none";
+  for (const name of ["text2-pane", "read2-pane", "mirror-pane", "mirror-read-pane"]) {
+    byId(`${viewParts[name]}-pane`).style.display = shown(name) ? "" : "none";
   }
 
   if (RESIZABLE_PANES) {

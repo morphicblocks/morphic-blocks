@@ -1,27 +1,27 @@
 /* =============================================
-   Mode: Simple — styling only, visibility handled by framework
+   Mode: icon-tiles — styling only, visibility handled by framework
    ============================================= */
 
-.morphic-block.morphic-mode-simple {
+.morphic-block.morphic-mode-icon-tiles {
   padding: 16px;
 }
 
-.morphic-mode-simple > .morphic-element-icon {
+.morphic-mode-icon-tiles > .morphic-element-icon {
   margin-bottom: 6px;
 }
 
-.morphic-mode-simple > .morphic-element-title {
+.morphic-mode-icon-tiles > .morphic-element-title {
   font-size: 15px;
   font-weight: 600;
   margin-bottom: 4px;
 }
 
-.morphic-mode-simple > .morphic-element-concept {
+.morphic-mode-icon-tiles > .morphic-element-concept {
   font-size: 12px;
   color: var(--tile-muted);
 }
 
-.morphic-mode-simple > .morphic-element-description {
+.morphic-mode-icon-tiles > .morphic-element-description {
   font-size: 11px;
   color: var(--tile-muted-soft);
   margin-top: 6px;

@@ -14,7 +14,12 @@
   },
   "code": {
     "concept": {
-      "types": { "Number": "number", "String": "text", "Boolean": "boolean", "default": "any" },
+      "types": {
+        "Number": "number",
+        "String": "text",
+        "Boolean": "boolean",
+        "default": "any"
+      },
       "empty": {
         "Number": {
           "shadow": "math_number",
@@ -36,13 +41,28 @@
         }
       },
       "highlighting": {
-        "keywords": ["if", "else", "while", "repeat", "for", "Output", "اطبع"],
-        "strings": ["\""],
+        "keywords": [
+          "if",
+          "else",
+          "while",
+          "repeat",
+          "for",
+          "Output",
+          "اطبع"
+        ],
+        "strings": [
+          "\""
+        ],
         "comment": "//"
       }
     },
     "python": {
-      "types": { "Number": "float", "String": "str", "Boolean": "bool", "default": "object" },
+      "types": {
+        "Number": "float",
+        "String": "str",
+        "Boolean": "bool",
+        "default": "object"
+      },
       "stringQuote": "\"",
       "emptyStatement": "pass",
       "values": {
@@ -53,7 +73,12 @@
         "NaN": "nan",
         "Infinity": "inf",
         "-Infinity": "-inf",
-        "list": { "open": "[", "close": "]", "separator": ", ", "quote": "'" }
+        "list": {
+          "open": "[",
+          "close": "]",
+          "separator": ", ",
+          "quote": "'"
+        }
       },
       "empty": {
         "Number": {
@@ -95,7 +120,10 @@
           "range",
           "pass"
         ],
-        "strings": ["\"", "'"],
+        "strings": [
+          "\"",
+          "'"
+        ],
         "comment": "#",
         "colors": {
           "keyword": "#cc7832",
@@ -145,7 +173,11 @@
           "undefined",
           "console"
         ],
-        "strings": ["\"", "'", "`"],
+        "strings": [
+          "\"",
+          "'",
+          "`"
+        ],
         "comment": "//",
         "colors": {
           "keyword": "#569cd6",
@@ -157,7 +189,12 @@
     },
     "go": {
       "stringQuote": "\"",
-      "types": { "Number": "float64", "String": "string", "Boolean": "bool", "default": "any" },
+      "types": {
+        "Number": "float64",
+        "String": "string",
+        "Boolean": "bool",
+        "default": "any"
+      },
       "empty": {
         "Number": {
           "shadow": "math_number",
@@ -195,7 +232,10 @@
           "import",
           "fmt"
         ],
-        "strings": ["\"", "`"],
+        "strings": [
+          "\"",
+          "`"
+        ],
         "comment": "//",
         "colors": {
           "keyword": "#00acd7",
@@ -208,94 +248,171 @@
   },
   "modes": [
     {
-      "name": "simple",
-      "elements": ["icon", "title", "description", "info"]
+      "name": "icon-tiles",
+      "elements": [
+        "icon",
+        "title",
+        "description",
+        "info"
+      ]
     },
     {
-      "name": "pseudo",
-      "elements": ["title", "concept"]
+      "name": "concept-tiles",
+      "elements": [
+        "title",
+        "concept"
+      ]
     },
     {
-      "name": "syntax-py",
-      "elements": ["title", "python"],
-      "render": { "python": "text-based" }
+      "name": "python-tiles",
+      "elements": [
+        "title",
+        "python"
+      ],
+      "render": {
+        "python": "text-based"
+      }
     },
     {
-      "name": "syntax-js",
-      "elements": ["title", "javascript"]
+      "name": "js-tiles",
+      "elements": [
+        "title",
+        "javascript"
+      ]
     },
     {
-      "name": "mixed",
-      "elements": ["title", "concept", "python"],
-      "render": { "concept": "block-based", "python": "text-based" }
+      "name": "concept-python-tiles",
+      "elements": [
+        "title",
+        "concept",
+        "python"
+      ],
+      "render": {
+        "concept": "block-based",
+        "python": "text-based"
+      }
     },
     {
-      "name": "four-code",
-      "elements": ["title", "concept", "python", "javascript", "go"],
-      "render": { "concept": "block-based", "python": "block-based", "javascript": "text-based", "go": "text-based" }
+      "name": "all-code-tiles",
+      "elements": [
+        "title",
+        "concept",
+        "python",
+        "javascript",
+        "go"
+      ],
+      "render": {
+        "concept": "block-based",
+        "python": "block-based",
+        "javascript": "text-based",
+        "go": "text-based"
+      }
     }
   ],
   "views": {
-    "workspace": "workspace",
-    "codespace": "codespace",
-    "preview": { "kind": "codespace", "editable": false },
-    "code2": "codespace",
-    "second": { "kind": "codespace", "editable": false },
-    "mirror1": "workspace",
-    "mirror2": { "kind": "workspace", "editable": false }
+    "editor-pane": "workspace",
+    "text-pane": "codespace",
+    "read-pane": {
+      "kind": "codespace",
+      "editable": false
+    },
+    "text2-pane": "codespace",
+    "read2-pane": {
+      "kind": "codespace",
+      "editable": false
+    },
+    "mirror-pane": "workspace",
+    "mirror-read-pane": {
+      "kind": "workspace",
+      "editable": false
+    }
   },
   "presets": [
-    { "name": "iconic", "label": "Iconic", "toolbox": "simple", "views": { "workspace": "concept" } },
     {
-      "name": "conceptual",
+      "name": "icon-preset",
+      "label": "Iconic",
+      "toolbox": "icon-tiles",
+      "views": {
+        "editor-pane": "concept"
+      }
+    },
+    {
+      "name": "concept-preset",
       "label": "Conceptual",
-      "toolbox": "pseudo",
-      "views": { "workspace": "concept", "preview": "python" }
+      "toolbox": "concept-tiles",
+      "views": {
+        "editor-pane": "concept",
+        "read-pane": "python"
+      }
     },
     {
-      "name": "syntactic",
+      "name": "python-blocks-preset",
       "label": "Syntactic",
-      "toolbox": "pseudo",
-      "views": { "workspace": "python", "preview": "python" }
+      "toolbox": "concept-tiles",
+      "views": {
+        "editor-pane": "python",
+        "read-pane": "python"
+      }
     },
     {
-      "name": "textual",
+      "name": "text-preset",
       "label": "Textual",
-      "toolbox": "syntax-py",
-      "views": { "codespace": "python", "preview": "javascript" }
+      "toolbox": "python-tiles",
+      "views": {
+        "text-pane": "python",
+        "read-pane": "javascript"
+      }
     },
     {
-      "name": "hybrid",
+      "name": "hybrid-preset",
       "label": "Hybrid",
-      "toolbox": "mixed",
-      "views": { "workspace": "concept", "codespace": "python", "preview": "javascript" }
+      "toolbox": "concept-python-tiles",
+      "views": {
+        "editor-pane": "concept",
+        "text-pane": "python",
+        "read-pane": "javascript"
+      }
     },
     {
-      "name": "four",
+      "name": "four-preset",
       "label": "Four",
-      "toolbox": "four-code",
-      "views": { "workspace": "concept", "preview": "javascript" }
+      "toolbox": "all-code-tiles",
+      "views": {
+        "editor-pane": "concept",
+        "read-pane": "javascript"
+      }
     },
     {
-      "name": "texts",
+      "name": "texts-preset",
       "label": "Texts",
-      "toolbox": "pseudo",
-      "views": { "codespace": "python", "preview": "python", "code2": "javascript", "second": "javascript" }
+      "toolbox": "concept-tiles",
+      "views": {
+        "text-pane": "python",
+        "read-pane": "python",
+        "text2-pane": "javascript",
+        "read2-pane": "javascript"
+      }
     },
     {
-      "name": "mirror",
+      "name": "mirror-preset",
       "label": "Mirror",
-      "toolbox": "pseudo",
-      "views": { "workspace": "concept", "mirror1": "python", "mirror2": "javascript" }
+      "toolbox": "concept-tiles",
+      "views": {
+        "editor-pane": "concept",
+        "mirror-pane": "python",
+        "mirror-read-pane": "javascript"
+      }
     },
     {
-      "name": "arabic",
+      "name": "arabic-preset",
       "label": "Arabic",
-      "toolbox": "pseudo",
-      "views": { "workspace": "concept", "codespace": "concept" }
+      "toolbox": "concept-tiles",
+      "views": {
+        "editor-pane": "concept",
+        "text-pane": "concept"
+      }
     }
   ],
-
   "categories": [
     {
       "name": "Output",
@@ -341,7 +458,11 @@
         "1": {
           "kind": "value",
           "name": "TEXT",
-          "check": ["String", "Number", "Boolean"],
+          "check": [
+            "String",
+            "Number",
+            "Boolean"
+          ],
           "default": {
             "shadow": "text_value",
             "fieldValues": {
@@ -445,7 +566,21 @@
       "fields": {
         "OP": {
           "type": "dropdown",
-          "options": ["+", ["-", "−"], ["*", "×"], ["/", "÷"]],
+          "options": [
+            "+",
+            [
+              "-",
+              "−"
+            ],
+            [
+              "*",
+              "×"
+            ],
+            [
+              "/",
+              "÷"
+            ]
+          ],
           "default": "+"
         }
       },
@@ -489,7 +624,12 @@
       "fields": {
         "OP": {
           "type": "dropdown",
-          "options": ["==", "!=", "<", ">"],
+          "options": [
+            "==",
+            "!=",
+            "<",
+            ">"
+          ],
           "default": "=="
         }
       },
@@ -509,15 +649,35 @@
         "go": "%1 %OP %2"
       },
       "inputSlots": {
-        "1": { "kind": "value", "name": "A", "check": "Boolean" },
-        "2": { "kind": "value", "name": "B", "check": "Boolean" }
+        "1": {
+          "kind": "value",
+          "name": "A",
+          "check": "Boolean"
+        },
+        "2": {
+          "kind": "value",
+          "name": "B",
+          "check": "Boolean"
+        }
       },
       "fields": {
         "OP": {
           "type": "dropdown",
           "options": [
-            { "value": "&&", "display": { "concept": "and", "python": "and" } },
-            { "value": "||", "display": { "concept": "or", "python": "or" } }
+            {
+              "value": "&&",
+              "display": {
+                "concept": "and",
+                "python": "and"
+              }
+            },
+            {
+              "value": "||",
+              "display": {
+                "concept": "or",
+                "python": "or"
+              }
+            }
           ],
           "default": "&&"
         }
@@ -538,7 +698,11 @@
         "go": "!%1"
       },
       "inputSlots": {
-        "1": { "kind": "value", "name": "VALUE", "check": "Boolean" }
+        "1": {
+          "kind": "value",
+          "name": "VALUE",
+          "check": "Boolean"
+        }
       },
       "output": "Boolean",
       "inputsInline": true
@@ -601,10 +765,30 @@
         "COLOR": {
           "type": "dropdown",
           "options": [
-            { "value": "red", "label": { "color": "#e53935" } },
-            { "value": "green", "label": { "color": "#43a047" } },
-            { "value": "blue", "label": { "color": "#1e88e5" } },
-            { "value": "yellow", "label": { "color": "#fdd835" } }
+            {
+              "value": "red",
+              "label": {
+                "color": "#e53935"
+              }
+            },
+            {
+              "value": "green",
+              "label": {
+                "color": "#43a047"
+              }
+            },
+            {
+              "value": "blue",
+              "label": {
+                "color": "#1e88e5"
+              }
+            },
+            {
+              "value": "yellow",
+              "label": {
+                "color": "#fdd835"
+              }
+            }
           ],
           "default": "red"
         }
@@ -629,10 +813,30 @@
         "DIR": {
           "type": "dropdown",
           "options": [
-            { "value": "left", "label": { "src": "icons/arrow_left.svg" } },
-            { "value": "right", "label": { "src": "icons/arrow_right.svg" } },
-            { "value": "up", "label": { "src": "icons/arrow_up.svg" } },
-            { "value": "down", "label": { "src": "icons/arrow_down.svg" } }
+            {
+              "value": "left",
+              "label": {
+                "src": "icons/arrow_left.svg"
+              }
+            },
+            {
+              "value": "right",
+              "label": {
+                "src": "icons/arrow_right.svg"
+              }
+            },
+            {
+              "value": "up",
+              "label": {
+                "src": "icons/arrow_up.svg"
+              }
+            },
+            {
+              "value": "down",
+              "label": {
+                "src": "icons/arrow_down.svg"
+              }
+            }
           ],
           "default": "right"
         }
@@ -655,8 +859,18 @@
         "BOOL": {
           "type": "dropdown",
           "options": [
-            { "value": "true", "display": { "python": "True" } },
-            { "value": "false", "display": { "python": "False" } }
+            {
+              "value": "true",
+              "display": {
+                "python": "True"
+              }
+            },
+            {
+              "value": "false",
+              "display": {
+                "python": "False"
+              }
+            }
           ],
           "default": "true"
         }
@@ -745,7 +959,17 @@
         "go": "WHERE price > %1"
       },
       "inputSlots": {
-        "1": { "kind": "value", "name": "PRICE", "check": "Number", "default": { "shadow": "math_number", "fieldValues": { "NUM": "10" } } }
+        "1": {
+          "kind": "value",
+          "name": "PRICE",
+          "check": "Number",
+          "default": {
+            "shadow": "math_number",
+            "fieldValues": {
+              "NUM": "10"
+            }
+          }
+        }
       },
       "previousStatement": "Clause",
       "nextStatement": "Clause",
@@ -764,7 +988,17 @@
         "go": "LIMIT %1"
       },
       "inputSlots": {
-        "1": { "kind": "value", "name": "COUNT", "check": "Number", "default": { "shadow": "math_number", "fieldValues": { "NUM": "10" } } }
+        "1": {
+          "kind": "value",
+          "name": "COUNT",
+          "check": "Number",
+          "default": {
+            "shadow": "math_number",
+            "fieldValues": {
+              "NUM": "10"
+            }
+          }
+        }
       },
       "previousStatement": "Clause",
       "nextStatement": false,
@@ -783,10 +1017,16 @@
         "go": "var %VAR %1:type = %1"
       },
       "inputSlots": {
-        "1": { "kind": "value", "name": "VAL" }
+        "1": {
+          "kind": "value",
+          "name": "VAL"
+        }
       },
       "fields": {
-        "VAR": { "type": "text", "default": "y" }
+        "VAR": {
+          "type": "text",
+          "default": "y"
+        }
       },
       "shape": "statement",
       "inputsInline": true
@@ -808,13 +1048,23 @@
           "kind": "value",
           "name": "TEXT",
           "check": "String",
-          "default": { "shadow": "text_value", "fieldValues": { "TEXT": "مرحبا" } }
+          "default": {
+            "shadow": "text_value",
+            "fieldValues": {
+              "TEXT": "مرحبا"
+            }
+          }
         },
         "2": {
           "kind": "value",
           "name": "TIMES",
           "check": "Number",
-          "default": { "shadow": "math_number", "fieldValues": { "NUM": "2" } }
+          "default": {
+            "shadow": "math_number",
+            "fieldValues": {
+              "NUM": "2"
+            }
+          }
         }
       },
       "shape": "statement",

@@ -1,0 +1,25 @@
+/* =============================================
+   Mode: concept-python-tiles — two code elements in one tile
+   (concept rendered as block, python as text)
+   ============================================= */
+
+.morphic-block.morphic-mode-concept-python-tiles {
+  padding: 12px 16px;
+}
+
+.morphic-mode-concept-python-tiles > .morphic-element-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  font-family: system-ui, sans-serif;
+}
+
+.morphic-mode-concept-python-tiles > .morphic-element-concept {
+  margin-bottom: 6px;
+}
+
+.morphic-mode-concept-python-tiles > .morphic-element-python {
+  font-size: 13px;
+  font-family: "Consolas", "Fira Code", monospace;
+  color: var(--tile-muted-strong);
+}
