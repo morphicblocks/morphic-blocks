@@ -1,5 +1,5 @@
 {
-  "name": "morphis-workspace",
+  "name": "morphic-blocks-workspace",
   "private": true,
   "type": "module",
   "workspaces": [

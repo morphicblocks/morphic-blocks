@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "morphic-blocks",
+      "name": "morphic-blocks-workspace",
     },
     "apps/sandbox": {
       "name": "sandbox",
