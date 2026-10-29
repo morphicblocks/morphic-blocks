@@ -992,6 +992,12 @@ export class MorphicBlocks extends EventTarget {
      * since lines always go to a console the host passes in.
      */
     logToConsole?: boolean;
+    /**
+     * Values the program can use by name, e.g. `{ turtle, canvas }` for the
+     * host's own functions. Each name must be a JavaScript identifier;
+     * `console` has its own option.
+     */
+    globals?: Record<string, unknown>;
   }): MorphicRunResult {
     let code = "";
     let result: unknown = undefined;
@@ -1012,10 +1018,19 @@ export class MorphicBlocks extends EventTarget {
         if (target) (target[level] ?? target.log).apply(target, args);
       };
     const capturingConsole = { log: capture("log"), warn: capture("warn"), error: capture("error") };
+    const globals = Object.entries(options?.globals ?? {});
     try {
       code = this.generateJavaScript();
+      for (const [name] of globals) {
+        if (name === "console") throw new Error('globals: "console" is set with the console option of runJavaScript()');
+        if (!/^[\p{L}_$][\p{L}\p{N}_$]*$/u.test(name)) throw new Error(`globals: "${name}" is not a JavaScript name`);
+      }
+      // Each global becomes a parameter of the program's function.
       // eslint-disable-next-line @typescript-eslint/no-implied-eval
-      result = new Function("console", code)(capturingConsole);
+      result = new Function("console", ...globals.map(([name]) => name), code)(
+        capturingConsole,
+        ...globals.map(([, value]) => value),
+      );
     } catch (e) {
       error = e instanceof Error ? e : new Error(String(e));
     }
