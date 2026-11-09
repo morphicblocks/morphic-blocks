@@ -41,12 +41,12 @@ morphic-blocks/
 
 ### How it works
 
-1. **Definitions** (JSON): `elementTypes`, `modes`, optional `views` and `presets`, `code` settings per code element, `categories`, `blocks` (each with an `elements` map, element name → content). The docs' Definitions Format page has every field.
+1. **Definitions** (JSON): `elementTypes`, `modes`, optional `views`, `presets` and `blockSets`, `code` settings per code element, `categories`, `blocks` (each with an `elements` map, element name → content). The docs' Definitions Format page has every field.
 2. **Behaviors** (JS/TS): functions that generate the JavaScript for each block type.
 3. **CSS**: one stylesheet per mode, using `.morphic-mode-<mode>` classes.
 4. `mount()` sets up Blockly and every view it gets a container for; `applyPreset()` / `show()` switch the toolbox mode and the element each view shows at runtime.
 
-**Views** are declared by name (`views` in the definitions or mount): `{ "editor-pane": "workspace", "read-pane": { "kind": "codespace", "editable": false, "delete": { … }, "rtl": false } }`. Without `views`, there are two: `workspace` and `codespace`. `mount()` takes `containers` by view name (`workspaceContainer` / `codespaceContainer` are short for `containers.workspace` / `.codespace`), `toolboxContainer`, `codeEditorContainer`, `toolbars` and `themes` by view name, and `editorTheme`; a view without a container is skipped, so the same definitions serve a full page and a small embed. The first workspace with a container holds the program (`programView`); without one, Blockly runs headless so the block model stays authoritative, showing what the preset gives the first declared workspace view, else the first view with a container (`headlessProgramView`). Every other view goes through the added-view code. `mount()` returns a promise that settles once the text editors (lazy loaded CodeMirror) are ready. Selection sync is on when more than one view is set up; the code editor starts hidden.
+**Views** are declared by name (`views` in the definitions or mount): `{ "editor-pane": "workspace", "read-pane": { "kind": "codespace", "editable": false, "delete": { … }, "rtl": false } }`. Without `views`, there are two: `workspace` and `codespace`. `mount()` takes `containers` by view name (`workspaceContainer` / `codespaceContainer` are short for `containers.workspace` / `.codespace`), `toolboxContainer`, `codeEditorContainer`, `toolbars` and `themes` by view name, and `editorTheme`; a view without a container is skipped, so the same definitions serve a full page and a small embed. The first workspace with a container holds the program (`programView`); without one, Blockly runs headless so the block model stays authoritative. Every other view goes through the added-view code. `mount()` returns a promise that settles once the text editors (lazy loaded CodeMirror) are ready. Selection sync is on when more than one view is set up; the code editor starts hidden.
 
 Views show a **code element**, not a mode: presets say which, without presets every view shows the first mode's code element. View containers get `morphic-view`, `morphic-view-<name>`, `morphic-shows-<element>`, `morphic-preset-<name>`, `morphic-workspace-root` / `morphic-codespace-root` and `morphic-read-only`; workspace blocks get `morphic-shows-<element>`, tiles `morphic-mode-<mode>` (never `morphic-element-`, since every class starting with it is hidden by the mode visibility CSS). Names go into classes as written: only characters a class cannot hold become `-`, and such a name warns with the class it gets (categories, being labels, do not warn). Options moved in 0.3.0 and 0.4.0 fail at mount with directions.
 
@@ -59,7 +59,7 @@ Definitions and behaviors use **clean, free-form identifiers** (`text_print`). B
 ### Templates and fields
 
 - `%1`, `%2`: input slots (Blockly inputs; substituted in text)
-- `%FIELDNAME`: a field: the one declared in the block's `fields` map (dropdown, text, number, checkbox), or one a behavior attaches in `onViewApplied`
+- `%FIELDNAME`: a field: the one declared in the block's `fields` map (dropdown, text, number, checkbox), or one a behavior attaches in `onViewApplied`. The template decides what a block shows, `fields` what it has: a declared field a workspace block's template leaves out stays on the block, undrawn (`keepOmittedFields`)
 - `%1:type`: the type of slot 1's value, named per language in `code.<element>.types` (`value-type.ts`)
 - `<img src="...">`: image fields; plain text: labels
 - Text rendering keeps the template's line breaks and indentation as written
@@ -76,7 +76,8 @@ A dropdown option is `value` (generated, serialized, shown in text) plus a block
 | `custom` | drawn by the app's function in `toolbox.custom` | never shown |
 
 - A **mode** (`{ name, elements, render? }`) lists the elements a tile shows; `render` says per code element `"block-based"` (default) or `"text-based"`. All elements are rendered on every tile; CSS hides the ones the mode does not list.
-- A **preset** (`{ name, label?, toolbox: <mode>, views: { <view>: <code element> } }`) says what the toolbox and each view show; views it leaves out keep theirs. `onPresetApplied(preset)` lets the host lay out its panes.
+- A **preset** (`{ name, label?, toolbox: <mode>, views: { <view>: <code element> }, blockSet? }`) says what the toolbox and each view show; views it leaves out keep theirs, and without `blockSet` the toolbox shows all blocks. `onPresetApplied(preset)` lets the host lay out its panes.
+- A **block set** (`blockSets`, `block-sets.ts`) names the toolbox's blocks: a list, or `{ extends, add?, remove? }`; `show({ blockSet })` switches it (`null` for all), blocks in the program stay.
 - `toolbox.label` names tiles for screen readers after an element (e.g. a hidden `spoken-de`); presses on controls inside a custom element neither drag the tile nor add the block.
 - Names: the docs' Naming page recommends kebab-case and a suffix per kind (`…-tiles`, `…-preset`, `…-pane`), other styles work too; a framework word as a name (`FRAMEWORK_WORDS`) and a name used for two kinds warn. An element cannot be called `default`.
 
@@ -90,7 +91,7 @@ Dev app and test bed for every feature; change it freely, commit it separately. 
 
 ## Roadmap
 
-**Upcoming:** a natural-language locale layer (an external translation table per locale, orthogonal to modes); the hidden program picking its element itself (the first code element with every field and slot); `runJavaScript({ globals })`; presets that name their toolbox blocks; CodeMirror themes as `editorTheme`; inline edits for `FieldVariable` / `FieldCheckbox`; bidirectional sync (text back to blocks); draft blocks for invalid code; optional Monaco; a package architecture refactor as the final cleanup.
+**Upcoming:** a natural-language locale layer (an external translation table per locale, orthogonal to modes); inline edits for `FieldVariable` / `FieldCheckbox`; bidirectional sync (text back to blocks); draft blocks for invalid code; optional Monaco; a package architecture refactor as the final cleanup.
 
 **Not planned:** multi-language code generation. Behaviors already write whatever code the developer wants, elements already show any language, and execution is JavaScript, so per-language generators would add upkeep without benefit.
 
