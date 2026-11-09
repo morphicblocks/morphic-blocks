@@ -37,6 +37,10 @@ export const behaviors: MorphicBehaviorMap = {
     const body = proxy.inputs.DO || "";
     return `for (let i = 0; i < ${times}; i++) {\n${body}\n}\n`;
   },
+  // The concept text leaves the unit out; the block keeps it anyway.
+  wait_time(proxy) {
+    return `console.log("waited", ${proxy.inputs.AMOUNT || "0"}, ${JSON.stringify(proxy.fields.UNIT)});\n`;
+  },
 
   // ── Operations ──────────────────────────────────────────
 

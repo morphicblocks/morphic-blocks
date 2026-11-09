@@ -411,8 +411,63 @@
         "editor-pane": "concept",
         "text-pane": "concept"
       }
+    },
+    {
+      "name": "level-1-preset",
+      "label": "Level 1",
+      "toolbox": "concept-tiles",
+      "blockSet": "level-1-blocks",
+      "views": {
+        "editor-pane": "concept",
+        "read-pane": "python"
+      }
+    },
+    {
+      "name": "level-2-preset",
+      "label": "Level 2",
+      "toolbox": "concept-tiles",
+      "blockSet": "level-2-blocks",
+      "views": {
+        "editor-pane": "concept",
+        "read-pane": "python"
+      }
+    },
+    {
+      "name": "level-3-preset",
+      "label": "Level 3",
+      "toolbox": "concept-tiles",
+      "blockSet": "level-3-blocks",
+      "views": {
+        "editor-pane": "concept",
+        "read-pane": "python"
+      }
     }
   ],
+  "blockSets": {
+    "level-1-blocks": [
+      "text_print",
+      "text_value",
+      "m_math_number"
+    ],
+    "level-2-blocks": {
+      "extends": "level-1-blocks",
+      "add": [
+        "loop_for",
+        "math_arithmetic",
+        "wait_time"
+      ]
+    },
+    "level-3-blocks": {
+      "extends": "level-2-blocks",
+      "add": [
+        "logic_if",
+        "logic_compare"
+      ],
+      "remove": [
+        "wait_time"
+      ]
+    }
+  },
   "categories": [
     {
       "name": "Output",
@@ -521,6 +576,49 @@
         "2": {
           "kind": "statement",
           "name": "DO"
+        }
+      },
+      "shape": "statement",
+      "inputsInline": true
+    },
+    {
+      "identifier": "wait_time",
+      "category": "Control",
+      "elements": {
+        "icon": "icons/loop_for.svg",
+        "title": "Wait",
+        "description": "Waits a while; the concept text leaves the unit out",
+        "concept": "Wait %1",
+        "python": "wait(%1, \"%UNIT\")",
+        "javascript": "wait(%1, \"%UNIT\");",
+        "go": "wait(%1, \"%UNIT\")",
+        "spoken": "Wait block: waits a number of seconds or minutes"
+      },
+      "fields": {
+        "UNIT": {
+          "type": "dropdown",
+          "options": [
+            {
+              "value": "seconds"
+            },
+            {
+              "value": "minutes"
+            }
+          ],
+          "default": "seconds"
+        }
+      },
+      "inputSlots": {
+        "1": {
+          "kind": "value",
+          "name": "AMOUNT",
+          "check": "Number",
+          "default": {
+            "shadow": "m_math_number",
+            "fieldValues": {
+              "NUM": "2"
+            }
+          }
         }
       },
       "shape": "statement",
