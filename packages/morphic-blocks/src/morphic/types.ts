@@ -851,6 +851,13 @@ export interface MorphicCodeEditorTheme {
   gutterForeground?: string;
   /** Text selection highlight colour. */
   selectionBackground?: string;
+  /**
+   * A CodeMirror theme (an extension, e.g. `oneDark` from
+   * `@codemirror/theme-one-dark`) for the editor's colours. The colours above
+   * then default to the theme's; any set here still win. Token colours stay
+   * with `highlighting`.
+   */
+  codemirror?: unknown;
 }
 
 /** Ways to delete blocks in a codespace, each on unless set to `false`. */

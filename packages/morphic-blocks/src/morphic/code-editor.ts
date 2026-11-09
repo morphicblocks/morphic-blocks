@@ -56,10 +56,10 @@ export function setActiveGripDragSourceId(id: string | undefined): void {
   activeGripDragSourceId = id;
 }
 
-const DEFAULT_THEME: Required<MorphicCodeEditorTheme> = {
-  fontSize: "14px",
-  fontFamily: "monospace",
-  lineHeight: 1.5,
+const DEFAULT_FONT = { fontSize: "14px", fontFamily: "monospace", lineHeight: 1.5 };
+
+const DEFAULT_THEME: Required<Omit<MorphicCodeEditorTheme, "codemirror">> = {
+  ...DEFAULT_FONT,
   background: "#1e1e1e",
   foreground: "#d4d4d4",
   gutterBackground: "#1e1e1e",
@@ -189,48 +189,57 @@ function buildThemeExtension(
   cmView: typeof import("@codemirror/view"),
   theme: MorphicCodeEditorTheme,
 ): Extension {
-  const t = { ...DEFAULT_THEME, ...theme };
-  return cmView.EditorView.theme({
+  // With a CodeMirror theme, the colours the app leaves out are the theme's.
+  const t: MorphicCodeEditorTheme = { ...(theme.codemirror ? DEFAULT_FONT : DEFAULT_THEME), ...theme };
+  const foreground = t.foreground ?? "currentColor";
+  const own = cmView.EditorView.theme({
     "&": {
-      fontSize: t.fontSize,
-      fontFamily: t.fontFamily,
-      backgroundColor: t.background,
-      color: t.foreground,
+      fontSize: t.fontSize ?? null,
+      fontFamily: t.fontFamily ?? null,
+      // A colour left to the CodeMirror theme is not written (null).
+      backgroundColor: t.background ?? null,
+      color: t.foreground ?? null,
     },
     // CodeMirror's own theme sets monospace on the scroller, which the text
     // would inherit instead of the font set on the editor above.
     ".cm-scroller": {
-      fontFamily: t.fontFamily,
+      fontFamily: t.fontFamily ?? null,
     },
     ".cm-content": {
       lineHeight: String(t.lineHeight),
     },
     ".cm-gutters": {
-      backgroundColor: t.gutterBackground,
-      color: t.gutterForeground,
-      border: "none",
+      backgroundColor: t.gutterBackground ?? null,
+      color: t.gutterForeground ?? null,
+      ...(theme.codemirror ? {} : { border: "none" }),
     },
-    "&.cm-focused .cm-selectionBackground, .cm-selectionBackground": {
-      backgroundColor: `${t.selectionBackground} !important`,
-    },
+    ...(t.selectionBackground
+      ? {
+          "&.cm-focused .cm-selectionBackground, .cm-selectionBackground": {
+            backgroundColor: `${t.selectionBackground} !important`,
+          },
+        }
+      : {}),
     // Note: theme-independent placeholder-marker styling (border-radius,
     // padding, italic/opacity) lives in code-editor.css, injected once by
     // ensureCodeEditorStyles(). Only theme-colour-derived rules remain here.
     ".morphic-delete-marker": {
-      color: mix(t.foreground, 70),
-      backgroundColor: mix(t.foreground, 12),
+      color: mix(foreground, 70),
+      backgroundColor: mix(foreground, 12),
     },
     ".morphic-delete-marker:hover": {
-      color: t.foreground,
-      backgroundColor: mix(t.foreground, 22),
+      color: foreground,
+      backgroundColor: mix(foreground, 22),
     },
     ".morphic-grip-marker": {
-      color: mix(t.foreground, 75),
+      color: mix(foreground, 75),
     },
     ".morphic-grip-marker:hover": {
-      color: t.foreground,
+      color: foreground,
     },
   });
+  // Earlier extensions take precedence, so colours the app sets win.
+  return theme.codemirror ? [own, theme.codemirror as Extension] : own;
 }
 
 export class MorphicCodeEditor {
