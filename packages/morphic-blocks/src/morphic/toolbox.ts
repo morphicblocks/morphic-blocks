@@ -11,22 +11,25 @@ import type {
  * Returns the ordered list of block types for a category.
  * If the category declares an explicit `blocks` array that is used directly;
  * otherwise every block definition whose `category` field matches the category
- * name (case-insensitive) is used, preserving definition order.
+ * name (case-insensitive) is used, preserving definition order. With `shown`,
+ * only the blocks it lists.
  */
 function resolveCategoryBlocks(
   category: MorphicToolboxCategory,
   definitions: ReadonlyMap<string, MorphicBlockDefinition>,
+  shown?: string[],
 ): string[] {
-  if (category.blocks && category.blocks.length > 0) {
-    return category.blocks;
-  }
   const result: string[] = [];
-  for (const def of definitions.values()) {
-    if (def.category?.toLowerCase() === category.name.toLowerCase()) {
-      result.push(def.identifier);
+  if (category.blocks && category.blocks.length > 0) {
+    result.push(...category.blocks);
+  } else {
+    for (const def of definitions.values()) {
+      if (def.category?.toLowerCase() === category.name.toLowerCase()) {
+        result.push(def.identifier);
+      }
     }
   }
-  return result;
+  return shown ? result.filter((type) => shown.includes(type)) : result;
 }
 
 export function buildToolboxDefinition(
@@ -37,7 +40,10 @@ export function buildToolboxDefinition(
     toolbox.kind ??
     (toolbox.categories?.length ? "categoryToolbox" : "flyoutToolbox");
   if (kind === "categoryToolbox") {
-    const categories = toolbox.categories ?? [];
+    // A category left without blocks is left out.
+    const categories = (toolbox.categories ?? []).filter(
+      (category) => resolveCategoryBlocks(category, definitions, toolbox.blocks).length > 0,
+    );
     return {
       kind: "categoryToolbox",
       contents: categories.map((category) => ({
@@ -45,7 +51,7 @@ export function buildToolboxDefinition(
         name: category.name,
         // Blockly's toolbox API uses British "colour" — read from our `color` field.
         colour: category.color,
-        contents: resolveCategoryBlocks(category, definitions).map((type) => ({
+        contents: resolveCategoryBlocks(category, definitions, toolbox.blocks).map((type) => ({
           kind: "block",
           type: resolveBlocklyType(type, definitions),
         })),
@@ -54,7 +60,9 @@ export function buildToolboxDefinition(
   }
 
   if (toolbox.categories?.length) {
-    const categories = toolbox.categories;
+    const categories = toolbox.categories.filter(
+      (category) => resolveCategoryBlocks(category, definitions, toolbox.blocks).length > 0,
+    );
     const contents: Array<Record<string, unknown>> = [];
 
     categories.forEach((category, index) => {
@@ -67,7 +75,7 @@ export function buildToolboxDefinition(
       });
 
       for (const type of dedupeBlockTypes(
-        resolveCategoryBlocks(category, definitions),
+        resolveCategoryBlocks(category, definitions, toolbox.blocks),
       )) {
         contents.push({
           kind: "block",

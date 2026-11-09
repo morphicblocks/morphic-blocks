@@ -77,7 +77,7 @@ export class MorphicToolboxCanvas {
   private readonly blockColors: Map<string, string>;
   private readonly behaviors: MorphicBehaviorMap;
   private readonly elementTypes: Record<string, MorphicElementTypeEntry>;
-  private readonly options: MorphicToolboxCanvasOptions;
+  private options: MorphicToolboxCanvasOptions;
   private readonly modes: MorphicModeDefinition[];
   private currentMode: MorphicModeName;
   private readonly code: Record<string, MorphicCodeElementConfig>;
@@ -165,6 +165,11 @@ export class MorphicToolboxCanvas {
     this.resizeObserver?.observe(this.container);
 
     this.render();
+  }
+
+  /** Show only these blocks (all when `undefined`) from the next render on. */
+  setBlocks(blocks: string[] | undefined): void {
+    this.options = { ...this.options, blocks };
   }
 
   rerender(mode: MorphicModeName): void {

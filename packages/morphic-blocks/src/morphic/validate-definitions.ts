@@ -1,10 +1,12 @@
 import * as Blockly from "blockly";
 import { getLifecycleBehavior } from "./behavior-runtime";
 import { BLOCK_SHAPES, DEFAULT_ELEMENT } from "./definitions";
+import { resolveBlockSets } from "./block-sets";
 import { resolveElementType } from "./element-types";
 import { parseTemplate, toModeClassToken } from "./template";
 import type {
   MorphicBehaviorMap,
+  MorphicBlockSet,
   MorphicBlockDefinition,
   MorphicCodeElementConfig,
   MorphicElementTypeEntry,
@@ -28,6 +30,7 @@ export interface ValidateDefinitionsArgs {
   categories?: MorphicToolboxCategory[];
   /** Names of the views the developer declared (not the defaults). */
   views?: string[];
+  blockSets?: Record<string, MorphicBlockSet>;
 }
 
 export interface DefinitionValidationResult {
@@ -49,7 +52,7 @@ export interface DefinitionValidationResult {
 export function validateDefinitions(
   args: ValidateDefinitionsArgs,
 ): DefinitionValidationResult {
-  const { definitions, elementTypes, behaviors, modes, presets, code, categories, views } = args;
+  const { definitions, elementTypes, behaviors, modes, presets, code, categories, views, blockSets } = args;
   const errors: string[] = [];
   const warnings: string[] = [];
 
@@ -351,6 +354,16 @@ export function validateDefinitions(
     }
   }
 
+  // (8c) Block sets name blocks and other sets; presets name block sets.
+  const resolvedSets = resolveBlockSets(blockSets, (identifier) => definitions.has(identifier));
+  errors.push(...resolvedSets.errors);
+  warnings.push(...resolvedSets.warnings);
+  for (const preset of presets ?? []) {
+    if (preset.blockSet !== undefined && !blockSets?.[preset.blockSet]) {
+      errors.push(`Preset "${preset.name}": blockSet "${preset.blockSet}" is no block set.`);
+    }
+  }
+
   // (9) Code section keys must be code elements or their settings never apply.
   for (const key of Object.keys(code ?? {})) {
     if (!codeElementNames.has(key)) {
@@ -375,16 +388,18 @@ export function validateDefinitions(
   for (const preset of presets ?? []) noteName(preset.name, "preset");
   for (const view of views ?? []) noteName(view, "view");
   for (const category of categories ?? []) noteName(category.name, "category");
+  for (const name of Object.keys(blockSets ?? {})) noteName(name, "block set");
   for (const [name, namespaces] of namespacesByName) {
     if (namespaces.size > 1) {
       warnings.push(
         `Name "${name}" is used as ${[...namespaces].sort().join(" and ")} — reusing a name ` +
-          `across element / mode / preset / view / category is allowed but confusing; consider distinct names.`,
+          `across element / mode / preset / view / category / block set is allowed but confusing; consider distinct names.`,
       );
     }
     // (11) A class keeps the name as written, except what a class cannot hold;
-    // the app's CSS then needs the changed name. Category labels may have spaces.
-    const kinds = [...namespaces].filter((kind) => kind !== "category");
+    // the app's CSS then needs the changed name. Category labels may have
+    // spaces, and block sets get no class.
+    const kinds = [...namespaces].filter((kind) => kind !== "category" && kind !== "block set");
     if (kinds.length > 0 && /[^A-Za-z0-9_-]/.test(name)) {
       warnings.push(
         `Name "${name}" (${kinds.sort().join(", ")}) has characters a CSS class cannot hold; ` +
@@ -416,7 +431,7 @@ const ELEMENT_TYPES: readonly string[] = ["text", "code", "image", "custom"];
 /** Words the framework uses for its own things; as a developer's name they confuse readers. */
 const FRAMEWORK_WORDS: readonly string[] = [
   "workspace", "codespace", "preview", "toolbox", "mode", "preset", "view", "element",
-  "block", "blocks", "tile", "tiles", "category", ...ELEMENT_TYPES,
+  "block", "blocks", "blockset", "block-set", "tile", "tiles", "category", ...ELEMENT_TYPES,
 ];
 const SLOT_KINDS: readonly string[] = ["value", "statement"];
 const FIELD_TYPES: readonly string[] = ["dropdown", "text", "number", "checkbox"];

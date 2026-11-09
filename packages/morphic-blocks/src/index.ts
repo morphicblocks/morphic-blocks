@@ -77,6 +77,7 @@ export type {
   MorphicModeDefinition,
   MorphicTileRender,
   MorphicPresetDefinition,
+  MorphicBlockSet,
   MorphicRunOutputLine,
   MorphicRunResult,
   MorphicSelectionSyncOptions,

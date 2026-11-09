@@ -29,6 +29,7 @@ import { MorphicStyleManager, type MorphicModeStyle } from "./styles";
 import { toModeClassToken } from "./template";
 import { DRAG_DATA_KEY, MorphicToolboxCanvas, type TileDropTarget } from "./toolbox-canvas";
 import { buildToolboxDefinition } from "./toolbox";
+import { resolveBlockSets } from "./block-sets";
 import { resolveBlockView, resolveElementView, resolveModeSourceElement } from "./view-resolver";
 import { renderToolbar, toolbarItems, type MorphicToolbarHandle } from "./toolbar";
 import type {
@@ -50,6 +51,7 @@ import type {
   MorphicMountConfig,
   MorphicPlaceholderEditTarget,
   MorphicPresetDefinition,
+  MorphicBlockSet,
   MorphicRenderContext,
   MorphicRunOutputLine,
   MorphicRunResult,
@@ -287,6 +289,11 @@ export class MorphicBlocks extends EventTarget {
   /** The definitions still use the old top level `highlighting` map. */
   private readonly formatHasHighlighting: boolean;
   private readonly formatCategories?: MorphicToolboxCategory[];
+  private readonly formatBlockSets?: Record<string, MorphicBlockSet>;
+  /** Every block set's blocks, resolved at mount. */
+  private blockSetLists = new Map<string, string[]>();
+  /** The block set the toolbox shows; `undefined` shows the toolbox's own blocks. */
+  private activeBlockSet?: string;
 
   /**
    * Build an engine from a whole definitions file plus its behaviors — the two
@@ -313,6 +320,7 @@ export class MorphicBlocks extends EventTarget {
     this.formatCode = format.code;
     this.formatHasHighlighting = "highlighting" in format;
     this.formatCategories = format.categories;
+    this.formatBlockSets = format.blockSets;
   }
 
   /**
@@ -367,6 +375,8 @@ export class MorphicBlocks extends EventTarget {
     if (config.preset && !initialPreset) {
       throw new Error(`MorphicBlocks.mount: unknown preset "${config.preset}".`);
     }
+    this.blockSetLists = resolveBlockSets(this.formatBlockSets, (identifier) => this.definitions.has(identifier)).lists;
+    this.activeBlockSet = initialPreset?.blockSet;
 
     // Without a preset, start in the first declared mode; a folder import's
     // file order is alphabetical, so a stylesheet only decides when no modes
@@ -581,7 +591,7 @@ export class MorphicBlocks extends EventTarget {
     const views = Object.fromEntries(
       Object.entries(preset.views).filter(([name]) => this.mountConfig?.viewDeclarations[name] || this.resolveView(name)),
     );
-    this.show({ toolbox: preset.toolbox, views });
+    this.show({ toolbox: preset.toolbox, views, blockSet: preset.blockSet ?? null });
     this.activePreset = preset;
     this.applyPresetClasses();
     this.mountConfig.onPresetApplied?.(preset);
@@ -604,6 +614,7 @@ export class MorphicBlocks extends EventTarget {
       code: config.code,
       categories: config.toolbox?.categories,
       views: Object.keys(config.views ?? this.formatViews ?? {}),
+      blockSets: this.formatBlockSets,
     });
     // Moved in 0.4.0: named here so an upgrade fails with directions.
     const moved: Record<string, string> = {
@@ -690,6 +701,7 @@ export class MorphicBlocks extends EventTarget {
     this.workspaceResizeObserver = undefined;
     document.fonts?.removeEventListener("loadingdone", this.onStylesLoaded);
     this.activePreset = undefined;
+    this.activeBlockSet = undefined;
 
     this.selectionSync?.disable();
     this.selectionSync = undefined;
@@ -758,7 +770,7 @@ export class MorphicBlocks extends EventTarget {
     const toolbox = this.mountConfig.toolbox;
     const canvasOptions: MorphicToolboxCanvasOptions = {
       ...options,
-      blocks: options?.blocks ?? toolbox?.blocks,
+      blocks: options?.blocks ?? this.toolboxBlocks(),
       categories: options?.categories ?? toolbox?.categories,
       modeLabel: options?.modeLabel ?? toolbox?.modeLabel,
       highlight: options?.highlight ?? toolbox?.highlight,
@@ -1198,16 +1210,24 @@ export class MorphicBlocks extends EventTarget {
 
   /**
    * Switch what the toolbox and the views show, in the shape of a preset:
-   * `show({ toolbox: "pseudo", views: { blocks: "pseudo", code: "python" } })`.
+   * `show({ toolbox: "pseudo", blockSet: "level-2-blocks", views: { blocks: "pseudo", code: "python" } })`.
    * Everything left out stays as it is; showing and hiding the views'
    * containers stays the app's job.
    */
-  public show(shown: { toolbox?: MorphicModeName; views?: Record<string, string> }): void {
+  public show(shown: {
+    toolbox?: MorphicModeName;
+    views?: Record<string, string>;
+    /** The block set the toolbox shows; `null` shows all of the toolbox's blocks again. */
+    blockSet?: string | null;
+  }): void {
     if (!this.mountConfig || !this.workspace) {
       throw new Error("MorphicBlocks must be mounted before show can be used.");
     }
     if (shown.toolbox !== undefined && !this.modeDef(shown.toolbox)) {
       throw new Error(`show: unknown mode "${shown.toolbox}" for the toolbox.`);
+    }
+    if (shown.blockSet && !this.blockSetLists.has(shown.blockSet)) {
+      throw new Error(`show: unknown block set "${shown.blockSet}".`);
     }
     for (const [name, element] of Object.entries(shown.views ?? {})) {
       if (!this.mountConfig.viewDeclarations[name] && !this.resolveView(name)) {
@@ -1216,8 +1236,15 @@ export class MorphicBlocks extends EventTarget {
       this.checkViewElement("show", element);
     }
 
-    if (shown.toolbox) {
-      this.mountConfig.toolboxMode = shown.toolbox;
+    // Blocks already in the program stay; only the toolbox changes.
+    const blocksChange = shown.blockSet !== undefined && shown.blockSet !== this.activeBlockSet;
+    if (blocksChange) {
+      this.activeBlockSet = shown.blockSet ?? undefined;
+      this.toolboxCanvas?.setBlocks(this.toolboxBlocks());
+      this.toolboxDefinition = this.resolveToolboxDefinition(this.mountConfig);
+    }
+    if (shown.toolbox) this.mountConfig.toolboxMode = shown.toolbox;
+    if (shown.toolbox || blocksChange) {
       this.toolboxCanvas?.rerender(this.mountConfig.toolboxMode);
       this.refreshToolbox();
       this.bindFlyoutWorkspace();
@@ -3377,14 +3404,19 @@ export class MorphicBlocks extends EventTarget {
     this.applyFlyoutClass();
   }
 
+  /** The blocks the toolbox shows: the active block set's, else the mount's `toolbox.blocks` (all when unset). */
+  private toolboxBlocks(): string[] | undefined {
+    return this.activeBlockSet ? this.blockSetLists.get(this.activeBlockSet) : this.mountConfig?.toolbox?.blocks;
+  }
+
   private resolveToolboxDefinition(
     config: Omit<MorphicMountConfig, "modeStyles">,
   ): NonNullable<Blockly.BlocklyOptions["toolbox"]> {
-    if (config.toolbox) {
+    const setBlocks = this.activeBlockSet ? this.blockSetLists.get(this.activeBlockSet) : undefined;
+    if (config.toolbox || setBlocks) {
+      const toolbox = { ...config.toolbox, ...(setBlocks ? { blocks: setBlocks } : {}) };
       const layoutKind = this.resolveToolboxKind(config.toolboxLayout);
-      const toolboxConfig = layoutKind
-        ? { ...config.toolbox, kind: layoutKind }
-        : config.toolbox;
+      const toolboxConfig = layoutKind ? { ...toolbox, kind: layoutKind } : toolbox;
       return buildToolboxDefinition(toolboxConfig, this.definitions);
     }
 

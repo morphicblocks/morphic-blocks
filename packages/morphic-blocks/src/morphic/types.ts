@@ -261,7 +261,18 @@ export interface MorphicPresetDefinition {
    * out keep what they show.
    */
   views: Record<string, string>;
+  /**
+   * The block set whose blocks the toolbox shows. Without it, the toolbox
+   * shows all of its blocks.
+   */
+  blockSet?: string;
 }
+
+/**
+ * Blocks for the toolbox, by name in `blockSets`: a list of block
+ * identifiers, or another set with blocks added at the end and removed.
+ */
+export type MorphicBlockSet = string[] | { extends: string; add?: string[]; remove?: string[] };
 
 /** Kinds of view: blocks, or the program as text. */
 export type MorphicViewKind = "workspace" | "codespace";
@@ -422,6 +433,8 @@ export interface MorphicBlocksFormat {
   views?: Record<string, MorphicViewKind | MorphicViewDeclaration>;
   /** Named per-view mode configurations. Used as the mount default for `presets`. */
   presets?: MorphicPresetDefinition[];
+  /** Named lists of blocks for the toolbox, used by presets and `show({ blockSet })`. */
+  blockSets?: Record<string, MorphicBlockSet>;
   /**
    * How each code element's language is written, keyed by element name:
    * string quotes, empty slot defaults and highlighting.
