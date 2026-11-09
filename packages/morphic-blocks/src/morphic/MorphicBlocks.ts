@@ -9,6 +9,7 @@ import {
   applyRootModeClasses,
   applyViewClasses,
   captureFieldValues,
+  keepOmittedFields,
   decorateBlockRoot,
   isOnCanvas,
   restoreFieldValues,
@@ -210,19 +211,6 @@ const workspaceOwners = new WeakMap<Blockly.Workspace, MorphicBlocks>();
 const fallbackOwners = new Map<string, MorphicBlocks>();
 
 /**
- * The view whose element the hidden program workspace takes when no
- * workspace has a container: the first declared workspace (a preset can name
- * it, e.g. an element that keeps every field), else the first view shown.
- */
-function headlessProgramView(
-  declarations: Record<string, MorphicViewDeclaration>,
-  containers: Record<string, HTMLElement | undefined>,
-): string | undefined {
-  const names = Object.keys(declarations);
-  return names.find((name) => declarations[name]!.kind === "workspace") ?? names.find((name) => containers[name]);
-}
-
-/**
  * Blockly marks a block as an insertion marker (the preview drawn while
  * dragging) only after its `init`, which already gave it default shadows.
  * When the dragged block replaces an occupied slot, Blockly moves the old
@@ -400,7 +388,9 @@ export class MorphicBlocks extends EventTarget {
     const defaultElement = this.defaultElement(config.modes ?? []);
     const elementOf = (name: string | undefined) =>
       (name ? initialPreset?.views[name] : undefined) ?? defaultElement;
-    const workspaceElement = elementOf(programView ?? headlessProgramView(viewDeclarations, viewContainers));
+    // Blocks keep every declared field whatever they show (`keepOmittedFields`),
+    // so a hidden program can stay with one element.
+    const workspaceElement = programView ? elementOf(programView) : defaultElement;
 
     const workspaceHost = (programView && viewContainers[programView]) || this.createHeadlessHost();
 
@@ -1235,16 +1225,12 @@ export class MorphicBlocks extends EventTarget {
     }
     for (const [name, element] of Object.entries(shown.views ?? {})) {
       // Views without a container are not set up; the next mount takes the preset again.
-      const programFollows = this.mountConfig.programView
-        ? name === this.mountConfig.programView
-        : name === headlessProgramView(this.mountConfig.viewDeclarations, this.mountConfig.viewContainers ?? {});
-      if (programFollows && element !== this.mountConfig.workspaceElement) {
+      if (name === this.mountConfig.programView && element !== this.mountConfig.workspaceElement) {
         this.mountConfig.workspaceElement = element;
         this.applyWorkspaceContainerClass();
         this.syncWorkspaceFont();
         this.renderWorkspaceBlocks();
       }
-      // A codespace the hidden program follows still shows the element itself.
       const view = [...this.views].find((added) => added.name === name);
       if (view && view.element !== element) view.show?.(element);
     }
@@ -3191,6 +3177,9 @@ export class MorphicBlocks extends EventTarget {
       this.createBehaviorContext(block, definition, view.elementName ?? mode, context, mode),
     );
 
+    // After onViewApplied, so a field a behavior attached is not made twice.
+    if (context === "workspace") keepOmittedFields(block, definition, view.elementName);
+
     // Restore field values after onViewApplied has recreated the fields
     restoreFieldValues(block, fieldMemory);
   }
@@ -3330,12 +3319,7 @@ export class MorphicBlocks extends EventTarget {
       if (!definition) {
         continue;
       }
-      this.applyView(
-        svgBlock,
-        definition,
-        this.mountConfig.workspaceElement,
-        "workspace",
-      );
+      this.applyView(svgBlock, definition, this.mountConfig.workspaceElement, "workspace");
     }
   }
 

@@ -30,6 +30,9 @@ import type {
   MorphicResolvedView,
 } from "./types";
 
+/** The input of the fields a template leaves out; it is never drawn. */
+const OMITTED_FIELDS_INPUT = "MORPHIC_OMITTED_FIELDS";
+
 export type MorphicManagedBlock = Blockly.BlockSvg & {
   __morphicMode?: string;
   __morphicContext?: MorphicRenderContext;
@@ -692,6 +695,24 @@ function restoreConnectedChildren(
       }
     }
   }
+}
+
+/**
+ * Give a block the declared fields its template leaves out, on a row that is
+ * not drawn. The template decides what a block shows, `fields` what it has,
+ * so text views, generated code and saved programs find every field whatever
+ * the workspace shows.
+ */
+export function keepOmittedFields(
+  block: Blockly.BlockSvg,
+  definition: MorphicBlockDefinition,
+  elementName: string | undefined,
+): void {
+  const omitted = Object.entries(definition.fields ?? {}).filter(([name]) => !block.getField(name));
+  if (omitted.length === 0) return;
+  const row = block.appendDummyInput(OMITTED_FIELDS_INPUT);
+  for (const [name, def] of omitted) row.appendField(createFieldFromDefinition(def, elementName), name);
+  row.setVisible(false);
 }
 
 export function captureFieldValues(block: Blockly.BlockSvg): Map<string, unknown> {

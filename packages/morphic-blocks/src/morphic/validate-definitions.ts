@@ -209,7 +209,7 @@ export function validateDefinitions(
     for (const name of fieldKeys) {
       if (!fieldTokens.has(name)) {
         warnings.push(
-          `Block "${id}": fields["${name}"] has no matching %${name} token in any code element — the config is ignored.`,
+          `Block "${id}": fields["${name}"] has no matching %${name} token in any code element — it is never shown.`,
         );
       }
     }

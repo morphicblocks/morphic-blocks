@@ -150,7 +150,7 @@ test("a field a mode leaves out keeps its value for the modes that show it", asy
   block.setFieldValue("String", "TYPE");
 
   engine.show({ views: { workspace: "python" } });
-  expect(block.getField("TYPE")).toBeNull();
+  expect(block.getField("TYPE")!.isVisible()).toBe(false);
 
   engine.show({ views: { workspace: "java" } });
   expect(block.getFieldValue("TYPE")).toBe("String");
