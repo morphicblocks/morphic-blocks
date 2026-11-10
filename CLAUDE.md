@@ -76,7 +76,7 @@ A dropdown option is `value` (generated, serialized, shown in text) plus a block
 | `custom` | drawn by the app's function in `toolbox.custom` | never shown |
 
 - A **mode** (`{ name, elements, render? }`) lists the elements a tile shows; `render` says per code element `"block-based"` (default) or `"text-based"`. All elements are rendered on every tile; CSS hides the ones the mode does not list.
-- A **preset** (`{ name, label?, toolbox: <mode>, views: { <view>: <code element> }, blockSet? }`) says what the toolbox and each view show; views it leaves out keep theirs, and without `blockSet` the toolbox shows all blocks. `onPresetApplied(preset)` lets the host lay out its panes.
+- A **preset** (`{ name, label?, toolbox: <mode>, views: { <view>: <code element> }, blockSet?, categories? }`) says what the toolbox and each view show; views it leaves out keep theirs, and without `blockSet` the toolbox shows all blocks; `categories: false` shows the tiles as one list (HTML toolbox or Blockly's flyout; Blockly's category toolbox keeps them and warns). `onPresetApplied(preset)` lets the host lay out its panes.
 - A **block set** (`blockSets`, `block-sets.ts`) names the toolbox's blocks: a list, or `{ extends, add?, remove? }`; `show({ blockSet })` switches it (`null` for all), blocks in the program stay.
 - `toolbox.label` names tiles for screen readers after an element (e.g. a hidden `spoken-de`); presses on controls inside a custom element neither drag the tile nor add the block.
 - Names: the docs' Naming page recommends kebab-case and a suffix per kind (`…-tiles`, `…-preset`, `…-pane`), other styles work too; a framework word as a name (`FRAMEWORK_WORDS`) and a name used for two kinds warn. An element cannot be called `default`.
