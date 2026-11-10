@@ -42,6 +42,20 @@ describe("resizing with the keyboard", () => {
     expect(target.style.flexBasis).toBe("160px");
   });
 
+  test("a pane with padding and a border keeps the size it is moved to", () => {
+    const { target, sizes, press } = setUp();
+    target.style.padding = "8px";
+    target.style.border = "1px solid";
+
+    press("ArrowRight");
+    expect(sizes).toEqual([210]);
+    expect(target.style.flexBasis).toBe("192px");
+
+    target.style.boxSizing = "border-box";
+    press("ArrowRight");
+    expect(target.style.flexBasis).toBe("220px");
+  });
+
   test("follow the axis and the side the divider sits on", () => {
     const vertical = setUp({ axis: "y", invert: true });
     vertical.press("ArrowDown");

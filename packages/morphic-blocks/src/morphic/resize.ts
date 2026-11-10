@@ -66,9 +66,22 @@ export function makeResizable(
   if (target.id && !gutter.hasAttribute("aria-controls")) gutter.setAttribute("aria-controls", target.id);
   announce(sizeNow());
 
+  // Sizes are the pane's outer size, as measured; a pane that sizes its
+  // content box takes them without its padding and border.
+  const basisOf = (size: number): number => {
+    const style = getComputedStyle(target);
+    if (style.boxSizing === "border-box") return size;
+    const sides = axis === "x" ? (["Left", "Right"] as const) : (["Top", "Bottom"] as const);
+    const extra = sides.reduce(
+      (sum, side) => sum + (Number.parseFloat(style[`padding${side}`]) || 0) + (Number.parseFloat(style[`border${side}Width`]) || 0),
+      0,
+    );
+    return Math.max(0, size - extra);
+  };
+
   const resizeTo = (wanted: number): void => {
     const size = clamp(wanted, min, max);
-    target.style.flexBasis = `${size}px`;
+    target.style.flexBasis = `${basisOf(size)}px`;
     announce(size);
     onResize?.(size);
   };
