@@ -3,6 +3,8 @@ import "blockly/blocks";
 export { MorphicBlocks } from "./morphic/MorphicBlocks";
 export { MorphicToolboxCanvas } from "./morphic/toolbox-canvas";
 export { toCleanId } from "./morphic/block-namespace";
+// The rule that turns a name into the part of a class: `my pane` gives `my-pane`.
+export { toModeClassToken as toClassToken } from "./morphic/template";
 export { toolbarItems, renderToolbar } from "./morphic/toolbar";
 export type {
   MorphicRunEventDetail,
