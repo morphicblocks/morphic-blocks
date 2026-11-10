@@ -30,6 +30,7 @@ import { toModeClassToken } from "./template";
 import { DRAG_DATA_KEY, MorphicToolboxCanvas, type TileDropTarget } from "./toolbox-canvas";
 import { buildToolboxDefinition } from "./toolbox";
 import { resolveBlockSets } from "./block-sets";
+import { withAssetUrls } from "./asset-urls";
 import { resolveBlockView, resolveElementView, resolveModeSourceElement } from "./view-resolver";
 import { renderToolbar, toolbarItems, type MorphicToolbarHandle } from "./toolbar";
 import type {
@@ -232,6 +233,8 @@ function dropShadowsWhenMarker(block: Blockly.BlockSvg): void {
 
 export class MorphicBlocks extends EventTarget {
   private readonly definitions: Map<string, MorphicBlockDefinition>;
+  /** The blocks as loaded; each mount resolves their images (`assetUrl`) from these. */
+  private readonly loadedDefinitions: ReadonlyMap<string, MorphicBlockDefinition>;
   private readonly behaviors: MorphicBehaviorMap;
   /** Element types with the mounted `code` settings folded in (see withCodeSettings). */
   private elementTypes: Record<string, MorphicElementTypeEntry>;
@@ -313,6 +316,7 @@ export class MorphicBlocks extends EventTarget {
     this.definitions = createDefinitionMap(
       applyBlockShapes(expandDefaultElements(format.blocks, format.elementTypes ?? {})),
     );
+    this.loadedDefinitions = new Map(this.definitions);
     this.behaviors = behaviors;
     this.formatElementTypes = format.elementTypes ?? {};
     this.elementTypes = withCodeSettings(this.formatElementTypes, format.code);
@@ -333,6 +337,7 @@ export class MorphicBlocks extends EventTarget {
    */
   public mount(inputConfig: MorphicMountConfig): Promise<void> {
     this.dispose();
+    this.resolveAssetUrls(inputConfig.assetUrl);
 
     // Fill unset format-level fields from the definitions file handed to the
     // constructor, so a mount call only needs its DOM / runtime options.
@@ -3426,6 +3431,13 @@ export class MorphicBlocks extends EventTarget {
     workspaceOwners.set(flyoutWorkspace, this);
     this.flyoutWorkspace.addChangeListener(this.onFlyoutChange);
     this.applyFlyoutClass();
+  }
+
+  /** Each block with its image paths passed through the mount's `assetUrl`; as loaded without one. */
+  private resolveAssetUrls(assetUrl: MorphicMountConfig["assetUrl"]): void {
+    for (const [identifier, block] of this.loadedDefinitions) {
+      this.definitions.set(identifier, assetUrl ? withAssetUrls(block, this.formatElementTypes, assetUrl) : block);
+    }
   }
 
   /** The blocks the toolbox shows: the active block set's, else the mount's `toolbox.blocks` (all when unset). */

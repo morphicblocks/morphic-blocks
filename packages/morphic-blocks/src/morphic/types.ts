@@ -698,6 +698,13 @@ export interface MorphicMountConfig {
    * them in the app's own development mode.
    */
   onWarning?: (message: string) => void;
+  /**
+   * Where an image the definitions name is loaded from: a template's `<img>`,
+   * an image element's path, a dropdown picture. Return its address, or
+   * `undefined` to keep the path (next to the page), e.g. to show images an
+   * app keeps in memory: `assetUrl: (path) => blobUrls[path]`.
+   */
+  assetUrl?: (path: string) => string | undefined;
   toolbox?: MorphicToolboxConfig;
   toolboxLayout?: MorphicToolboxLayout;
   /**
