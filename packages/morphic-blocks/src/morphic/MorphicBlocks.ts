@@ -23,6 +23,7 @@ import { MorphicSelectionSync } from "./selection-sync";
 import { applyBlockShapes, createDefinitionMap, expandDefaultElements } from "./definitions";
 import { applyFont, measuredFont, readCssFont, remeasureBlocks, type MorphicBlockFont } from "./block-font";
 import { validateDefinitions } from "./validate-definitions";
+import { checkPresets, checkViewDeclarations, movedDefinitionErrors, normalizeViews } from "./check-definitions";
 import { resolveElementType, withCodeSettings } from "./element-types";
 import { formatValue } from "./value-format";
 import { MorphicStyleManager, type MorphicModeStyle } from "./styles";
@@ -170,15 +171,10 @@ interface ResolvedView {
 }
 
 /** Without declared views: a workspace and a codespace, named after their kinds. */
-const DEFAULT_VIEWS: Record<string, MorphicViewKind> = { workspace: "workspace", codespace: "codespace" };
-
-/** The views in their long form; a bare kind is the short form. */
-function normalizeViews(
-  views: Record<string, MorphicViewKind | MorphicViewDeclaration> | undefined,
-): Record<string, MorphicViewDeclaration> {
-  return Object.fromEntries(
-    Object.entries(views ?? DEFAULT_VIEWS).map(([name, view]) => [name, typeof view === "string" ? { kind: view } : view]),
-  );
+/** Every error at once: a single one as it is, several as a list. */
+function throwAll(errors: string[]): void {
+  if (errors.length === 1) throw new Error(errors[0]);
+  if (errors.length > 1) throw new Error(`[MorphicBlocks] Invalid definitions:\n- ${errors.join("\n- ")}`);
 }
 
 /** Where Blockly's media is loaded from unless the host sets `blockly.media`. */
@@ -645,21 +641,7 @@ export class MorphicBlocks extends EventTarget {
     for (const [key, direction] of Object.entries(moved)) {
       if (key in config) errors.push(`mount option "${key}" moved in 0.4.0: ${direction}.`);
     }
-    for (const preset of config.presets ?? []) {
-      const old = (["workspace", "codespace", "preview"] as const).filter((key) => key in preset);
-      if (old.length > 0) {
-        errors.push(
-          `Preset "${preset.name}": ${old.map((key) => `"${key}"`).join(", ")} moved into "views" in 0.4.0, by view name: ` +
-            `"views": { ${old.map((key) => `"${key}": "${(preset as unknown as Record<string, string>)[key]}"`).join(", ")} }.`,
-        );
-      }
-    }
-    // Moved in 0.3.0: named here so an upgrade fails with directions.
-    if (this.formatHasHighlighting || "highlighting" in config) {
-      errors.push(
-        'The top level "highlighting" map moved into the "code" section: "code": { "<element>": { "highlighting": { … } } }.',
-      );
-    }
+    errors.push(...movedDefinitionErrors(config.presets, this.formatHasHighlighting || "highlighting" in config));
     if (warnings.length > 0) {
       warnFor(config)(
         `[MorphicBlocks] Definition warnings:\n- ${warnings.join("\n- ")}`,
@@ -673,43 +655,16 @@ export class MorphicBlocks extends EventTarget {
   }
 
   private validatePresets(config: Pick<MorphicMountConfig, "presets" | "modes" | "views" | "onWarning">): void {
-    const presets = config.presets ?? [];
-    if (presets.length === 0) return;
-    const modes = config.modes ?? [];
-    const modeByName = new Map(modes.map((m) => [m.name, m]));
-    const views = normalizeViews(config.views ?? this.formatViews);
-    const seen = new Set<string>();
-
-    for (const preset of presets) {
-      if (seen.has(preset.name)) {
-        throw new Error(`Preset "${preset.name}" is defined more than once.`);
-      }
-      seen.add(preset.name);
-
-      if (!modeByName.has(preset.toolbox)) {
-        throw new Error(`Preset "${preset.name}": unknown mode "${preset.toolbox}" for the toolbox.`);
-      }
-      const shown = Object.entries(preset.views ?? {});
-      if (shown.length === 0) {
-        throw new Error(`Preset "${preset.name}": "views" must name at least one view.`);
-      }
-      for (const [viewName, element] of shown) {
-        const declaration = views[viewName];
-        // A view added later with addView() may carry the name.
-        if (!declaration) {
-          warnFor(config)(
-            `[MorphicBlocks] Preset "${preset.name}" names "${viewName}", which is no declared view (${Object.keys(views).join(", ")}).`,
-          );
-        }
-        if (resolveElementType(this.elementTypes[element]) !== "code") {
-          throw new Error(
-            `Preset "${preset.name}": view "${viewName}" shows "${element}", which is no code element.` +
-              (modeByName.has(element) ? ` Views show elements since 0.4.0, and "${element}" is a mode.` : ""),
-          );
-        }
-      }
-    }
+    const { errors, warnings } = checkPresets({
+      presets: config.presets,
+      modes: config.modes,
+      views: normalizeViews(config.views ?? this.formatViews),
+      elementTypes: this.elementTypes,
+    });
+    for (const warning of warnings) warnFor(config)(`[MorphicBlocks] ${warning}`);
+    throwAll(errors);
   }
+
 
   public dispose(): void {
     for (const [blocklyType, owner] of fallbackOwners) {
@@ -3138,16 +3093,7 @@ export class MorphicBlocks extends EventTarget {
     views: Record<string, MorphicViewDeclaration>,
     containers: Record<string, HTMLElement>,
   ): void {
-    for (const [name, declaration] of Object.entries(views)) {
-      if ((declaration.kind as string) === "preview") {
-        throw new Error(
-          `View "${name}": the preview is a codespace that cannot be edited since 0.4.0: { "kind": "codespace", "editable": false }.`,
-        );
-      }
-      if (declaration.kind !== "workspace" && declaration.kind !== "codespace") {
-        throw new Error(`View "${name}": unknown kind "${String(declaration.kind)}". Use "workspace" or "codespace".`);
-      }
-    }
+    throwAll(checkViewDeclarations(views));
     for (const name of Object.keys(containers)) {
       if (!views[name]) {
         throw new Error(`mount: a container for "${name}", but no view of that name. Declared views: ${Object.keys(views).join(", ")}.`);

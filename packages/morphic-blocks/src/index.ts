@@ -12,6 +12,7 @@ export type {
 } from "./morphic/toolbar";
 export { makeResizable } from "./morphic/resize";
 export { validateDefinitions } from "./morphic/validate-definitions";
+export { checkDefinitions } from "./morphic/check-definitions";
 export type {
   ValidateDefinitionsArgs,
   DefinitionValidationResult,
