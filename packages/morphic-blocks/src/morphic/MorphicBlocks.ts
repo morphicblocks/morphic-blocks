@@ -767,6 +767,10 @@ export class MorphicBlocks extends EventTarget {
     if (canvasOptions.layout === "tabs" && !canvasOptions.categories?.length) {
       warnFor(this.mountConfig)('[MorphicBlocks] The toolbox layout "tabs" needs categories; the tiles show as a flat list.');
     }
+    const folded = canvasOptions.collapsed === true || (Array.isArray(canvasOptions.collapsed) && canvasOptions.collapsed.length > 0);
+    if (folded && canvasOptions.categoryHeadings === false && canvasOptions.layout !== "tabs") {
+      warnFor(this.mountConfig)("[MorphicBlocks] toolbox.collapsed needs category headings to open the categories again; all categories start open.");
+    }
 
     this.toolboxCanvas = new MorphicToolboxCanvas({
       container,

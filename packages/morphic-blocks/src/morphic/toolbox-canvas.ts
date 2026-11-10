@@ -383,7 +383,8 @@ export class MorphicToolboxCanvas {
       }
       return;
     }
-    const collapsible = this.options.collapsible !== false;
+    // Without headings nothing could open a collapsed category again.
+    const collapsible = this.options.collapsible !== false && this.options.categoryHeadings !== false;
     for (const { name, group, heading, tiles } of this.categoryParts) {
       const collapsed = collapsible && this.collapsedCategories.has(name);
       tiles.hidden = collapsed;

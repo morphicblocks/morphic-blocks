@@ -547,7 +547,10 @@ export interface MorphicToolboxDisplayOptions {
   layout?: "stacked" | "tabs";
   /** A heading with the category's name above its tiles. Default `true`. */
   categoryHeadings?: boolean;
-  /** A click on a heading collapses or expands its category. Default `true`. */
+  /**
+   * A click on a heading collapses or expands its category. Default `true`.
+   * Without headings, categories stay open.
+   */
   collapsible?: boolean;
   /**
    * Categories collapsed at the start: `true` for all, or their names.

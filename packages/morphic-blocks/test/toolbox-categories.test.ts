@@ -102,6 +102,22 @@ describe("collapsing categories", () => {
     expect(tilesOf(container, "Loops").hidden).toBe(true);
   });
 
+  test("stay open without headings to open them again, and warn", async () => {
+    const warnings: string[] = [];
+    const engine = new MorphicBlocks(format, {});
+    engines.push(engine);
+    const container = div();
+    await engine.mount({
+      workspaceContainer: div(),
+      toolboxContainer: container,
+      toolbox: { categoryHeadings: false, collapsed: true },
+      onWarning: (message) => warnings.push(message),
+    });
+
+    expect(tilesOf(container, "Loops").hidden).toBe(false);
+    expect(warnings.filter((message) => message.includes("toolbox.collapsed"))).toHaveLength(1);
+  });
+
   test("can be switched off, leaving plain headings", async () => {
     const { container } = await toolboxWith({ collapsible: false, collapsed: true });
 
