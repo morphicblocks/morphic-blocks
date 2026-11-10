@@ -98,6 +98,8 @@ export class MorphicToolboxCanvas {
   private categoryParts: { name: string; group: HTMLElement; heading?: HTMLElement; tiles: HTMLElement; tab?: HTMLElement }[] = [];
   /** The category shown with the `"tabs"` layout; the first one until chosen. */
   private activeCategory?: string;
+  /** Tiles under their categories, or one list; presets switch it. */
+  private grouped: boolean;
   private readonly onScroll = () => this.showScrollHints();
   private readonly resizeObserver =
     typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => this.showScrollHints()) : undefined;
@@ -117,6 +119,8 @@ export class MorphicToolboxCanvas {
     /** Code element settings; their highlighting colours code shown as text. */
     code?: Record<string, MorphicCodeElementConfig>;
     options?: MorphicToolboxCanvasOptions;
+    /** Whether tiles are grouped under the categories. Default `true`. */
+    grouped?: boolean;
     /** Called once with the hidden workspace used to draw block previews. */
     onPreviewWorkspace?: (workspace: Blockly.WorkspaceSvg) => void;
     dropTargets?: () => TileDropTarget[];
@@ -134,6 +138,7 @@ export class MorphicToolboxCanvas {
     this.currentMode = params.mode;
     this.modes = params.modes ?? [];
     this.options = params.options ?? {};
+    this.grouped = params.grouped ?? true;
     this.dropTargets = params.dropTargets ?? (() => []);
     const collapsed = this.options.collapsed;
     const names = collapsed === true ? (this.options.categories ?? []).map((c) => c.name) : collapsed || [];
@@ -165,6 +170,11 @@ export class MorphicToolboxCanvas {
     this.resizeObserver?.observe(this.container);
 
     this.render();
+  }
+
+  /** Group the tiles under the categories (`true`) or show one list, from the next render on. */
+  setGrouped(grouped: boolean): void {
+    this.grouped = grouped;
   }
 
   /** Show only these blocks (all when `undefined`) from the next render on. */
@@ -250,7 +260,7 @@ export class MorphicToolboxCanvas {
     }
 
     const blockIds = this.resolveBlockIds();
-    const categories = this.options.categories ?? [];
+    const categories = this.grouped ? (this.options.categories ?? []) : [];
     this.categoryParts = [];
     const tabs = this.options.layout === "tabs";
     this.container.classList.toggle("morphic-toolbox-tabs", tabs);

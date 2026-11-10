@@ -266,6 +266,12 @@ export interface MorphicPresetDefinition {
    * shows all of its blocks.
    */
   blockSet?: string;
+  /**
+   * Whether the toolbox groups its tiles under the categories. Default `true`;
+   * `false` shows them as one list, e.g. for a level with few blocks. Blocks
+   * keep their category colors either way.
+   */
+  categories?: boolean;
 }
 
 /**

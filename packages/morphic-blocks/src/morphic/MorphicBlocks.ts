@@ -294,6 +294,8 @@ export class MorphicBlocks extends EventTarget {
   private blockSetLists = new Map<string, string[]>();
   /** The block set the toolbox shows; `undefined` shows the toolbox's own blocks. */
   private activeBlockSet?: string;
+  /** Whether the toolbox groups its tiles under the categories; presets and show() switch it. */
+  private categoriesShown = true;
 
   /**
    * Build an engine from a whole definitions file plus its behaviors — the two
@@ -377,6 +379,7 @@ export class MorphicBlocks extends EventTarget {
     }
     this.blockSetLists = resolveBlockSets(this.formatBlockSets, (identifier) => this.definitions.has(identifier)).lists;
     this.activeBlockSet = initialPreset?.blockSet;
+    this.categoriesShown = initialPreset?.categories !== false;
 
     // Without a preset, start in the first declared mode; a folder import's
     // file order is alphabetical, so a stylesheet only decides when no modes
@@ -438,6 +441,15 @@ export class MorphicBlocks extends EventTarget {
     this.styles.ensureWorkspaceStyles();
     this.registerBlocks();
     this.toolboxDefinition = this.resolveToolboxDefinition(resolvedConfig);
+    if (
+      !resolvedConfig.canvasToolbox &&
+      this.toolboxDefinition.kind === "categoryToolbox" &&
+      resolvedConfig.presets?.some((preset) => preset.categories === false)
+    ) {
+      warnFor(resolvedConfig)(
+        '[MorphicBlocks] Blockly\'s category toolbox keeps its categories; "categories": false in a preset works with the HTML toolbox (toolboxContainer) or toolboxLayout "flyout".',
+      );
+    }
 
     const blocklyOptions = resolvedConfig.blockly ?? {};
 
@@ -591,7 +603,7 @@ export class MorphicBlocks extends EventTarget {
     const views = Object.fromEntries(
       Object.entries(preset.views).filter(([name]) => this.mountConfig?.viewDeclarations[name] || this.resolveView(name)),
     );
-    this.show({ toolbox: preset.toolbox, views, blockSet: preset.blockSet ?? null });
+    this.show({ toolbox: preset.toolbox, views, blockSet: preset.blockSet ?? null, categories: preset.categories !== false });
     this.activePreset = preset;
     this.applyPresetClasses();
     this.mountConfig.onPresetApplied?.(preset);
@@ -702,6 +714,7 @@ export class MorphicBlocks extends EventTarget {
     document.fonts?.removeEventListener("loadingdone", this.onStylesLoaded);
     this.activePreset = undefined;
     this.activeBlockSet = undefined;
+    this.categoriesShown = true;
 
     this.selectionSync?.disable();
     this.selectionSync = undefined;
@@ -806,6 +819,7 @@ export class MorphicBlocks extends EventTarget {
       modes: this.mountConfig.modes,
       code: this.mountConfig.code,
       options: canvasOptions,
+      grouped: this.categoriesShown,
       onPreviewWorkspace: (workspace) => workspaceOwners.set(workspace, this),
       dropTargets: () => [...this.tileDropTargets],
       onChoose: (blockType) => this.addBlockFromTile(blockType),
@@ -1210,7 +1224,7 @@ export class MorphicBlocks extends EventTarget {
 
   /**
    * Switch what the toolbox and the views show, in the shape of a preset:
-   * `show({ toolbox: "pseudo", blockSet: "level-2-blocks", views: { blocks: "pseudo", code: "python" } })`.
+   * `show({ toolbox: "pseudo", blockSet: "level-2-blocks", categories: false, views: { blocks: "pseudo", code: "python" } })`.
    * Everything left out stays as it is; showing and hiding the views'
    * containers stays the app's job.
    */
@@ -1219,6 +1233,8 @@ export class MorphicBlocks extends EventTarget {
     views?: Record<string, string>;
     /** The block set the toolbox shows; `null` shows all of the toolbox's blocks again. */
     blockSet?: string | null;
+    /** Whether the toolbox groups its tiles under the categories; `false` shows one list. */
+    categories?: boolean;
   }): void {
     if (!this.mountConfig || !this.workspace) {
       throw new Error("MorphicBlocks must be mounted before show can be used.");
@@ -1241,10 +1257,17 @@ export class MorphicBlocks extends EventTarget {
     if (blocksChange) {
       this.activeBlockSet = shown.blockSet ?? undefined;
       this.toolboxCanvas?.setBlocks(this.toolboxBlocks());
+    }
+    const categoriesChange = shown.categories !== undefined && shown.categories !== this.categoriesShown;
+    if (categoriesChange) {
+      this.categoriesShown = shown.categories!;
+      this.toolboxCanvas?.setGrouped(this.categoriesShown);
+    }
+    if (blocksChange || categoriesChange) {
       this.toolboxDefinition = this.resolveToolboxDefinition(this.mountConfig);
     }
     if (shown.toolbox) this.mountConfig.toolboxMode = shown.toolbox;
-    if (shown.toolbox || blocksChange) {
+    if (shown.toolbox || blocksChange || categoriesChange) {
       this.toolboxCanvas?.rerender(this.mountConfig.toolboxMode);
       this.refreshToolbox();
       this.bindFlyoutWorkspace();
@@ -3417,6 +3440,12 @@ export class MorphicBlocks extends EventTarget {
       const toolbox = { ...config.toolbox, ...(setBlocks ? { blocks: setBlocks } : {}) };
       const layoutKind = this.resolveToolboxKind(config.toolboxLayout);
       const toolboxConfig = layoutKind ? { ...toolbox, kind: layoutKind } : toolbox;
+      // Blockly's category toolbox cannot become a flyout once injected, so
+      // only the flyout drops its category labels.
+      const kind = toolboxConfig.kind ?? (toolboxConfig.categories?.length ? "categoryToolbox" : "flyoutToolbox");
+      if (!this.categoriesShown && kind === "flyoutToolbox") {
+        return buildToolboxDefinition({ ...toolboxConfig, categories: undefined }, this.definitions);
+      }
       return buildToolboxDefinition(toolboxConfig, this.definitions);
     }
 
