@@ -441,9 +441,10 @@ export class MorphicBlocks extends EventTarget {
     this.styles.ensureWorkspaceStyles();
     this.registerBlocks();
     this.toolboxDefinition = this.resolveToolboxDefinition(resolvedConfig);
+    const toolboxKind = typeof this.toolboxDefinition === "object" && "kind" in this.toolboxDefinition ? this.toolboxDefinition.kind : undefined;
     if (
       !resolvedConfig.canvasToolbox &&
-      this.toolboxDefinition.kind === "categoryToolbox" &&
+      toolboxKind === "categoryToolbox" &&
       resolvedConfig.presets?.some((preset) => preset.categories === false)
     ) {
       warnFor(resolvedConfig)(
