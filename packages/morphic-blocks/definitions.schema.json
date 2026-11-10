@@ -180,6 +180,10 @@
           "description": "What each view the preset shows shows, by view name.",
           "type": "object",
           "additionalProperties": { "type": "string" }
+        },
+        "categories": {
+          "description": "false shows the toolbox's tiles as one list instead of under their categories. Default true.",
+          "type": "boolean"
         }
       },
       "additionalProperties": false
