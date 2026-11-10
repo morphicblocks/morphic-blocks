@@ -30,6 +30,11 @@
       "type": "array",
       "items": { "$ref": "#/$defs/preset" }
     },
+    "blockSets": {
+      "description": "Named lists of blocks for the toolbox, used by presets and show({ blockSet }).",
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/blockSet" }
+    },
     "code": {
       "description": "How each code element's language is written, keyed by code element name.",
       "type": "object",
@@ -169,6 +174,22 @@
         }
       ]
     },
+    "blockSet": {
+      "description": "A list of block identifiers, or another set with blocks added at the end and removed.",
+      "oneOf": [
+        { "type": "array", "items": { "type": "string" } },
+        {
+          "type": "object",
+          "required": ["extends"],
+          "properties": {
+            "extends": { "type": "string" },
+            "add": { "type": "array", "items": { "type": "string" } },
+            "remove": { "type": "array", "items": { "type": "string" } }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
     "preset": {
       "type": "object",
       "required": ["name", "toolbox", "views"],
@@ -181,6 +202,7 @@
           "type": "object",
           "additionalProperties": { "type": "string" }
         },
+        "blockSet": { "description": "The block set the toolbox shows; without it, all blocks.", "type": "string" },
         "categories": {
           "description": "false shows the toolbox's tiles as one list instead of under their categories. Default true.",
           "type": "boolean"
