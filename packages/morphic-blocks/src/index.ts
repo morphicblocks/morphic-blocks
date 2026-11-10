@@ -13,6 +13,7 @@ export type {
 export { makeResizable } from "./morphic/resize";
 export { validateDefinitions } from "./morphic/validate-definitions";
 export { checkDefinitions } from "./morphic/check-definitions";
+export { resolveBlockSets, type ResolvedBlockSets } from "./morphic/block-sets";
 export type {
   ValidateDefinitionsArgs,
   DefinitionValidationResult,

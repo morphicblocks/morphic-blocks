@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "vitest";
 import * as Blockly from "blockly";
-import { MorphicBlocks } from "../src";
+import { MorphicBlocks, resolveBlockSets } from "../src";
 import type { MorphicBlocksFormat, MorphicBlockSet } from "../src/morphic/types";
 
 /** Block sets name the blocks a toolbox shows; presets and show() switch them. */
@@ -167,5 +167,18 @@ describe("block sets", () => {
 
     expect(warnings.join("\n")).toContain('Name "blockset" (block set) is a Morphic Blocks word');
     expect(warnings.join("\n")).toContain('Name "code-tiles" is used as block set and mode');
+  });
+});
+
+describe("resolveBlockSets", () => {
+  test("gives each set's blocks in the set's order", () => {
+    const { lists, errors } = resolveBlockSets(blockSets, (identifier) => format.blocks.some((block) => block.identifier === identifier));
+
+    expect(errors).toEqual([]);
+    expect(Object.fromEntries(lists)).toEqual({
+      "level-1-blocks": ["say", "number"],
+      "level-2-blocks": ["say", "number", "loop", "compare"],
+      "level-3-blocks": ["say", "number", "compare", "while"],
+    });
   });
 });

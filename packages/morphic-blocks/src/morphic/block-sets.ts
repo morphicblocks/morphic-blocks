@@ -1,7 +1,7 @@
 import type { MorphicBlockSet } from "./types";
 
 export interface ResolvedBlockSets {
-  /** Each set's blocks, in toolbox order. */
+  /** Each set's blocks, in the set's order (the toolbox's order when categories are off). */
   lists: Map<string, string[]>;
   errors: string[];
   warnings: string[];
