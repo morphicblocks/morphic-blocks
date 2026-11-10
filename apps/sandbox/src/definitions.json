@@ -417,6 +417,7 @@
       "label": "Level 1",
       "toolbox": "concept-tiles",
       "blockSet": "level-1-blocks",
+      "categories": false,
       "views": {
         "editor-pane": "concept",
         "read-pane": "python"
