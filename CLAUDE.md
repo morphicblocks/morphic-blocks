@@ -30,12 +30,14 @@ morphic-blocks/
 - `src/morphic/MorphicBlocks.ts`: Main orchestration class (`mount`, `show`, `applyPreset`, `addView`, `generateJavaScript`)
 - `src/morphic/block-view.ts`: Block rendering, class application, fields (`MorphicDropdown`), connection management
 - `src/morphic/block-namespace.ts`: Clean ↔ `morphic:` Blockly-type translation (collision isolation)
-- `src/morphic/template.ts`: Template parsing (`%1`, `%NAME`, `<img>`), `toModeClassToken` (names into classes)
+- `src/morphic/template.ts`: Template parsing (`%1`, `%NAME`, `<img>`), `toModeClassToken` (names into classes; public as `toClassToken`)
 - `src/morphic/codegen.ts`: One-way code generation via behavior functions
 - `src/morphic/view-resolver.ts`: Which element a block's template comes from (`resolveElementView` for views, `resolveBlockView` for tiles)
 - `src/morphic/toolbox-canvas.ts`: The HTML toolbox (tiles, categories, drag, keyboard, custom elements)
 - `src/morphic/styles.ts`: CSS/style management, mode coverage validation
 - `src/morphic/validate-definitions.ts`: Mount-time checks (errors stop the mount, warnings go to `onWarning`); every message is listed on the docs' Errors & Warnings page
+- `src/morphic/check-definitions.ts`: the preset and view checks, and `checkDefinitions` (public): every check `mount()` runs on a definitions file, without mounting (tools like Studio use it)
+- `src/morphic/asset-urls.ts`: the `assetUrl` mount option; each mount passes every image path (template `<img>`, image elements, dropdown pictures) through it, from the blocks as loaded
 - `src/morphic/types.ts`: All TypeScript types
 - `cli/`: the Node side, the only code with Node types (`cli/tsconfig.json`): `index.ts` is the `morphic-blocks copy-media <folder>` command (built to `dist/cli.js`, the package's `bin`); `plugin.ts` the bundler plugin (unplugin) that copies Blockly's media on dev/build start, handed out per bundler by `vite.ts`, `webpack.ts`, `rspack.ts`, `rollup.ts`, `esbuild.ts` (package subpaths `morphic-blocks/vite` …); both use `copy-media.ts`. Built by `vite.cli.config.ts`, types by `cli/tsconfig.build.json`
 
