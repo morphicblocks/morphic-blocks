@@ -15,23 +15,28 @@ morphic-blocks/
 ├── packages/
 │   ├── morphic-blocks/      # Core framework (the library)
 │   │   └── test/            # Vitest tests, run in jsdom
-│   └── themes/              # @morphicblocks/themes: code view themes, one JSON file per family ({ light, dark }), e.g. standard
+│   ├── themes/              # @morphicblocks/themes: code view themes, one JSON file per family ({ light, dark }), e.g. standard
+│   ├── blocks/              # @morphicblocks/blocks: the standard blocks with their behaviors, `define()` and `pick()`
+│   └── languages/           # @morphicblocks/languages: how python, javascript, java, go, rust and cpp write the standard blocks
 └── CLAUDE.md
 ```
 
 ### Tests
 
-`bun run test` (repo root) runs the framework tests with Vitest in jsdom, then the themes package's. Run them after every framework change, and add a test for each fix or feature that fails without the change. `test/setup-dom.ts` stubs the text measuring calls jsdom cannot answer; tests check generated text, not rendering.
+`bun run test` (repo root) runs the framework tests with Vitest in jsdom, then the themes, blocks and languages packages' (those two mount the framework from its source; their type check reads its build, so `bun run build:package` first after a framework change). Run them after every framework change, and add a test for each fix or feature that fails without the change. `test/setup-dom.ts` stubs the text measuring calls jsdom cannot answer; tests check generated text, not rendering.
 
 ## Framework Architecture (`packages/morphic-blocks`)
 
 ### Key files
 
-- `src/morphic/MorphicBlocks.ts`: Main orchestration class (`mount`, `show`, `applyPreset`, `addView`, `generateJavaScript`)
+- `src/morphic/MorphicBlocks.ts`: Main orchestration class (`mount`, `show`, `applyPreset`, `addView`, `generateJavaScript`, `generateText`, `loadText`, `changeRepeat`)
 - `src/morphic/block-view.ts`: Block rendering, class application, fields, connection management
 - `src/morphic/dropdown-fields.ts`: `MorphicDropdown` (menu classes) and `MorphicReference` (reference fields), and `keepReferencesInStep` (renames, new references)
 - `src/morphic/strict-slots.ts`: strict slots, added to the workspace's connection checker
 - `src/morphic/parent-field.ts`: the field a `%parent.NAME` token shows
+- `src/morphic/repeat-slots.ts`: repeating slots (entry names, counts, the state saved with a block)
+- `src/morphic/text-to-blocks.ts`: `parseTextToBlocks`, behind `loadText()`: text of a code element back into blocks, each template as its own pattern
+- `src/morphic/operators.ts`: the order of operators in text (ranks by sign, `code.<element>.operators`) and what each slot takes without brackets (`slotBound`), one rule for the writer and the reader
 - `src/morphic/block-namespace.ts`: Clean ↔ `morphic:` Blockly-type translation (collision isolation)
 - `src/morphic/template.ts`: Template parsing (`%1`, `%NAME`, `<img>`), `toModeClassToken` (names into classes; public as `toClassToken`)
 - `src/morphic/codegen.ts`: One-way code generation via behavior functions
@@ -63,7 +68,8 @@ Definitions and behaviors use **clean, free-form identifiers** (`text_print`). B
 
 ### Templates and fields
 
-- `%1`, `%2`: input slots (Blockly inputs; substituted in text)
+- `%1`, `%2`: input slots (Blockly inputs; substituted in text). A slot declared in `inputSlots` that a template leaves out stays on the block, hidden with its value (`keepOmittedSlots`); a value slot written again shows the value in it as a label
+- A slot with `"repeat": { "separator", "count" }` holds any number of values: one input per entry (`ARGS_0`, `ARGS_1`), `−` / `+` buttons on blocks and in editable codespaces (`changeRepeat`), the count in the block's saved state (with the placeholder slots it has dealt with), `proxy.lists.ARGS` for behaviors
 - `%FIELDNAME`: a field: the one declared in the block's `fields` map (dropdown, reference, text, number, checkbox), or one a behavior attaches in `onViewApplied`. The template decides what a block shows, `fields` what it has: a declared field a workspace block's template leaves out stays on the block, undrawn (`keepOmittedFields`). A block has each field once; where a template names it again, a label repeats what it shows
 - `%parent.NAME`: the `NAME` field of the nearest block around this one that has it, as a label (a Go method names its struct)
 - `%1:type`: the type of slot 1's value, named per language in `code.<element>.types` (`value-type.ts`)
@@ -72,7 +78,11 @@ Definitions and behaviors use **clean, free-form identifiers** (`text_print`). B
 
 A dropdown option is `value` (generated, serialized, shown in text) plus a block-only `label`: text, an image (`{ src }`) or a color swatch (`{ color }`); `display`, keyed by element name, sets the shown text per language (`True`/`true`). An open menu gets `morphic-menu` and `morphic-menu-<FIELD>`; the look stays the app's.
 
-A **reference** field (`{ "type": "reference", "to": "class_define.NAME" }`, or a list of targets) is a dropdown of the names the program declares: what that field holds on every such block. Its value is the name, so text, behaviors and saved programs read it like any field; renaming a declaration renames its references, and a new reference takes a declared name. A slot with `"strict": true` takes only blocks whose check matches its `check`, down the whole stack in it (Blockly lets a block without a check in everywhere). There are no built-in classes, functions or variables: developers build them from these pieces.
+A **reference** field (`{ "type": "reference", "to": "class_define.NAME" }`, or a list of targets) is a dropdown of the names the program declares: what that field holds on every such block. Its value is the name, so text, behaviors and saved programs read it like any field; renaming a declaration renames its references, and a new reference takes a declared name. `scope` limits the list to what is declared inside the nearest surrounding block of that type (the fields of a class, the parameters of a function); a name nothing declares gets `morphic-reference-missing`. A slot with `"strict": true` takes only blocks whose check matches its `check`, down the whole stack in it (Blockly lets a block without a check in everywhere); a block with `"strict": true` goes only where the place above it has a matching check. There are no built-in classes, functions or variables: developers build them from these pieces, or take them from `@morphicblocks/blocks`.
+
+**Text both ways:** `generateText(element)` returns the program as a code element writes it; `loadText(text, { element })` reads such text back into blocks (valid text only, one undo step, `{ ok, line, message }` on a line that fits no block). Where two blocks write the same text, declared names decide (a reference prefers a declared name, a declaration a new one). Text views bracket a composed value where the text around its slot binds to it (`%1 %OP %2`, `-%1`, `%1.length`; a slot between brackets or commas, or after a statement's keyword, stands free), unless the value is one piece (its template closes itself, `max(%1, %2)`, `[%1]`, or only goes on from the value in front, `%1[%2]`) or the order of operators lets it stand free: a template that is an operator (`%1 %OP %2`, `not %1`, a repeating slot with a sign as separator) has the rank of its sign, from a default table that `code.<element>.operators` changes per sign (`false` turns it off; `direction: "any"` for a sign that needs no brackets beside itself, a `<<` stream), a ranked sign beside a slot of any other template counts too (`i < %1`), and `loadText` reads by the same order. A text field between quote marks is written with a backslash in front of the mark and of a backslash, and read back without.
+
+**Packages:** `define({ blocks: standard, languages: { python, java } }, own, ownBehaviors)` from `@morphicblocks/blocks` returns ordinary definitions and behaviors: each language becomes a code element under its key, each standard block gets the languages' templates, and the app's own entries win (settings one by one, blocks by identifier). A language is `{ code, blocks, display?, separators? }`; `packages/languages/test/coverage.test.ts` holds the rules each one keeps, including the round trip through `loadText`.
 
 ## Elements, modes, presets
 
@@ -99,7 +109,7 @@ Dev app and test bed for every feature; change it freely, commit it separately. 
 
 ## Roadmap
 
-**Upcoming:** a natural-language locale layer (an external translation table per locale, orthogonal to modes); inline edits for `FieldVariable` / `FieldCheckbox`; bidirectional sync (text back to blocks); draft blocks for invalid code; optional Monaco; a package architecture refactor as the final cleanup.
+**Upcoming:** a natural-language locale layer (an external translation table per locale, orthogonal to modes); inline edits for `FieldVariable` / `FieldCheckbox`; the rest of bidirectional sync (half-typed text and draft blocks, typing in the codespace, keeping a block's identity across an edit); typed parameters and results for Java and Go; optional Monaco; a package architecture refactor as the final cleanup.
 
 **Not planned:** multi-language code generation. Behaviors already write whatever code the developer wants, elements already show any language, and execution is JavaScript, so per-language generators would add upkeep without benefit.
 
