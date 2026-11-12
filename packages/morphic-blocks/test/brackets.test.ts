@@ -3,6 +3,7 @@ import type * as Blockly from "blockly";
 import { MorphicBlocks } from "../src";
 import { applyBlockShapes, createDefinitionMap, expandDefaultElements } from "../src/morphic/definitions";
 import { closesItself, generateTextFromWorkspace } from "../src/morphic/template-codegen";
+import { parseTemplate, slotIsExposed } from "../src/morphic/template";
 import type { MorphicBehaviorMap, MorphicBlocksFormat } from "../src/morphic/types";
 
 /**
@@ -183,6 +184,29 @@ describe("a value that closes itself gets no brackets", () => {
   test("a slot, a field or an operator outside the brackets makes it an operand", () => {
     for (const template of ["%1 %OP %2", "%1[%2]", "%1.get(%2)", "-(%1)", "f(%1) + g(%2)", "not %1", "%NAME", "(%1"]) {
       expect(closesItself(template), template).toBe(false);
+    }
+  });
+});
+
+describe("a lone slot the template binds to", () => {
+  const exposed = (template: string, statement = false) => {
+    const tokens = parseTemplate(template);
+    return slotIsExposed(tokens, tokens.findIndex((token) => token.kind === "placeholder"), statement);
+  };
+
+  test("needs brackets for a composed value: an operator or word in front, or something that goes on from it", () => {
+    for (const template of ["not %1", "!%1", "-%1", "%1.length", "%1.length()", "%1!", "%OP%1", "await %1"]) {
+      expect(exposed(template), template).toBe(true);
+    }
+    expect(exposed("%1.sort();", true)).toBe(true);
+  });
+
+  test("stands free between brackets or commas, and after the keyword or sign of a statement", () => {
+    for (const template of ["len(%1)", "[%1]", "!(%1)", "f(%NAME, %1)", "%1"]) {
+      expect(exposed(template), template).toBe(false);
+    }
+    for (const template of ["return %1;", "if %1:\n    %2", "while (%1) {\n  %2\n}", "%NAME = %1", "print %1", "for %NAME in %1:\n    %2"]) {
+      expect(exposed(template, true), template).toBe(false);
     }
   });
 });

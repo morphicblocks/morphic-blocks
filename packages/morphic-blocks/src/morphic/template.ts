@@ -132,6 +132,36 @@ export function parseTemplate(template: string): MorphicTemplateToken[] {
   return compactTextTokens(tokens);
 }
 
+/**
+ * Whether the text around a slot binds to the value in it, so a value built
+ * from others needs brackets there: an operator or a word in front of it
+ * (`not %1`, `-%1`), or something that goes on from it (`%1.length`). A slot
+ * between brackets or commas stands free (`len(%1)`), and so does the slot of
+ * a statement after its keyword or sign (`return %1`, `if %1:`, `x = %1`).
+ * Used for a template with one value slot; with several, each is an operand.
+ */
+export function slotIsExposed(tokens: MorphicTemplateToken[], index: number, statement: boolean): boolean {
+  const written: MorphicTemplateToken[] = tokens.filter((token) => token.kind !== "image");
+  const at = written.indexOf(tokens[index]!);
+  // The nearest character that is no space, on one side; "" at the template's edge, null at a field or slot.
+  const nearest = (step: -1 | 1): string | null => {
+    for (let look = at + step; look >= 0 && look < written.length; look += step) {
+      const token = written[look]!;
+      if (token.kind !== "text") return null;
+      const text = step === -1 ? token.value.trimEnd() : token.value.trimStart();
+      if (text) return step === -1 ? text.at(-1)! : text[0]!;
+      if (token.value.includes("\n")) return "\n";
+    }
+    return "";
+  };
+  const word = /[\p{L}\p{N}_$]/u;
+  const before = nearest(-1);
+  const after = nearest(1);
+  const freeBefore = before === "" || (before !== null && ("([{,\n".includes(before) || (statement && ("=:;".includes(before) || word.test(before)))));
+  const freeAfter = after === "" || (after !== null && (")]},;:{\n".includes(after) || (statement && word.test(after))));
+  return !freeBefore || !freeAfter;
+}
+
 export function normalizeTemplateText(text: string): string {
   return text.replace(/\s+/g, " ").trim();
 }

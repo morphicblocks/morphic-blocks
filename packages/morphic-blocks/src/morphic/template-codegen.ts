@@ -3,7 +3,7 @@ import { toCleanId } from "./block-namespace";
 import { MorphicReference } from "./dropdown-fields";
 import { findParentField } from "./parent-field";
 import { isRepeating, repeatEntries, repeatSeparator, separatorComposes } from "./repeat-slots";
-import { parseTemplate, type MorphicTemplateToken } from "./template";
+import { parseTemplate, slotIsExposed, type MorphicTemplateToken } from "./template";
 import type { MorphicElementTypeWithCode } from "./element-types";
 import { resolveBlockView } from "./view-resolver";
 import { isValueTypeLabel, valueTypeName } from "./value-type";
@@ -396,7 +396,10 @@ function renderBlock(
       continue;
     }
 
-    renderValueSlot(block, definition, slot, inputName, ctx, state, elementName, elementEntry, composesSeveralValues);
+    // A lone slot needs brackets too where the template binds to its value (`not %1`, `%1.length`).
+    const isStatement = definition.output === undefined || definition.output === false;
+    const exposed = !composesSeveralValues && slotIsExposed(tokens, tokens.indexOf(token), isStatement);
+    renderValueSlot(block, definition, slot, inputName, ctx, state, elementName, elementEntry, composesSeveralValues || exposed);
   }
 
   if (state.output.length === contentStart) {
