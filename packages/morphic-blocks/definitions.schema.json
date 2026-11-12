@@ -326,6 +326,22 @@
         },
         {
           "type": "object",
+          "required": ["type", "to"],
+          "properties": {
+            "type": { "const": "reference" },
+            "to": {
+              "description": "The field whose values this field lists, as \"block.FIELD\" (e.g. \"class_define.NAME\"), or a list of them.",
+              "oneOf": [
+                { "type": "string" },
+                { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+              ]
+            },
+            "default": { "type": "string" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
           "required": ["type"],
           "properties": {
             "type": { "const": "text" },

@@ -11,6 +11,7 @@ import {
   ALIGN_LEFT,
   ALIGN_RIGHT,
 } from "./constants";
+import { MorphicDropdown, MorphicReference } from "./dropdown-fields";
 import { resolveDefaultConfig } from "./element-types";
 import { findParentField } from "./parent-field";
 import { markStrictSlot } from "./strict-slots";
@@ -481,7 +482,7 @@ function flushPendingFields(input: Blockly.Input, fields: PendingField[]): void 
 }
 
 /**
- * Build a Blockly field from a declarative `fields` entry. Covers the four
+ * Build a Blockly field from a declarative `fields` entry. Covers the
  * built-in types; the dropdown maps each option to Blockly's `[displayText,
  * value]` tuple, where the display text is the option's per-element `display`
  * (for the active `elementName`) falling back to its `label` then `value` — so
@@ -500,6 +501,8 @@ function createFieldFromDefinition(
       if (def.default !== undefined) field.setValue(def.default);
       return field;
     }
+    case "reference":
+      return new MorphicReference(def.to, def.default);
     case "number":
       return new Blockly.FieldNumber(def.default ?? 0, def.min, def.max, def.precision);
     case "checkbox":
@@ -535,20 +538,6 @@ function toBlocklyDropdownOption(
     return [{ src, alt: label.alt ?? option.value, width, height }, option.value];
   }
   return [label ?? option.value, option.value];
-}
-
-/**
- * A declared dropdown whose open menu carries classes for app CSS:
- * `morphic-menu` and `morphic-menu-<FIELD>` (the field's name), e.g. to lay
- * picture choices out in a grid or hide the check marks.
- */
-class MorphicDropdown extends Blockly.FieldDropdown {
-  protected override showEditor_(event?: MouseEvent): void {
-    super.showEditor_(event);
-    const menu = this.menu_?.getElement();
-    menu?.classList.add("morphic-menu");
-    if (this.name) menu?.classList.add(`morphic-menu-${this.name}`);
-  }
 }
 
 /** A rounded square in `color`, as an SVG image address (no file, no request). */

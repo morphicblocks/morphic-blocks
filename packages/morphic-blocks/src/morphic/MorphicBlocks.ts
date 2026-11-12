@@ -17,6 +17,7 @@ import {
 } from "./block-view";
 import { BLOCK_ID_DRAG_KEY, MorphicCodeEditor, getActiveGripDragSourceId, setActiveGripDragSourceId } from "./code-editor";
 import { resolveBlocklyType, toBlocklyType, toCleanId } from "./block-namespace";
+import { keepReferencesInStep } from "./dropdown-fields";
 import { generateJavaScriptFromWorkspace, generateJavaScriptWithMetadataFromWorkspace } from "./codegen";
 import { generateTextFromWorkspace } from "./template-codegen";
 import { MorphicSelectionSync } from "./selection-sync";
@@ -468,6 +469,7 @@ export class MorphicBlocks extends EventTarget {
       ...(resolvedConfig.canvasToolbox ? {} : { toolbox: this.toolboxDefinition }),
     });
     enforceStrictSlots(this.workspace);
+    keepReferencesInStep(this.workspace);
     this.workspace.addChangeListener(this.onWorkspaceChange);
     workspaceOwners.set(this.workspace, this);
     this.baseTheme = this.workspace.getTheme();

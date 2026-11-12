@@ -205,14 +205,22 @@ export type MorphicDropdownImage = ({ src: string; color?: never } | { color: st
 
 /**
  * A field declared directly on a block (rendered at the `%FIELDNAME` token
- * position). Lets dropdown / text / number / checkbox fields live in the
- * definitions file instead of requiring a behavior's `onViewApplied`. Fields
- * outside these four (variables, colour, plugin/custom) still use
+ * position). Lets dropdown / reference / text / number / checkbox fields live
+ * in the definitions file instead of requiring a behavior's `onViewApplied`.
+ * Fields outside these (Blockly's variables, colour, plugin/custom) still use
  * `onViewApplied` — the `%FIELDNAME` token is skipped when no declaration
  * exists, leaving the behavior to supply the field.
  */
 export type MorphicFieldDefinition =
   | { type: "dropdown"; options: MorphicDropdownOption[]; default?: string }
+  /**
+   * A dropdown of the names the program declares: `to` names a block and one
+   * of its fields (`"class_define.NAME"`, or a list of them), and the field
+   * lists what that field holds on every such block. Renaming a declaration
+   * renames the references to it. `default` is the name a new block starts
+   * with; in a program that declares other names it takes the first of them.
+   */
+  | { type: "reference"; to: string | string[]; default?: string }
   | { type: "text"; default?: string }
   | { type: "number"; default?: number; min?: number; max?: number; precision?: number }
   | { type: "checkbox"; default?: boolean };

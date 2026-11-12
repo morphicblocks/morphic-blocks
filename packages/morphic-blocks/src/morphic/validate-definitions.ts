@@ -2,6 +2,7 @@ import * as Blockly from "blockly";
 import { getLifecycleBehavior } from "./behavior-runtime";
 import { BLOCK_SHAPES, DEFAULT_ELEMENT } from "./definitions";
 import { resolveBlockSets } from "./block-sets";
+import { parseReferenceTarget } from "./dropdown-fields";
 import { resolveElementType } from "./element-types";
 import { parseTemplate, toModeClassToken } from "./template";
 import type {
@@ -272,6 +273,30 @@ export function validateDefinitions(
       }
     }
 
+    // (5c) A reference lists what a field of another block holds; a target
+    // that does not exist would leave the list empty for good.
+    for (const [name, fieldDef] of Object.entries(def.fields ?? {})) {
+      if (fieldDef?.type !== "reference") continue;
+      const targets = Array.isArray(fieldDef.to) ? fieldDef.to : [fieldDef.to];
+      if (targets.length === 0) {
+        errors.push(`Block "${id}": fields["${name}"] is a reference without "to". Name the field it lists, e.g. "class_define.NAME".`);
+      }
+      for (const to of targets) {
+        const target = parseReferenceTarget(to);
+        const where = `Block "${id}": fields["${name}"] refers to "${to}"`;
+        if (!target) {
+          errors.push(`${where}, which is not a block and a field. Write it as "block.FIELD", e.g. "class_define.NAME".`);
+          continue;
+        }
+        const targetDef = definitions.get(target.block);
+        if (!targetDef) {
+          errors.push(`${where}, but there is no block "${target.block}".`);
+        } else if (!targetDef.fields?.[target.field] && !getLifecycleBehavior(behaviors[target.block])?.onViewApplied) {
+          errors.push(`${where}, but block "${target.block}" has no field "${target.field}".`);
+        }
+      }
+    }
+
     // (6) Per-slot shadow/placeholder defaults must resolve.
     for (const [key, slot] of Object.entries(def.inputSlots ?? {})) {
       checkRef(slot?.default?.shadow, `Block "${id}": inputSlots["${key}"].default.shadow`);
@@ -439,7 +464,7 @@ const FRAMEWORK_WORDS: readonly string[] = [
   "block", "blocks", "blockset", "block-set", "tile", "tiles", "category", ...ELEMENT_TYPES,
 ];
 const SLOT_KINDS: readonly string[] = ["value", "statement"];
-const FIELD_TYPES: readonly string[] = ["dropdown", "text", "number", "checkbox"];
+const FIELD_TYPES: readonly string[] = ["dropdown", "reference", "text", "number", "checkbox"];
 
 function sameNumberSet(a: Set<number>, b: Set<number>): boolean {
   if (a.size !== b.size) return false;
