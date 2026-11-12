@@ -9,6 +9,8 @@
   },
   "dependencies": {
     "morphic-blocks": "workspace:*",
+    "@morphicblocks/blocks": "workspace:*",
+    "@morphicblocks/languages": "workspace:*",
     "@morphicblocks/themes": "workspace:*",
     "@codemirror/lang-javascript": "^6.2.3",
     "@codemirror/state": "^6.5.2",

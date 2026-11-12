@@ -3,6 +3,8 @@ import {
   MorphicBlocks,
   type MorphicPresetDefinition,
 } from "morphic-blocks";
+import { define, pick, standard as standardBlocks } from "@morphicblocks/blocks";
+import { go, javascript, python, rust } from "@morphicblocks/languages";
 import { standard } from "@morphicblocks/themes";
 import definitions from "./definitions.json";
 import { behaviors } from "./behaviors";
@@ -19,13 +21,22 @@ const query = new URLSearchParams(location.search);
 // The JSON import goes to the engine as is; mount() validates it. The Arabic
 // test block and the preset that shows its concept text in the codespace only
 // appear in the right to left sandbox.
-const format = RTL
+const own = RTL
   ? definitions
   : {
       ...definitions,
       blocks: definitions.blocks.filter((block) => block.identifier !== "rtl_test"),
       presets: definitions.presets?.filter((preset) => preset.name !== "arabic-preset"),
     };
+// Three standard blocks from @morphicblocks/blocks next to the sandbox's own,
+// written by the packaged languages: the three the sandbox has as elements,
+// and Rust as a new one. definitions.json adds their concept text and tile
+// elements; the sandbox's own `code` settings win over the languages'.
+const { definitions: format, behaviors: allBehaviors } = define(
+  { blocks: pick(standardBlocks, ["if_else", "while", "math_random"]), languages: { python, javascript, go, rust } },
+  own,
+  behaviors,
+);
 const presets = format.presets ?? [];
 
 // Enable drag-to-resize dividers between the panes.
@@ -177,7 +188,7 @@ themeSelect.addEventListener("change", () => {
 
 // ── Engine Setup ───────────────────────────────────────
 
-const engine = new MorphicBlocks(format, behaviors);
+const engine = new MorphicBlocks(format, allBehaviors);
 
 // The "info" element (custom) on tiles: a button that tells what the block does.
 function infoButton(content: string): HTMLElement {

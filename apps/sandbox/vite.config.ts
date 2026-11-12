@@ -11,6 +11,9 @@ export default defineConfig({
         __dirname,
         "../../packages/morphic-blocks/src/index.ts",
       ),
+      // The standard blocks and the languages come from their source too.
+      "@morphicblocks/blocks": path.resolve(__dirname, "../../packages/blocks/src/index.ts"),
+      "@morphicblocks/languages": path.resolve(__dirname, "../../packages/languages/src/index.ts"),
     },
   },
 });

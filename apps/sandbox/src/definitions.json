@@ -244,6 +244,28 @@
           "comment": "#6a9955"
         }
       }
+    },
+    "rust": {
+      "empty": {
+        "Number": {
+          "shadow": "math_number",
+          "fieldValues": {
+            "NUM": "0"
+          }
+        },
+        "String": {
+          "shadow": "text",
+          "fieldValues": {
+            "TEXT": "text"
+          }
+        },
+        "Boolean": {
+          "shadow": "m_logic_boolean",
+          "fieldValues": {
+            "BOOL": "true"
+          }
+        }
+      }
     }
   },
   "modes": [
@@ -404,6 +426,15 @@
       }
     },
     {
+      "name": "rust-preset",
+      "label": "Rust",
+      "toolbox": "concept-tiles",
+      "views": {
+        "editor-pane": "concept",
+        "read-pane": "rust"
+      }
+    },
+    {
       "name": "arabic-preset",
       "label": "Arabic",
       "toolbox": "concept-tiles",
@@ -516,7 +547,8 @@
         "javascript": "console.log(%1);",
         "go": "fmt.Println(%1)",
         "info": "Writes a value to the output",
-        "spoken": "Print block: writes a value to the output"
+        "spoken": "Print block: writes a value to the output",
+        "rust": "println!(\"{}\", %1);"
       },
       "inputSlots": {
         "1": {
@@ -548,7 +580,8 @@
         "concept": "Condition %1 Then %2",
         "python": "if %1:\n    %2",
         "javascript": "if (%1) {\n  %2\n}",
-        "go": "if %1 {\n    %2\n}"
+        "go": "if %1 {\n    %2\n}",
+        "rust": "if %1 {\n    %2\n}"
       },
       "inputSlots": {
         "1": {
@@ -574,7 +607,8 @@
         "concept": "Repeat %1 times %2",
         "python": "for i in range(%1):\n    %2",
         "javascript": "for (let i = 0; i < %1; i++) {\n  %2\n}",
-        "go": "for i := 0; i < %1; i++ {\n    %2\n}"
+        "go": "for i := 0; i < %1; i++ {\n    %2\n}",
+        "rust": "for _ in 0..%1 {\n    %2\n}"
       },
       "inputSlots": {
         "1": {
@@ -643,7 +677,8 @@
         "concept": "%1 %OP %2",
         "python": "%1 %OP %2",
         "javascript": "%1 %OP %2",
-        "go": "%1 %OP %2"
+        "go": "%1 %OP %2",
+        "rust": "%1 %OP %2"
       },
       "inputSlots": {
         "1": {
@@ -704,7 +739,8 @@
         "concept": "%1 %OP %2",
         "python": "%1 %OP %2",
         "javascript": "%1 %OP %2",
-        "go": "%1 %OP %2"
+        "go": "%1 %OP %2",
+        "rust": "%1 %OP %2"
       },
       "inputSlots": {
         "1": {
@@ -753,7 +789,8 @@
         "concept": "%1 %OP %2",
         "python": "%1 %OP %2",
         "javascript": "%1 %OP %2",
-        "go": "%1 %OP %2"
+        "go": "%1 %OP %2",
+        "rust": "%1 %OP %2"
       },
       "inputSlots": {
         "1": {
@@ -802,7 +839,8 @@
         "concept": "not %1",
         "python": "not %1",
         "javascript": "!%1",
-        "go": "!%1"
+        "go": "!%1",
+        "rust": "!(%1)"
       },
       "inputSlots": {
         "1": {
@@ -824,7 +862,8 @@
         "concept": "%NUM",
         "python": "%NUM",
         "javascript": "%NUM",
-        "go": "%NUM"
+        "go": "%NUM",
+        "rust": "%NUM"
       },
       "fields": {
         "NUM": {
@@ -844,7 +883,8 @@
         "concept": "Text %TEXT",
         "python": "\"%TEXT\"",
         "javascript": "\"%TEXT\"",
-        "go": "\"%TEXT\""
+        "go": "\"%TEXT\"",
+        "rust": "\"%TEXT\""
       },
       "fields": {
         "TEXT": {
@@ -960,7 +1000,8 @@
         "concept": "%BOOL",
         "python": "%BOOL",
         "javascript": "%BOOL",
-        "go": "%BOOL"
+        "go": "%BOOL",
+        "rust": "%BOOL"
       },
       "fields": {
         "BOOL": {
@@ -994,7 +1035,8 @@
         "concept": "Create variable %VAR = %1",
         "python": "%VAR = %1",
         "javascript": "let %VAR = %1;",
-        "go": "%VAR := %1"
+        "go": "%VAR := %1",
+        "rust": "let mut %VAR = %1;"
       },
       "inputSlots": {
         "1": {
@@ -1027,7 +1069,8 @@
         "concept": "Variable %VAR",
         "python": "%VAR",
         "javascript": "%VAR",
-        "go": "%VAR"
+        "go": "%VAR",
+        "rust": "%VAR"
       },
       "fields": {
         "VAR": {
@@ -1125,7 +1168,8 @@
         "concept": "Create %1:type variable %VAR = %1",
         "python": "%VAR: %1:type = %1",
         "javascript": "let %VAR = %1;",
-        "go": "var %VAR %1:type = %1"
+        "go": "var %VAR %1:type = %1",
+        "rust": "let %VAR: %1:type = %1;"
       },
       "inputSlots": {
         "1": {
@@ -1474,7 +1518,8 @@
         "concept": "List of %1",
         "python": "[%1]",
         "javascript": "[%1]",
-        "go": "[]any{%1}"
+        "go": "[]any{%1}",
+        "rust": "vec![%1]"
       },
       "inputSlots": {
         "1": {
@@ -1487,6 +1532,36 @@
       },
       "output": true,
       "inputsInline": true
+    },
+    {
+      "identifier": "if_else",
+      "category": "Control",
+      "elements": {
+        "icon": "icons/logic_if.svg",
+        "title": "If / Else",
+        "description": "A standard block: runs one of two bodies",
+        "concept": "Condition %1\nThen\n    %2\nElse\n    %3"
+      }
+    },
+    {
+      "identifier": "while",
+      "category": "Control",
+      "elements": {
+        "icon": "icons/loop_for.svg",
+        "title": "While",
+        "description": "A standard block: repeats while a condition is true",
+        "concept": "While %1\n    %2"
+      }
+    },
+    {
+      "identifier": "math_random",
+      "category": "Operations",
+      "elements": {
+        "icon": "icons/math_arithmetic.svg",
+        "title": "Random",
+        "description": "A standard block: a whole number from one to another",
+        "concept": "Random from %1 to %2"
+      }
     }
   ]
 }
