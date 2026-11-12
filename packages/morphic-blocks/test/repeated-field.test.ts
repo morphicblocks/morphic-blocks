@@ -93,3 +93,45 @@ test("an edit survives a change of what the workspace shows", async () => {
   expect(block.getFieldValue("NAME")).toBe("Cat");
   expect(shown().filter((text) => text === "Cat")).toHaveLength(3);
 });
+
+test("a slot written again shows the value in it, and follows it", async () => {
+  const again: MorphicBlocksFormat = {
+    elementTypes: { go: "code" },
+    modes: [{ name: "in-go", elements: ["go"] }],
+    blocks: [
+      {
+        identifier: "add",
+        elements: { go: "%1 = append(%1, %2)" },
+        inputSlots: { "1": { kind: "value", name: "LIST" }, "2": { kind: "value", name: "VALUE" } },
+        shape: "statement",
+      },
+      { identifier: "name", elements: { go: "%NAME" }, fields: { NAME: { type: "text", default: "items" } }, output: true },
+      { identifier: "pair", elements: { go: "%1 + %2" }, inputSlots: { "1": { kind: "value", name: "A" }, "2": { kind: "value", name: "B" } }, output: true },
+    ],
+  };
+  const engine = new MorphicBlocks(again, {});
+  engines.push(engine);
+  await engine.mount({ workspaceContainer: div(), codespaceContainer: div(), onWarning: () => {} });
+  const workspace = engine.getWorkspace()!;
+  const make = (type: string) => {
+    const block = workspace.newBlock(`morphic:${type}`) as Blockly.BlockSvg;
+    block.initSvg();
+    block.render();
+    return block;
+  };
+  const add = make("add");
+  const labels = () => add.inputList.flatMap((input) => input.fieldRow).map((field) => field.getText()).join("|");
+  const name = make("name");
+  add.getInput("LIST")!.connection!.connect(name.outputConnection);
+
+  expect(add.inputList.filter((input) => input.connection)).toHaveLength(2);
+  await vi.waitFor(() => expect(labels()).toBe("= append(|items|,|)"), { timeout: 3000 });
+  name.setFieldValue("words", "NAME");
+  await vi.waitFor(() => expect(labels()).toBe("= append(|words|,|)"), { timeout: 3000 });
+  expect(engine.generateText("go")).toBe("words = append(words, [VALUE])");
+
+  // A value built from others is too long for a label.
+  name.dispose(false);
+  add.getInput("LIST")!.connection!.connect(make("pair").outputConnection);
+  await vi.waitFor(() => expect(labels()).toBe("= append(|…|,|)"), { timeout: 3000 });
+});

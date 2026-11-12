@@ -338,7 +338,7 @@ function renderTemplate(
     }
 
     if (token.kind === "parentField") {
-      pendingFields.push(new MorphicFieldCopy(token.name, true));
+      pendingFields.push(new MorphicFieldCopy(token.name, "parent"));
       continue;
     }
 
@@ -361,6 +361,13 @@ function renderTemplate(
     }
 
     if (createdPlaceholders.has(token.index)) {
+      // A value slot written again (`%1 = append(%1, %2)`): the block has the
+      // slot once, and a label here repeats the value in it.
+      const again = resolveSlotDefinition(definition, view, token.index);
+      if ((again?.kind ?? "value") === "value" && !(again && isRepeating(again))) {
+        pendingFields.push(new MorphicFieldCopy(slotInputName(again, token.index), "slot"));
+        continue;
+      }
       const duplicatePlaceholder = block.appendDummyInput(
         `DUPLICATE_${token.index}_${block.inputList.length}`,
       );
@@ -568,17 +575,31 @@ export class MorphicRepeatButton extends Blockly.Field<string> {
 }
 
 /**
- * A label that repeats a field's text: where a template names one of the
- * block's fields a second time, or a field of a block around it
- * (`%parent.NAME`). It has no name, so the block keeps one value per field.
+ * A label that repeats what something else on the block shows: one of the
+ * block's fields where a template names it a second time, a field of a block
+ * around it (`%parent.NAME`), or the value in a slot the template writes
+ * again. It has no name, so the block keeps one value per field and slot.
  */
 class MorphicFieldCopy extends Blockly.FieldLabel {
   constructor(
+    /** The field's name, or the slot's input name. */
     readonly fieldName: string,
-    readonly fromParent = false,
+    readonly source: "field" | "parent" | "slot" = "field",
   ) {
     super("");
   }
+}
+
+/**
+ * What a slot's value reads as in one label: the text of a value that is one
+ * field (a number, a name), `…` for a value built from others.
+ */
+function slotValueText(block: Blockly.Block, inputName: string): string {
+  const held = block.getInputTargetBlock(inputName);
+  if (!held) return "";
+  const shown = held.inputList.filter((input) => input.isVisible());
+  const fields = shown.flatMap((input) => input.fieldRow).filter((field) => field.name && !isValueTypeLabel(field));
+  return fields.length === 1 && !shown.some((input) => input.connection) ? fields[0]!.getText() : "…";
 }
 
 /** Make the copies on a block show what their fields show now. */
@@ -586,8 +607,8 @@ function updateFieldCopies(block: Blockly.Block): void {
   for (const input of block.inputList) {
     for (const copy of input.fieldRow) {
       if (!(copy instanceof MorphicFieldCopy)) continue;
-      const field = copy.fromParent ? findParentField(block, copy.fieldName) : block.getField(copy.fieldName);
-      const text = field?.getText() ?? "";
+      const field = copy.source === "parent" ? findParentField(block, copy.fieldName) : block.getField(copy.fieldName);
+      const text = copy.source === "slot" ? slotValueText(block, copy.fieldName) : (field?.getText() ?? "");
       // No event: a copy only follows (and has no name an undo could find it by).
       if (copy.getValue() !== text) copy.setValue(text, false);
     }
