@@ -155,6 +155,18 @@ export class MorphicReference extends MorphicDropdown {
   }
 }
 
+/** The edits (event groups) whose blocks bring their own names, e.g. blocks read from text. */
+const ownNames = new Set<string>();
+
+/** Let the references of one edit keep the names they have, declared or not. */
+export function keepNamesOf(group: string): void {
+  if (!group) return;
+  ownNames.add(group);
+  // Its events may arrive any time later (a big program takes a while to
+  // draw), so a group is only forgotten once many newer ones have come.
+  if (ownNames.size > 50) ownNames.delete(ownNames.values().next().value!);
+}
+
 function referencesIn(workspace: Blockly.Workspace, blocks: Blockly.Block[] = workspace.getAllBlocks(false)): MorphicReference[] {
   return blocks.flatMap((block) =>
     block.inputList.flatMap((input) => input.fieldRow.filter((field) => field instanceof MorphicReference)),
@@ -197,7 +209,7 @@ export function keepReferencesInStep(workspace: Blockly.Workspace): void {
     };
     // An undo, a redo or a loaded program brings its own names; only a
     // person's edit is followed by changes.
-    if (!event.recordUndo) {
+    if (!event.recordUndo || ownNames.has(event.group)) {
       showMissing();
       return;
     }

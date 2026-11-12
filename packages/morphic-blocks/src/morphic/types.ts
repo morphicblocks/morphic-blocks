@@ -886,6 +886,9 @@ export interface MorphicPlaceholderRange {
   emptySlot?: { parentBlockId: string; inputName: string };
 }
 
+/** What `loadText()` returns: how many blocks the text became, or the line that fits no block. */
+export type MorphicTextLoadResult = { ok: true; blocks: number } | { ok: false; line: number; message: string };
+
 /** Where the entries of a repeating slot end in generated text; text views put the slot's buttons there. */
 export interface MorphicRepeatRange {
   blockId: string;

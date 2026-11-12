@@ -21,7 +21,7 @@ import {
 } from "./block-view";
 import { BLOCK_ID_DRAG_KEY, MorphicCodeEditor, getActiveGripDragSourceId, setActiveGripDragSourceId } from "./code-editor";
 import { resolveBlocklyType, toBlocklyType, toCleanId } from "./block-namespace";
-import { keepReferencesInStep } from "./dropdown-fields";
+import { keepNamesOf, keepReferencesInStep } from "./dropdown-fields";
 import { generateJavaScriptFromWorkspace, generateJavaScriptWithMetadataFromWorkspace } from "./codegen";
 import { generateTextFromWorkspace } from "./template-codegen";
 import { MorphicSelectionSync } from "./selection-sync";
@@ -33,6 +33,7 @@ import { resolveDefaultConfig, resolveElementType, withCodeSettings } from "./el
 import { formatValue } from "./value-format";
 import { loadRepeatState, repeatCount, repeatInputName, repeatingSlots, saveRepeatState, setRepeatCount } from "./repeat-slots";
 import { enforceStrictSlots } from "./strict-slots";
+import { parseTextToBlocks } from "./text-to-blocks";
 import { MorphicStyleManager, type MorphicModeStyle } from "./styles";
 import { toModeClassToken } from "./template";
 import { DRAG_DATA_KEY, MorphicToolboxCanvas, type TileDropTarget } from "./toolbox-canvas";
@@ -59,6 +60,7 @@ import type {
   MorphicModeDefinition,
   MorphicModeName,
   MorphicMountConfig,
+  MorphicTextLoadResult,
   MorphicPlaceholderEditTarget,
   MorphicPresetDefinition,
   MorphicBlockSet,
@@ -1298,6 +1300,44 @@ export class MorphicBlocks extends EventTarget {
     }
     this.checkViewElement("generateText", element);
     return this.generateElementText(element).code;
+  }
+
+  /**
+   * Replace the program with the blocks that write `text` in a code element:
+   * `engine.loadText("print(1)", { element: "python" })`. The text must be
+   * valid and written with the blocks' templates; when a line fits no block,
+   * nothing changes and the result names the line. One undo brings the old
+   * program back.
+   */
+  public loadText(text: string, options: { element: string }): MorphicTextLoadResult {
+    if (!this.workspace || !this.mountConfig) {
+      throw new Error("MorphicBlocks must be mounted before loadText can be used.");
+    }
+    this.checkViewElement("loadText", options.element);
+    const read = parseTextToBlocks(text, options.element, this.definitions, this.mountConfig.code?.[options.element]);
+    if (!read.ok) return read;
+
+    const group = Blockly.Events.getGroup();
+    if (!group) Blockly.Events.setGroup(true);
+    // The names are the text's own: no reference takes another one.
+    keepNamesOf(Blockly.Events.getGroup());
+    try {
+      Blockly.serialization.workspaces.load(
+        { blocks: { languageVersion: 0, blocks: read.stacks } },
+        this.workspace,
+        { recordUndo: true },
+      );
+      // The stacks one below the other (Blockly's own clean up would be an undo step of its own).
+      let top = 20;
+      for (const stack of this.workspace.getTopBlocks(false)) {
+        const at = stack.getRelativeToSurfaceXY();
+        stack.moveBy(20 - at.x, top - at.y);
+        top += stack.getHeightWidth().height + 20;
+      }
+    } finally {
+      if (!group) Blockly.Events.setGroup(false);
+    }
+    return { ok: true, blocks: read.blocks };
   }
 
   public generateJavaScriptWithMetadata(): MorphicCodeGenerationResult {
