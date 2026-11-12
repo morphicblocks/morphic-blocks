@@ -28,7 +28,10 @@ morphic-blocks/
 ### Key files
 
 - `src/morphic/MorphicBlocks.ts`: Main orchestration class (`mount`, `show`, `applyPreset`, `addView`, `generateJavaScript`)
-- `src/morphic/block-view.ts`: Block rendering, class application, fields (`MorphicDropdown`), connection management
+- `src/morphic/block-view.ts`: Block rendering, class application, fields, connection management
+- `src/morphic/dropdown-fields.ts`: `MorphicDropdown` (menu classes) and `MorphicReference` (reference fields), and `keepReferencesInStep` (renames, new references)
+- `src/morphic/strict-slots.ts`: strict slots, added to the workspace's connection checker
+- `src/morphic/parent-field.ts`: the field a `%parent.NAME` token shows
 - `src/morphic/block-namespace.ts`: Clean ↔ `morphic:` Blockly-type translation (collision isolation)
 - `src/morphic/template.ts`: Template parsing (`%1`, `%NAME`, `<img>`), `toModeClassToken` (names into classes; public as `toClassToken`)
 - `src/morphic/codegen.ts`: One-way code generation via behavior functions
@@ -61,12 +64,15 @@ Definitions and behaviors use **clean, free-form identifiers** (`text_print`). B
 ### Templates and fields
 
 - `%1`, `%2`: input slots (Blockly inputs; substituted in text)
-- `%FIELDNAME`: a field: the one declared in the block's `fields` map (dropdown, text, number, checkbox), or one a behavior attaches in `onViewApplied`. The template decides what a block shows, `fields` what it has: a declared field a workspace block's template leaves out stays on the block, undrawn (`keepOmittedFields`)
+- `%FIELDNAME`: a field: the one declared in the block's `fields` map (dropdown, reference, text, number, checkbox), or one a behavior attaches in `onViewApplied`. The template decides what a block shows, `fields` what it has: a declared field a workspace block's template leaves out stays on the block, undrawn (`keepOmittedFields`). A block has each field once; where a template names it again, a label repeats what it shows
+- `%parent.NAME`: the `NAME` field of the nearest block around this one that has it, as a label (a Go method names its struct)
 - `%1:type`: the type of slot 1's value, named per language in `code.<element>.types` (`value-type.ts`)
 - `<img src="...">`: image fields; plain text: labels
 - Text rendering keeps the template's line breaks and indentation as written
 
 A dropdown option is `value` (generated, serialized, shown in text) plus a block-only `label`: text, an image (`{ src }`) or a color swatch (`{ color }`); `display`, keyed by element name, sets the shown text per language (`True`/`true`). An open menu gets `morphic-menu` and `morphic-menu-<FIELD>`; the look stays the app's.
+
+A **reference** field (`{ "type": "reference", "to": "class_define.NAME" }`, or a list of targets) is a dropdown of the names the program declares: what that field holds on every such block. Its value is the name, so text, behaviors and saved programs read it like any field; renaming a declaration renames its references, and a new reference takes a declared name. A slot with `"strict": true` takes only blocks whose check matches its `check`, down the whole stack in it (Blockly lets a block without a check in everywhere). There are no built-in classes, functions or variables: developers build them from these pieces.
 
 ## Elements, modes, presets
 
