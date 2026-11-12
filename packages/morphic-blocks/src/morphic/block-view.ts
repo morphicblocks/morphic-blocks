@@ -14,7 +14,7 @@ import {
 import { MorphicDropdown, MorphicReference } from "./dropdown-fields";
 import { resolveDefaultConfig } from "./element-types";
 import { findParentField } from "./parent-field";
-import { markStrictSlot } from "./strict-slots";
+import { markStrictBlock, markStrictSlot } from "./strict-slots";
 import { isValueTypeLabel, VALUE_TYPE_FIELD, valueTypeName } from "./value-type";
 import {
   normalizeTemplateText,
@@ -804,6 +804,9 @@ function applyConnections(
   }
   if (definition.nextStatement !== undefined) {
     applyNextConnection(block, definition.nextStatement);
+  }
+  if (definition.strict) {
+    markStrictBlock(block);
   }
 }
 

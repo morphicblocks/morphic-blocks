@@ -109,6 +109,15 @@ export function validateDefinitions(
         }
       }
     }
+    // A strict block goes only where a check matches its own; without a check
+    // of its own it would fit nowhere.
+    const namesCheck = (spec: unknown) => typeof spec === "string" || (Array.isArray(spec) && spec.length > 0);
+    if (def.strict && !namesCheck(def.previousStatement) && !namesCheck(def.output)) {
+      errors.push(
+        `Block "${id}" is strict but has no check. Name its kind in "previousStatement" (or "output"), e.g. "previousStatement": "ClassField".`,
+      );
+    }
+
     const lifecycle = getLifecycleBehavior(behaviors[id]);
     const hasOnViewApplied = Boolean(lifecycle?.onViewApplied);
 

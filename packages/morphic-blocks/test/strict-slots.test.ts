@@ -24,6 +24,20 @@ const format: MorphicBlocksFormat = {
     },
     { identifier: "part", elements: { code: "part" }, previousStatement: "Part", nextStatement: "Part" },
     { identifier: "say", elements: { code: "say" }, shape: "statement" },
+    {
+      identifier: "only_part",
+      elements: { code: "only part" },
+      previousStatement: "Part",
+      nextStatement: "Part",
+      strict: true,
+    },
+    { identifier: "only_five", elements: { code: "5!" }, output: "Number", strict: true },
+    {
+      identifier: "show",
+      elements: { code: "show %1 typed %2" },
+      inputSlots: { "1": { kind: "value", name: "ANY" }, "2": { kind: "value", name: "TYPED", check: "Number" } },
+      shape: "statement",
+    },
     { identifier: "five", elements: { code: "5" }, output: "Number" },
     { identifier: "anything", elements: { code: "x" }, output: true },
   ],
@@ -97,6 +111,50 @@ test("a strict value slot refuses a value without a type", async () => {
 
   expect(fits(slot, make("five").outputConnection)).toBe(true);
   expect(fits(slot, make("anything").outputConnection)).toBe(false);
+});
+
+describe("a strict block", () => {
+  test("goes into a slot of its kind and below a block of its kind", async () => {
+    const { make, fits } = await setUp();
+    const group = make("group");
+
+    expect(fits(group.getInput("PARTS")!.connection, make("only_part").previousConnection)).toBe(true);
+    expect(fits(group.getInput("OPEN")!.connection, make("only_part").previousConnection)).toBe(true);
+    expect(fits(make("part").nextConnection, make("only_part").previousConnection)).toBe(true);
+  });
+
+  test("does not go into ordinary code", async () => {
+    const { make, fits } = await setUp();
+
+    expect(fits(make("say").nextConnection, make("only_part").previousConnection)).toBe(false);
+    expect(fits(make("say").nextConnection, make("part").previousConnection)).toBe(true);
+  });
+
+  test("still lets an ordinary block follow it", async () => {
+    const { make, fits } = await setUp();
+
+    expect(fits(make("only_part").nextConnection, make("say").previousConnection)).toBe(true);
+  });
+
+  test("as a value goes only into a slot with its type", async () => {
+    const { make, fits } = await setUp();
+    const show = make("show");
+
+    expect(fits(show.getInput("TYPED")!.connection, make("only_five").outputConnection)).toBe(true);
+    expect(fits(show.getInput("ANY")!.connection, make("only_five").outputConnection)).toBe(false);
+    expect(fits(show.getInput("ANY")!.connection, make("five").outputConnection)).toBe(true);
+  });
+
+  test("without a check stops the mount", () => {
+    const broken: MorphicBlocksFormat = {
+      ...format,
+      blocks: [{ identifier: "part", elements: { code: "part" }, shape: "statement", strict: true }],
+    };
+    const engine = new MorphicBlocks(broken, {});
+    engines.push(engine);
+
+    expect(() => engine.mount({ workspaceContainer: div() })).toThrow(/Block "part" is strict but has no check/);
+  });
 });
 
 test("a strict slot without a check stops the mount", () => {

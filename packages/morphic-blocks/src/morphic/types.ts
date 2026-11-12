@@ -364,6 +364,13 @@ export interface MorphicBlockDefinition {
   shape?: MorphicBlockShape;
   previousStatement?: MorphicConnectionSpec;
   nextStatement?: MorphicConnectionSpec;
+  /**
+   * Let the block go only where the place above it (a slot, or the block it
+   * hangs below) has a check matching its own `previousStatement` or `output`
+   * check. Without it, a block with a check still fits every place that has
+   * none, so a class field could be dropped into ordinary code. Needs a check.
+   */
+  strict?: boolean;
   inputsInline?: boolean;
   tooltip?: string;
   helpUrl?: string;

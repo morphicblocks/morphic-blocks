@@ -402,6 +402,10 @@
         "output": { "$ref": "#/$defs/connectionSpec" },
         "previousStatement": { "$ref": "#/$defs/connectionSpec" },
         "nextStatement": { "$ref": "#/$defs/connectionSpec" },
+        "strict": {
+          "description": "Let the block go only where the place above it has a check matching its previousStatement or output check.",
+          "type": "boolean"
+        },
         "inputsInline": { "type": "boolean" },
         "tooltip": { "type": "string" },
         "helpUrl": { "type": "string" }
