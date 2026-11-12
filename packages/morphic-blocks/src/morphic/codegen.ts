@@ -5,6 +5,7 @@ import { Order, javascriptGenerator, type JavascriptGenerator } from "blockly/ja
 import { getCodeBehavior } from "./behavior-runtime";
 import { toBlocklyType, toCleanId } from "./block-namespace";
 import { getManagedBlockMode } from "./block-view";
+import { isRepeating, repeatEntries, repeatingSlots, slotOfInput } from "./repeat-slots";
 import { isValueTypeLabel } from "./value-type";
 import type {
   MorphicBehaviorMap,
@@ -65,7 +66,7 @@ function configureJavascriptGenerator(
     const behavior = getCodeBehavior(state.behaviors[type]);
 
     generator.forBlock[toBlocklyType(type)] = (block, activeGenerator) => {
-      const proxy = createBehaviorProxy(block, activeGenerator);
+      const proxy = createBehaviorProxy(block, activeGenerator, definition);
       const rawCode = behavior ? behavior(proxy) : fallbackCode(type, definition);
       if (isValueBlock(block, definition)) {
         return [normalizeValueCode(rawCode), Order.NONE];
@@ -79,7 +80,11 @@ function configureJavascriptGenerator(
   }
 }
 
-function createBehaviorProxy(block: Blockly.Block, generator: JavascriptGenerator): MorphicBehaviorProxy {
+function createBehaviorProxy(
+  block: Blockly.Block,
+  generator: JavascriptGenerator,
+  definition: MorphicBlockDefinition,
+): MorphicBehaviorProxy {
   const inputs: Record<string, string> = {};
   const fields: Record<string, string> = {};
   const quoted: Record<string, string> = {};
@@ -87,7 +92,16 @@ function createBehaviorProxy(block: Blockly.Block, generator: JavascriptGenerato
   // Operands are bracketed only when this block composes several values, i.e.
   // they sit either side of an operator. A block with one value input holds a
   // whole sub-expression (`console.log(%1)`) and needs no extra brackets.
-  const composesSeveralValues = countValueInputs(block) >= 2;
+  // The entries of a repeating slot are a list (`f(a, b)`): together they
+  // count as one value, and each is handed over as it is. A behavior that
+  // joins them with an operator brackets them itself.
+  const repeating = repeatingSlots(definition);
+  const isEntry = (inputName: string) => !repeating.has(inputName) && isRepeating(slotOfInput(definition, inputName));
+  const plainValueInputs = block.inputList.filter(
+    (input) => input.connection?.type === Blockly.INPUT_VALUE && !isEntry(input.name),
+  ).length;
+  const composesSeveralValues = plainValueInputs + repeating.size >= 2;
+  const needsBrackets = (inputName: string): boolean => composesSeveralValues && !isEntry(inputName);
 
   for (const input of block.inputList) {
     const targetBlock = input.connection?.targetBlock();
@@ -95,7 +109,7 @@ function createBehaviorProxy(block: Blockly.Block, generator: JavascriptGenerato
       if (targetBlock.outputConnection) {
         const code = generator.valueToCode(block, input.name, Order.NONE) || "undefined";
         inputs[input.name] =
-          composesSeveralValues ? parenthesizeOperand(code, targetBlock) : code;
+          needsBrackets(input.name) ? parenthesizeOperand(code, targetBlock) : code;
       } else {
         inputs[input.name] = generator.statementToCode(block, input.name).trimEnd();
       }
@@ -113,6 +127,15 @@ function createBehaviorProxy(block: Blockly.Block, generator: JavascriptGenerato
     }
   }
 
+  // A repeating slot: its filled entries as a list, and joined under the slot's name.
+  const lists: Record<string, string[]> = {};
+  for (const [name, slot] of repeatingSlots(definition)) {
+    lists[name] = repeatEntries(block, name, slot)
+      .map((entry) => inputs[entry])
+      .filter((code): code is string => code !== undefined);
+    inputs[name] = lists[name].join(", ");
+  }
+
   return {
     blockId: block.id,
     blockType: toCleanId(block.type),
@@ -120,7 +143,8 @@ function createBehaviorProxy(block: Blockly.Block, generator: JavascriptGenerato
     context,
     inputs,
     fields,
-    quoted
+    quoted,
+    lists,
   };
 }
 

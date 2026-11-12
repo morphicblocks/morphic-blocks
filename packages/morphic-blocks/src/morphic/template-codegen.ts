@@ -1,6 +1,7 @@
 import * as Blockly from "blockly";
 import { toCleanId } from "./block-namespace";
 import { findParentField } from "./parent-field";
+import { isRepeating, repeatEntries, repeatSeparator, separatorComposes } from "./repeat-slots";
 import { parseTemplate, type MorphicTemplateToken } from "./template";
 import type { MorphicElementTypeWithCode } from "./element-types";
 import { resolveBlockView } from "./view-resolver";
@@ -15,6 +16,7 @@ import type {
   MorphicModeName,
   MorphicPlaceholderEditTarget,
   MorphicPlaceholderRange,
+  MorphicRepeatRange,
 } from "./types";
 
 interface RenderContext {
@@ -36,6 +38,7 @@ interface RenderState {
   output: string;
   metadata: Map<string, MorphicCodeBlockPosition>;
   placeholders: MorphicPlaceholderRange[];
+  repeats: MorphicRepeatRange[];
   /**
    * Whitespace prefixed to every newline emitted while rendering. Updated when
    * descending into a statement input so nested templates' own indents stack
@@ -81,7 +84,7 @@ export function generateTextFromWorkspace(
   /** `emptyStatements: false` leaves empty statement slots empty (toolbox tiles). */
   options: { emptyStatements?: boolean } = {},
 ): MorphicCodeGenerationResult {
-  const state: RenderState = { output: "", metadata: new Map(), placeholders: [], indent: "" };
+  const state: RenderState = { output: "", metadata: new Map(), placeholders: [], repeats: [], indent: "" };
   const ctx: RenderContext = {
     mode,
     definitions,
@@ -108,7 +111,7 @@ export function generateTextFromWorkspace(
     }
   }
 
-  return { code: state.output, metadata: state.metadata, placeholders: state.placeholders, groups };
+  return { code: state.output, metadata: state.metadata, placeholders: state.placeholders, repeats: state.repeats, groups };
 }
 
 function renderStatementChain(
@@ -163,6 +166,8 @@ function countValueSlots(
   for (const token of tokens) {
     if (token.kind !== "placeholder") continue;
     const slot = definition.inputSlots?.[String(token.index)];
+    // A repeating slot is one value among others; whether its own entries
+    // need brackets is its separator's matter (see `separatorComposes`).
     if ((slot?.kind ?? "value") === "value") count++;
   }
   return count;
@@ -291,14 +296,9 @@ function renderBlock(
     const slot = definition.inputSlots?.[String(token.index)];
     const inputName = slot?.name;
     if (!inputName) continue;
-    const input = block.getInput(inputName);
-    const rawTarget = input?.connection?.targetBlock() ?? null;
-    // Shadow blocks (empty-slot placeholders attached by block-view) are
-    // re-emitted as text via the empty-default fallback, not recursed into,
-    // so the codespace stays consistent with the workspace view.
-    const target = rawTarget?.isShadow() ? null : rawTarget;
 
     if (slot?.kind === "statement") {
+      const target = block.getInput(inputName)?.connection?.targetBlock() ?? null;
       const slotStart = currentLine(state.output);
       const prevIndent = state.indent;
       const lineStart = state.output.lastIndexOf("\n") + 1;
@@ -327,106 +327,23 @@ function renderBlock(
       continue;
     }
 
-    // Per-field markers recorded inside the slot's emission (e.g. var_declare's
-    // VAR text field on the dummy NAME slot, math_arithmetic's OP dropdown on
-    // the dummy OPERATOR slot). When recorded, the outer slot-level marker is
-    // skipped so the `default` italic-dim style doesn't stack on the `set`
-    // style of the inner field marker.
-    let perFieldRecorded = false;
-    // A default that is one of the developer's own blocks is written through
-    // its template, so it reads like the same block placed there (`"Hello"`
-    // quotes itself, a fieldless `*` still shows). Its ranges stay defaults,
-    // and it gets no block metadata: a shadow is never selected or dragged.
-    if (!target && rawTarget && ctx.definitions.has(toCleanId(rawTarget.type))) {
-      const slotOffsetStart = state.output.length;
-      const placeholdersBefore = state.placeholders.length;
-      renderBlock(rawTarget, ctx, state, composesSeveralValues && composesValues(rawTarget));
-      for (const shadow of rawTarget.getDescendants(false)) state.metadata.delete(shadow.id);
-      if (state.output.length > slotOffsetStart) {
-        const inner = state.placeholders.splice(placeholdersBefore);
-        for (const range of inner) state.placeholders.push({ ...range, kind: "default" });
-        if (inner.length === 0) recordPlaceholder(state, slotOffsetStart, "default");
-        continue;
-      }
-    }
-    if (!target) {
-      // Fields that will actually be emitted for this empty slot: a present
-      // shadow's named fields, or undeclared onViewApplied fields Blockly seated
-      // on this input. Declared %FIELDNAME fields are excluded — they render via
-      // their own token, so an empty operand slot must not re-emit them (`3 + +`).
-      const shadowFields = rawTarget?.isShadow()
-        ? rawTarget.inputList.flatMap((i) => i.fieldRow).filter((f) => !!f.name)
-        : [];
-      const inputFields = !rawTarget?.isShadow() && input
-        ? input.fieldRow.filter((f) => !!f.name && !definition.fields?.[f.name!] && !isValueTypeLabel(f))
-        : [];
-      const willEmitValue = shadowFields.length > 0 || inputFields.length > 0;
-
-      // Quote framework-supplied literals (shadow values) in String slots — but
-      // never the empty-type marker. Quotes sit outside the recorded range so
-      // inline editing targets only the inner value.
-      const stringQuote = willEmitValue ? resolveStringQuote(slot, elementEntry) : undefined;
-      if (stringQuote) appendText(state, stringQuote);
-      const slotOffsetStart = state.output.length;
-
-      if (shadowFields.length > 0) {
-        // Read the shadow's own fields so codespace text matches the shadow's
-        // current values (and supports inline editing of the shadow). A morphic
-        // shadow (e.g. m_logic_boolean) honors per-element field display too, so
-        // an empty Boolean slot reads `True` in Python just like a real block.
-        const shadowDef = rawTarget
-          ? ctx.definitions.get(toCleanId(rawTarget.type))
-          : undefined;
-        for (const field of shadowFields) {
-          appendText(
-            state,
-            shadowDef && field.name
-              ? resolveFieldDisplay(shadowDef, elementName, field.name, field)
-              : readFieldText(field),
-          );
-        }
-      } else if (inputFields.length > 0) {
-        // Fields directly on the parent's input (custom onViewApplied fields).
-        // Emit each as its own placeholder range so it's individually editable.
-        for (const field of inputFields) {
-          const fieldStart = state.output.length;
-          appendText(state, readFieldText(field));
-          const fieldEdit = fieldEditTarget(block, field, field.name!);
-          if (fieldEdit) {
-            recordPlaceholder(state, fieldStart, "set", fieldEdit);
-            perFieldRecorded = true;
-          }
-        }
-      }
-
-      let emptySlotInfo: { parentBlockId: string; inputName: string } | undefined;
-      if (!willEmitValue) {
-        // Truly empty slot: the workspace shows an empty socket, but text can't
-        // render "nothing" — it must mark that a value belongs here. Emit a type
-        // marker from the slot's check (e.g. [NUMBER], [TEXT], [BOOL]). Filled by
-        // dragging a value block into the slot; `emptySlot` lets the codespace
-        // resolve that drop (there's no child block to walk up from).
-        appendText(state, emptySlotMarker(slot?.check));
-        emptySlotInfo = { parentBlockId: block.id, inputName };
-      }
-
-      if (!perFieldRecorded) {
-        const editTarget = rawTarget?.isShadow()
-          ? withTextLabels(detectAtomicEdit(rawTarget), rawTarget, ctx) ?? undefined
-          : undefined;
-        recordPlaceholder(state, slotOffsetStart, "default", editTarget, emptySlotInfo);
-      }
-      if (stringQuote) appendText(state, stringQuote);
+    if (slot && isRepeating(slot)) {
+      // One entry after the other, the separator between them. Listed
+      // entries (`f(a, b)`) need no brackets; only a separator that is an
+      // operator (` + `) makes them operands. Where the list ends is kept,
+      // for the buttons a text view shows there.
+      const separator = repeatSeparator(slot, elementName);
+      const composes = separatorComposes(separator);
+      const entries = repeatEntries(block, inputName, slot);
+      entries.forEach((entry, index) => {
+        if (index > 0) appendText(state, separator);
+        renderValueSlot(block, definition, slot, entry, ctx, state, elementName, elementEntry, composes);
+      });
+      state.repeats.push({ blockId: block.id, slotName: inputName, count: entries.length, at: state.output.length });
       continue;
     }
 
-    // Real attached block: render via its own template (it self-quotes if it's
-    // a string literal block; a variable/expression stays bare). No framework
-    // quoting here. Drag affordance is provided by the per-block drag layer
-    // in code-editor.ts; the placeholder mark is visual-only.
-    const slotOffsetStart = state.output.length;
-    renderBlock(target, ctx, state, composesSeveralValues && composesValues(target));
-    recordPlaceholder(state, slotOffsetStart, "set", withTextLabels(detectAtomicEdit(target), target, ctx) ?? undefined);
+    renderValueSlot(block, definition, slot, inputName, ctx, state, elementName, elementEntry, composesSeveralValues);
   }
 
   if (state.output.length === contentStart) {
@@ -462,6 +379,131 @@ function renderBlock(
   }
   if (detectAtomicEdit(block)) position.atomic = true;
   state.metadata.set(block.id, position);
+}
+
+/**
+ * Write what a value slot holds: the block in it, its default, or the marker
+ * of an empty slot. `inputName` is the slot's input, or one entry of a
+ * repeating slot.
+ */
+function renderValueSlot(
+  block: Blockly.Block,
+  definition: MorphicBlockDefinition,
+  slot: MorphicInputSlotDefinition | undefined,
+  inputName: string,
+  ctx: RenderContext,
+  state: RenderState,
+  elementName: string | undefined,
+  elementEntry: MorphicElementTypeEntry | undefined,
+  composesSeveralValues: boolean,
+): void {
+  const input = block.getInput(inputName);
+  const rawTarget = input?.connection?.targetBlock() ?? null;
+  // Shadow blocks (empty-slot placeholders attached by block-view) are
+  // re-emitted as text via the empty-default fallback, not recursed into,
+  // so the codespace stays consistent with the workspace view.
+  const target = rawTarget?.isShadow() ? null : rawTarget;
+
+  // Per-field markers recorded inside the slot's emission (e.g. var_declare's
+  // VAR text field on the dummy NAME slot, math_arithmetic's OP dropdown on
+  // the dummy OPERATOR slot). When recorded, the outer slot-level marker is
+  // skipped so the `default` italic-dim style doesn't stack on the `set`
+  // style of the inner field marker.
+  let perFieldRecorded = false;
+  // A default that is one of the developer's own blocks is written through
+  // its template, so it reads like the same block placed there (`"Hello"`
+  // quotes itself, a fieldless `*` still shows). Its ranges stay defaults,
+  // and it gets no block metadata: a shadow is never selected or dragged.
+  if (!target && rawTarget && ctx.definitions.has(toCleanId(rawTarget.type))) {
+    const slotOffsetStart = state.output.length;
+    const placeholdersBefore = state.placeholders.length;
+    renderBlock(rawTarget, ctx, state, composesSeveralValues && composesValues(rawTarget));
+    for (const shadow of rawTarget.getDescendants(false)) state.metadata.delete(shadow.id);
+    if (state.output.length > slotOffsetStart) {
+      const inner = state.placeholders.splice(placeholdersBefore);
+      for (const range of inner) state.placeholders.push({ ...range, kind: "default" });
+      if (inner.length === 0) recordPlaceholder(state, slotOffsetStart, "default");
+      return;
+    }
+  }
+  if (!target) {
+    // Fields that will actually be emitted for this empty slot: a present
+    // shadow's named fields, or undeclared onViewApplied fields Blockly seated
+    // on this input. Declared %FIELDNAME fields are excluded — they render via
+    // their own token, so an empty operand slot must not re-emit them (`3 + +`).
+    const shadowFields = rawTarget?.isShadow()
+      ? rawTarget.inputList.flatMap((i) => i.fieldRow).filter((f) => !!f.name)
+      : [];
+    const inputFields = !rawTarget?.isShadow() && input
+      ? input.fieldRow.filter((f) => !!f.name && !definition.fields?.[f.name!] && !isValueTypeLabel(f))
+      : [];
+    const willEmitValue = shadowFields.length > 0 || inputFields.length > 0;
+
+    // Quote framework-supplied literals (shadow values) in String slots — but
+    // never the empty-type marker. Quotes sit outside the recorded range so
+    // inline editing targets only the inner value.
+    const stringQuote = willEmitValue ? resolveStringQuote(slot, elementEntry) : undefined;
+    if (stringQuote) appendText(state, stringQuote);
+    const slotOffsetStart = state.output.length;
+
+    if (shadowFields.length > 0) {
+      // Read the shadow's own fields so codespace text matches the shadow's
+      // current values (and supports inline editing of the shadow). A morphic
+      // shadow (e.g. m_logic_boolean) honors per-element field display too, so
+      // an empty Boolean slot reads `True` in Python just like a real block.
+      const shadowDef = rawTarget
+        ? ctx.definitions.get(toCleanId(rawTarget.type))
+        : undefined;
+      for (const field of shadowFields) {
+        appendText(
+          state,
+          shadowDef && field.name
+            ? resolveFieldDisplay(shadowDef, elementName, field.name, field)
+            : readFieldText(field),
+        );
+      }
+    } else if (inputFields.length > 0) {
+      // Fields directly on the parent's input (custom onViewApplied fields).
+      // Emit each as its own placeholder range so it's individually editable.
+      for (const field of inputFields) {
+        const fieldStart = state.output.length;
+        appendText(state, readFieldText(field));
+        const fieldEdit = fieldEditTarget(block, field, field.name!);
+        if (fieldEdit) {
+          recordPlaceholder(state, fieldStart, "set", fieldEdit);
+          perFieldRecorded = true;
+        }
+      }
+    }
+
+    let emptySlotInfo: { parentBlockId: string; inputName: string } | undefined;
+    if (!willEmitValue) {
+      // Truly empty slot: the workspace shows an empty socket, but text can't
+      // render "nothing" — it must mark that a value belongs here. Emit a type
+      // marker from the slot's check (e.g. [NUMBER], [TEXT], [BOOL]). Filled by
+      // dragging a value block into the slot; `emptySlot` lets the codespace
+      // resolve that drop (there's no child block to walk up from).
+      appendText(state, emptySlotMarker(slot?.check));
+      emptySlotInfo = { parentBlockId: block.id, inputName };
+    }
+
+    if (!perFieldRecorded) {
+      const editTarget = rawTarget?.isShadow()
+        ? withTextLabels(detectAtomicEdit(rawTarget), rawTarget, ctx) ?? undefined
+        : undefined;
+      recordPlaceholder(state, slotOffsetStart, "default", editTarget, emptySlotInfo);
+    }
+    if (stringQuote) appendText(state, stringQuote);
+    return;
+  }
+
+  // Real attached block: render via its own template (it self-quotes if it's
+  // a string literal block; a variable/expression stays bare). No framework
+  // quoting here. Drag affordance is provided by the per-block drag layer
+  // in code-editor.ts; the placeholder mark is visual-only.
+  const slotOffsetStart = state.output.length;
+  renderBlock(target, ctx, state, composesSeveralValues && composesValues(target));
+  recordPlaceholder(state, slotOffsetStart, "set", withTextLabels(detectAtomicEdit(target), target, ctx) ?? undefined);
 }
 
 /**

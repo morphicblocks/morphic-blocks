@@ -7,6 +7,7 @@ import type {
   MorphicCodeMetadata,
   MorphicHighlightDefinition,
   MorphicPlaceholderRange,
+  MorphicRepeatRange,
 } from "./types";
 
 // Re-export the type so MorphicBlocks.ts doesn't need to import CodeMirror types.
@@ -236,6 +237,33 @@ function buildThemeExtension(
     },
     ".morphic-grip-marker:hover": {
       color: foreground,
+    },
+    // The buttons of a repeating slot wait until their line is pointed at or selected.
+    ".morphic-repeat-buttons": {
+      display: "none",
+      gap: "2px",
+      margin: "0 2px",
+      verticalAlign: "middle",
+    },
+    ".cm-line:hover .morphic-repeat-buttons, .cm-line.morphic-highlight .morphic-repeat-buttons": {
+      display: "inline-flex",
+    },
+    ".morphic-repeat-button": {
+      width: "16px",
+      height: "16px",
+      padding: "0",
+      border: "none",
+      borderRadius: "50%",
+      font: "inherit",
+      fontSize: "12px",
+      lineHeight: "16px",
+      cursor: "pointer",
+      color: mix(foreground, 70),
+      backgroundColor: mix(foreground, 12),
+    },
+    ".morphic-repeat-button:hover": {
+      color: foreground,
+      backgroundColor: mix(foreground, 22),
     },
   });
   // Earlier extensions take precedence, so colours the app sets win.
@@ -483,6 +511,7 @@ export class MorphicCodeEditor {
   private activeHighlight?: LineSpan | LineSpan[];
   private metadataEffect?: StateEffectType<MorphicCodeMetadata>;
   private placeholderEffect?: StateEffectType<MorphicPlaceholderRange[]>;
+  private repeatEffect?: StateEffectType<MorphicRepeatRange[]>;
   private dropIndicatorEffect?: StateEffectType<DropIndicator | null>;
   private valueSlotHighlightEffect?: StateEffectType<{ from: number; to: number } | null>;
   private hoverHighlightEffect?: StateEffectType<{ from: number; to: number } | null>;
@@ -530,6 +559,71 @@ export class MorphicCodeEditor {
     this.metadataEffect = metadataEffect;
     const placeholderEffect = cmState.StateEffect.define<MorphicPlaceholderRange[]>();
     this.placeholderEffect = placeholderEffect;
+    const repeatEffect = cmState.StateEffect.define<MorphicRepeatRange[]>();
+    this.repeatEffect = repeatEffect;
+
+    // ── Repeating slot buttons ──
+    // A minus and a plus after the last entry of each repeating slot. They
+    // are widgets, not text, so copied code stays code.
+    const onRepeat = this.options.onRepeat;
+    class RepeatButtons extends cmView.WidgetType {
+      constructor(readonly range: MorphicRepeatRange) {
+        super();
+      }
+      override eq(other: RepeatButtons): boolean {
+        return (
+          other.range.blockId === this.range.blockId &&
+          other.range.slotName === this.range.slotName &&
+          other.range.count === this.range.count
+        );
+      }
+      override toDOM(): HTMLElement {
+        const wrap = document.createElement("span");
+        wrap.className = "morphic-repeat-buttons";
+        const { blockId, slotName, count } = this.range;
+        const button = (action: "add" | "remove", sign: string, delta: number) => {
+          const el = document.createElement("button");
+          el.type = "button";
+          el.className = `morphic-repeat-button morphic-repeat-${action}`;
+          el.textContent = sign;
+          // Keep the editor's cursor and selection where they are.
+          el.addEventListener("mousedown", (event) => event.preventDefault());
+          el.addEventListener("click", (event) => {
+            event.stopPropagation();
+            onRepeat?.(blockId, slotName, delta);
+          });
+          wrap.appendChild(el);
+        };
+        if (count > 0) button("remove", "−", -1);
+        button("add", "+", 1);
+        return wrap;
+      }
+      override ignoreEvent(): boolean {
+        return true;
+      }
+    }
+    const repeatField = cmState.StateField.define<import("@codemirror/view").DecorationSet>({
+      create() {
+        return cmView.Decoration.none;
+      },
+      update(decorations, tr) {
+        for (const effect of tr.effects) {
+          if (effect.is(repeatEffect)) {
+            const docLen = tr.state.doc.length;
+            return cmView.Decoration.set(
+              effect.value
+                .filter((range) => range.at <= docLen)
+                .sort((a, b) => a.at - b.at)
+                .map((range) => cmView.Decoration.widget({ widget: new RepeatButtons(range), side: 1 }).range(range.at)),
+            );
+          }
+        }
+        return tr.changes.empty ? decorations : cmView.Decoration.none;
+      },
+      provide(field) {
+        return cmView.EditorView.decorations.from(field);
+      },
+    });
 
     // ── Placeholder marker state field ──
     // Codespace overlays an always-on underline on every value position.
@@ -664,6 +758,7 @@ export class MorphicCodeEditor {
       ...(langJs ? [langJs.javascript()] : []),
       highlightField,
       ...(showPlaceholderMarkers ? [placeholderField] : []),
+      ...(onRepeat ? [repeatField] : []),
       cursorListener,
       lineSelectionListener,
       this.themeCompartment.of(themeExt),
@@ -702,6 +797,10 @@ export class MorphicCodeEditor {
       this.editorView.dispatch({
         effects: this.metadataEffect.of(this.metadata),
       });
+    }
+
+    if (result.repeats?.length) {
+      this.editorView.dispatch({ effects: repeatEffect.of(result.repeats) });
     }
 
     // Populate placeholder decorations for the initial doc.
@@ -1472,6 +1571,7 @@ export class MorphicCodeEditor {
     const effects: StateEffect<unknown>[] = [];
     if (this.metadataEffect) effects.push(this.metadataEffect.of(result.metadata));
     if (this.placeholderEffect) effects.push(this.placeholderEffect.of(result.placeholders));
+    if (this.repeatEffect) effects.push(this.repeatEffect.of(result.repeats ?? []));
     if (this.groupsEffect) effects.push(this.groupsEffect.of(result.groups ?? []));
     this.editorView.dispatch({
       changes: {

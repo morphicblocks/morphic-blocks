@@ -264,6 +264,21 @@
           "items": { "type": "string" }
         },
         "strict": { "type": "boolean" },
+        "repeat": {
+          "description": "Let a value slot hold any number of values, written one after the other.",
+          "type": "object",
+          "properties": {
+            "separator": {
+              "description": "What is written between two entries: one text, or a text per element name. \", \" by default.",
+              "oneOf": [
+                { "type": "string" },
+                { "type": "object", "additionalProperties": { "type": "string" } }
+              ]
+            },
+            "count": { "description": "Entries a new block starts with (1 by default).", "type": "integer", "minimum": 0 }
+          },
+          "additionalProperties": false
+        },
         "align": { "enum": ["left", "centre", "right"] },
         "label": { "type": "string" },
         "default": { "$ref": "#/$defs/emptyDefault" }

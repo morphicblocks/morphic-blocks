@@ -225,6 +225,17 @@ export type MorphicFieldDefinition =
   | { type: "number"; default?: number; min?: number; max?: number; precision?: number }
   | { type: "checkbox"; default?: boolean };
 
+/** How a repeating slot behaves. */
+export interface MorphicRepeatConfig {
+  /**
+   * What is written between two entries: one text for every element, or a
+   * text per element name (`{ "python": ", ", "concept": " and " }`). `, ` by default.
+   */
+  separator?: string | Record<string, string>;
+  /** How many entries a new block starts with (1 by default). */
+  count?: number;
+}
+
 export interface MorphicInputSlotDefinition {
   kind?: MorphicInputKind;
   name?: string;
@@ -235,6 +246,13 @@ export interface MorphicInputSlotDefinition {
    * refused, here and below the blocks already in the slot. Needs a `check`.
    */
   strict?: boolean;
+  /**
+   * Let the slot hold any number of values, e.g. the parameters of a function
+   * or the items of a list. The template names the slot once (`def f(%1):`);
+   * the entries are written one after the other with `separator` between
+   * them. Value slots only.
+   */
+  repeat?: MorphicRepeatConfig;
   align?: MorphicInputAlign;
   label?: string;
   /**
@@ -524,6 +542,12 @@ export interface MorphicBehaviorProxy {
    * Use these where the value is emitted as a string (e.g. a text block).
    */
   quoted: Record<string, string>;
+  /**
+   * The generated code of each filled entry of a repeating slot, keyed by the
+   * slot's name: `proxy.lists.PARAMS` is `["a", "b"]`. `proxy.inputs.PARAMS`
+   * holds the same entries joined with `, `.
+   */
+  lists: Record<string, string[]>;
 }
 
 export type MorphicCodeBehavior = (proxy: MorphicBehaviorProxy) => string;
@@ -857,12 +881,25 @@ export interface MorphicPlaceholderRange {
   emptySlot?: { parentBlockId: string; inputName: string };
 }
 
+/** Where the entries of a repeating slot end in generated text; text views put the slot's buttons there. */
+export interface MorphicRepeatRange {
+  blockId: string;
+  /** The slot's name (the entries' inputs are `<name>_0`, `<name>_1`, …). */
+  slotName: string;
+  /** How many entries the slot has. */
+  count: number;
+  /** Character offset right after the last entry (or where the first would be). */
+  at: number;
+}
+
 /** Result of `generateJavaScriptWithMetadata()`. */
 export interface MorphicCodeGenerationResult {
   code: string;
   metadata: MorphicCodeMetadata;
   /** Value-slot ranges with default/set classification. Empty if no value slots emitted. */
   placeholders: MorphicPlaceholderRange[];
+  /** Where each repeating slot's entries end in the text. Empty if the text has none. */
+  repeats?: MorphicRepeatRange[];
   /**
    * Line range (1-based, inclusive) of each group of connected blocks, a stack
    * in the workspace, in text order. Text views mark these lines with classes.
@@ -993,6 +1030,13 @@ export interface MorphicCodeEditorOptions {
    * `edit.blockId`. Re-codegen + re-render then refresh the codespace.
    */
   onPlaceholderApply?: (edit: MorphicPlaceholderEditTarget, newValue: string) => void;
+  /**
+   * Called when a plus or minus button of a repeating slot is pressed, with
+   * the block, the slot's name and +1 or -1. When set, the editor shows the
+   * buttons after each repeating slot's last entry, on the line the pointer
+   * is over and on selected lines.
+   */
+  onRepeat?: (blockId: string, slotName: string, delta: number) => void;
   /**
    * Whether value-slot underline markers are shown in this editor. The codespace
    * uses them as a form-field affordance for inline editing; read-only display

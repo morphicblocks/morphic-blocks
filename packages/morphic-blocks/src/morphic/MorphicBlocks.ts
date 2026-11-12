@@ -11,6 +11,8 @@ import {
   captureFieldValues,
   keepOmittedFields,
   decorateBlockRoot,
+  forgetInputDefaults,
+  getManagedBlockMode,
   isOnCanvas,
   restoreFieldValues,
   type MorphicManagedBlock,
@@ -25,8 +27,9 @@ import { applyBlockShapes, createDefinitionMap, expandDefaultElements } from "./
 import { applyFont, measuredFont, readCssFont, remeasureBlocks, type MorphicBlockFont } from "./block-font";
 import { validateDefinitions } from "./validate-definitions";
 import { checkPresets, checkViewDeclarations, movedDefinitionErrors, normalizeViews } from "./check-definitions";
-import { resolveElementType, withCodeSettings } from "./element-types";
+import { resolveDefaultConfig, resolveElementType, withCodeSettings } from "./element-types";
 import { formatValue } from "./value-format";
+import { loadRepeatState, repeatCount, repeatInputName, repeatingSlots, saveRepeatState, setRepeatCount } from "./repeat-slots";
 import { enforceStrictSlots } from "./strict-slots";
 import { MorphicStyleManager, type MorphicModeStyle } from "./styles";
 import { toModeClassToken } from "./template";
@@ -50,6 +53,7 @@ import type {
   MorphicCodeElementConfig,
   MorphicElementTypeEntry,
   MorphicHighlightDefinition,
+  MorphicInputSlotDefinition,
   MorphicModeDefinition,
   MorphicModeName,
   MorphicMountConfig,
@@ -2416,6 +2420,10 @@ export class MorphicBlocks extends EventTarget {
               canDragBlock: (blockId: string) => this.canMoveInCodespace(blockId),
               onPlaceholderApply: (edit: MorphicPlaceholderEditTarget, value: string) =>
                 this.applyPlaceholderEdit(edit, value),
+              onRepeat: (blockId: string, slotName: string, delta: number) => {
+                const block = this.workspace?.getBlockById(blockId);
+                if (block) this.changeRepeat(block, slotName, delta);
+              },
             }
           : { showPlaceholderMarkers: false }),
       },
@@ -3073,6 +3081,29 @@ export class MorphicBlocks extends EventTarget {
           const owner = workspaceOwners.get(this.workspace) ?? fallbackOwners.get(blocklyType);
           owner?.initManagedBlock(this, identifier);
         },
+        // How many entries each repeating slot has; `null` for a block without one.
+        saveExtraState(this: Blockly.BlockSvg) {
+          const owner = workspaceOwners.get(this.workspace) ?? fallbackOwners.get(blocklyType);
+          const definition = owner?.definitions.get(identifier);
+          return definition ? saveRepeatState(this, definition) : null;
+        },
+        loadExtraState(this: Blockly.BlockSvg, state: unknown) {
+          const owner = workspaceOwners.get(this.workspace) ?? fallbackOwners.get(blocklyType);
+          const definition = owner?.definitions.get(identifier);
+          if (owner && definition) owner.loadBlockState(this, definition, state);
+        },
+        // The same state for programs kept as XML.
+        mutationToDom(this: Blockly.BlockSvg & { saveExtraState(): unknown }) {
+          const state = this.saveExtraState();
+          if (!state) return null;
+          const mutation = Blockly.utils.xml.createElement("mutation");
+          mutation.setAttribute("state", JSON.stringify(state));
+          return mutation;
+        },
+        domToMutation(this: Blockly.BlockSvg & { loadExtraState(state: unknown): void }, mutation: Element) {
+          const state = mutation.getAttribute("state");
+          if (state) this.loadExtraState(JSON.parse(state));
+        },
       };
 
       this.registeredBlockTypes.add(blocklyType);
@@ -3096,6 +3127,83 @@ export class MorphicBlocks extends EventTarget {
         ? resolveElementView(definition, mode, this.elementTypes).elementName
         : resolveBlockView(definition, mode, this.elementTypes, this.mountConfig?.modes ?? []).elementName;
     lifecycleBehavior?.init?.(block, this.createBehaviorContext(block, definition, element ?? mode, context, mode));
+  }
+
+  /** Take the state saved with a block: how many entries its repeating slots have. */
+  private loadBlockState(block: Blockly.BlockSvg, definition: MorphicBlockDefinition, state: unknown): void {
+    const slots = repeatingSlots(definition);
+    const before = new Map([...slots].map(([name, slot]) => [name, repeatCount(block, name, slot)]));
+    if (!loadRepeatState(block, definition, state)) return;
+    // Entries that go take their default with them: it was made for the
+    // entry (when the block was built, or by the plus an undo takes back).
+    Blockly.Events.disable();
+    try {
+      for (const [name, slot] of slots) {
+        for (let index = repeatCount(block, name, slot); index < (before.get(name) ?? 0); index++) {
+          const held = block.getInput(repeatInputName(name, index))?.connection?.targetBlock();
+          if (held && this.isSlotDefault(block, slot, held)) held.dispose(false);
+        }
+      }
+    } finally {
+      Blockly.Events.enable();
+    }
+    this.rebuildBlock(block);
+  }
+
+  /** Whether the block in a slot is the slot's placeholder default (a real block the framework put there). */
+  private isSlotDefault(block: Blockly.Block, slot: MorphicInputSlotDefinition, held: Blockly.Block): boolean {
+    const config = resolveDefaultConfig(slot, this.elementTypes[getManagedBlockMode(block) ?? ""]);
+    return !held.isShadow() && !!config?.placeholder && held.type === resolveBlocklyType(config.placeholder, this.definitions);
+  }
+
+  /** Build a block again as its view shows it now, e.g. after a repeating slot got or lost an entry. */
+  private rebuildBlock(block: Blockly.BlockSvg): void {
+    const definition = this.definitions.get(toCleanId(block.type));
+    if (!definition) return;
+    const context: MorphicRenderContext = block.workspace.isFlyout ? "toolbox" : "workspace";
+    const mode = this.viewWorkspaceElements.get(block.workspace) ?? this.resolveMode(context);
+    Blockly.Events.disable();
+    try {
+      this.applyView(block, definition, mode, context);
+    } finally {
+      Blockly.Events.enable();
+    }
+  }
+
+  /**
+   * Give a repeating slot one entry more or less (`delta` +1 or -1). The last
+   * entry goes; a block in it is set free first, so nothing is deleted. One
+   * undo takes the change back, and other views follow like any other edit.
+   */
+  changeRepeat(block: Blockly.Block, slotName: string, delta: number): void {
+    const definition = this.definitions.get(toCleanId(block.type));
+    const slot = definition ? repeatingSlots(definition).get(slotName) : undefined;
+    if (!definition || !slot) return;
+    const count = repeatCount(block, slotName, slot);
+    const next = Math.max(0, count + delta);
+    if (next === count) return;
+
+    const group = Blockly.Events.getGroup();
+    if (!group) Blockly.Events.setGroup(true);
+    try {
+      const before = JSON.stringify(saveRepeatState(block, definition));
+      for (let index = next; index < count; index++) {
+        const held = block.getInput(repeatInputName(slotName, index))?.connection?.targetBlock();
+        if (!held || held.isShadow()) continue;
+        // The slot's own default goes with the entry; a block someone put there is kept.
+        const isDefault = this.isSlotDefault(block, slot, held);
+        held.unplug();
+        if (isDefault) held.dispose(false);
+      }
+      // A new entry starts like the entry of a new block.
+      for (let index = count; index < next; index++) forgetInputDefaults(block, repeatInputName(slotName, index));
+      setRepeatCount(block, slotName, next);
+      this.rebuildBlock(block as Blockly.BlockSvg);
+      const BlockChange = Blockly.Events.get(Blockly.Events.BLOCK_CHANGE);
+      Blockly.Events.fire(new BlockChange(block, "mutation", null, before, JSON.stringify(saveRepeatState(block, definition))));
+    } finally {
+      if (!group) Blockly.Events.setGroup(false);
+    }
   }
 
   private validateViews(
@@ -3177,6 +3285,11 @@ export class MorphicBlocks extends EventTarget {
       elementTypes: isMainWorkspace ? this.elementTypes : undefined,
       codeSettings: this.elementTypes,
       resolveBlocklyType: (ref) => resolveBlocklyType(ref, this.definitions),
+      // Buttons only where the block can be edited: not on tiles, not in read only views.
+      onRepeat:
+        context === "workspace" && !block.workspace.options.readOnly
+          ? (slotName, delta) => this.changeRepeat(block, slotName, delta)
+          : undefined,
     });
     this.styleBlock(block, definition);
 

@@ -160,7 +160,12 @@ export function validateDefinitions(
     for (const [name, valueTypes] of valueTypeTokens) {
       for (const index of valueTypes) {
         const slot = def.inputSlots?.[String(index)];
-        if (!placeholderSets.get(name)?.has(index) || slot?.kind === "statement") {
+        if (slot?.repeat) {
+          errors.push(
+            `Block "${id}": element "${name}" uses %${index}:type, but %${index} repeats. ` +
+              `A slot with several values has no one type.`,
+          );
+        } else if (!placeholderSets.get(name)?.has(index) || slot?.kind === "statement") {
           errors.push(
             `Block "${id}": element "${name}" uses %${index}:type, but %${index} is not a value slot in it — ` +
               `the type comes from the value in that slot.`,
@@ -266,6 +271,23 @@ export function validateDefinitions(
       if (slot?.kind !== undefined && !SLOT_KINDS.includes(slot.kind)) {
         errors.push(
           `Block "${id}": inputSlots["${key}"] has unknown kind "${slot.kind}". Use one of: ${SLOT_KINDS.join(", ")}.`,
+        );
+      }
+      if (slot?.repeat && (slot.kind ?? "value") !== "value") {
+        errors.push(
+          `Block "${id}": inputSlots["${key}"] repeats, but it is a statement slot. Only value slots repeat; a statement slot already holds any number of blocks.`,
+        );
+      }
+      if (slot?.repeat && !slot.name) {
+        errors.push(`Block "${id}": inputSlots["${key}"] repeats but has no name. Give it a "name"; its entries are named after it.`);
+      }
+      // The entries of a repeating slot are named `<name>_0`, `<name>_1`, …
+      const entryOf = Object.values(def.inputSlots ?? {}).find(
+        (other) => other?.repeat && other.name && slot?.name?.startsWith(`${other.name}_`) && /^\d+$/.test(slot.name.slice(other.name.length + 1)),
+      );
+      if (entryOf) {
+        errors.push(
+          `Block "${id}": inputSlots["${key}"] is named "${slot!.name}", which is the name of an entry of the repeating slot "${entryOf.name}". Give it another name.`,
         );
       }
       if (slot?.strict && (slot.check === undefined || slot.check.length === 0)) {

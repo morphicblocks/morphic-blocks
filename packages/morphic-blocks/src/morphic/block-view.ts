@@ -14,6 +14,7 @@ import {
 import { MorphicDropdown, MorphicReference } from "./dropdown-fields";
 import { resolveDefaultConfig } from "./element-types";
 import { findParentField } from "./parent-field";
+import { isRepeating, repeatCount, repeatInputName, repeatSeparator, slotInputName, slotOfInput } from "./repeat-slots";
 import { markStrictBlock, markStrictSlot } from "./strict-slots";
 import { isValueTypeLabel, VALUE_TYPE_FIELD, valueTypeName } from "./value-type";
 import {
@@ -54,7 +55,20 @@ export type MorphicManagedBlock = Blockly.BlockSvg & {
    * until a mode that shows the field again restores it.
    */
   __morphicFieldMemory?: Map<string, unknown>;
+  /** The state of every default (shadow) the block has had, by input name. */
+  __morphicShadowMemory?: Map<string, Blockly.serialization.blocks.State>;
 };
+
+/**
+ * Make an input of a block new again: it gets its default like the input of
+ * a new block, not what an earlier input of that name held. For the entry a
+ * repeating slot gets with plus.
+ */
+export function forgetInputDefaults(block: Blockly.Block, inputName: string): void {
+  const managed = block as MorphicManagedBlock;
+  managed.__morphicPlaceholderSlots?.delete(inputName);
+  managed.__morphicShadowMemory?.delete(inputName);
+}
 
 export interface MorphicApplyBlockViewParams {
   block: Blockly.BlockSvg;
@@ -81,15 +95,24 @@ export interface MorphicApplyBlockViewParams {
    * Unlike `elementTypes`, it adds no slot defaults. Falls back to `elementTypes`.
    */
   codeSettings?: Record<string, MorphicElementTypeEntry>;
+  /**
+   * Called when a plus or minus button of a repeating slot is pressed, with
+   * the slot's name and +1 or -1. Without it the block has no such buttons
+   * (toolbox tiles, read only views).
+   */
+  onRepeat?: (slotName: string, delta: number) => void;
 }
 
 export function applyBlockView(params: MorphicApplyBlockViewParams): void {
   const { block, definition, view, mode, context, elementTypes, resolveBlocklyType } = params;
   const connectedChildren = captureConnectedChildren(block);
-  const shadowStates = captureShadowStates(block);
+  // Every default the block has had, by input: an entry of a repeating slot
+  // that is removed and comes back (an undo) gets the value typed into it.
+  const shadowStates = ((block as MorphicManagedBlock).__morphicShadowMemory ??= new Map());
+  for (const [inputName, state] of captureShadowStates(block)) shadowStates.set(inputName, state);
 
   removeInputs(block);
-  renderTemplate(block, definition, view);
+  renderTemplate(block, definition, view, params.onRepeat);
   applyConnections(block, definition);
 
   if (typeof definition.inputsInline === "boolean") {
@@ -254,11 +277,13 @@ function renderTemplate(
   block: Blockly.BlockSvg,
   definition: MorphicBlockDefinition,
   view: MorphicResolvedView,
+  onRepeat?: (slotName: string, delta: number) => void,
 ): void {
   const tokens = parseTemplate(view.template);
   const pendingFields: PendingField[] = [];
   const createdPlaceholders = new Set<number>();
   const placedFields = new Set<string>();
+  const flush = (input: Blockly.Input): void => flushPendingFields(input, pendingFields);
 
   for (const token of tokens) {
     if (token.kind === "text") {
@@ -308,7 +333,7 @@ function renderTemplate(
       const duplicatePlaceholder = block.appendDummyInput(
         `DUPLICATE_${token.index}_${block.inputList.length}`,
       );
-      flushPendingFields(duplicatePlaceholder, pendingFields);
+      flush(duplicatePlaceholder);
       duplicatePlaceholder.appendField(`%${token.index}`);
       continue;
     }
@@ -316,16 +341,35 @@ function renderTemplate(
     createdPlaceholders.add(token.index);
     const slot = resolveSlotDefinition(definition, view, token.index);
 
+    if (slot && isRepeating(slot)) {
+      // One input per entry, the separator between them as a label.
+      const slotName = slotInputName(slot, token.index);
+      const count = repeatCount(block, slotName, slot);
+      const separator = normalizeTemplateText(repeatSeparator(slot, view.elementName));
+      for (let index = 0; index < count; index++) {
+        if (index > 0 && separator) pendingFields.push(separator);
+        flushPendingFields(createInputFromSlot(block, slot, token.index, repeatInputName(slotName, index)), pendingFields);
+      }
+      // The buttons follow the last entry, before the text that closes the
+      // list (`f(a, b − +)`), as in a codespace: with two lists on one row
+      // each pair stays with its own.
+      if (onRepeat) {
+        if (count > 0) pendingFields.push(new MorphicRepeatButton("remove", () => onRepeat(slotName, -1)));
+        pendingFields.push(new MorphicRepeatButton("add", () => onRepeat(slotName, 1)));
+      }
+      continue;
+    }
+
     // Statement inputs always start a new row in Blockly.
     // Flush pending fields to a separate dummy input so they render inline
     // with the preceding value input instead of wrapping onto the statement row.
     if (slot?.kind === "statement" && pendingFields.length > 0) {
       const dummyInput = block.appendDummyInput(`PRE_STMT_${block.inputList.length}`);
-      flushPendingFields(dummyInput, pendingFields);
+      flush(dummyInput);
     }
 
     const input = createInputFromSlot(block, slot, token.index);
-    flushPendingFields(input, pendingFields);
+    flush(input);
 
     if (slot?.label) {
       input.appendField(slot.label);
@@ -336,7 +380,7 @@ function renderTemplate(
     const trailingInput = block.appendDummyInput(
       `TRAILING_${block.inputList.length}`,
     );
-    flushPendingFields(trailingInput, pendingFields);
+    flush(trailingInput);
   }
 
   if (block.inputList.length === 0) {
@@ -395,8 +439,8 @@ function createInputFromSlot(
   block: Blockly.BlockSvg,
   slot: MorphicInputSlotDefinition | undefined,
   placeholderIndex: number,
+  inputName = slotInputName(slot, placeholderIndex),
 ): Blockly.Input {
-  const inputName = slot?.name ?? `ARG${placeholderIndex}`;
   const kind = slot?.kind ?? "value";
   let input: Blockly.Input;
 
@@ -441,7 +485,35 @@ type PendingField =
   | string
   | Blockly.FieldImage
   | MorphicFieldCopy
+  | MorphicRepeatButton
   | { field: Blockly.Field; name: string };
+
+/**
+ * The plus or minus button of a repeating slot: a small field that is pressed
+ * instead of edited. It is text, so app CSS styles it through its classes,
+ * `morphic-repeat-button` and `morphic-repeat-add` / `morphic-repeat-remove`.
+ */
+export class MorphicRepeatButton extends Blockly.Field<string> {
+  override EDITABLE = true;
+  override SERIALIZABLE = false;
+  override CURSOR = "pointer";
+
+  constructor(
+    readonly action: "add" | "remove",
+    private readonly press: () => void,
+  ) {
+    super(action === "add" ? "+" : "−");
+  }
+
+  override initView(): void {
+    super.initView();
+    this.fieldGroup_?.classList.add("morphic-repeat-button", `morphic-repeat-${this.action}`);
+  }
+
+  protected override showEditor_(): void {
+    this.press();
+  }
+}
 
 /**
  * A label that repeats a field's text: where a template names one of the
@@ -622,15 +694,6 @@ function attachEmptyDefaults(
 ): void {
   const elementEntry = view.elementName ? elementTypes[view.elementName] : undefined;
 
-  // Build a lookup so we can find the slot definition for each input by name.
-  const slotByInputName = new Map<string, MorphicInputSlotDefinition>();
-  for (const slot of Object.values(definition.inputSlots ?? {})) {
-    if (!slot?.name) continue;
-    if ((slot.kind ?? "value") !== "value") continue;
-    slotByInputName.set(slot.name, slot);
-  }
-  if (slotByInputName.size === 0) return;
-
   const workspace = block.workspace;
 
   for (const input of block.inputList) {
@@ -638,8 +701,9 @@ function attachEmptyDefaults(
     if (!connection) continue;
     if (connection.type !== Blockly.INPUT_VALUE) continue;
 
-    const slot = slotByInputName.get(input.name);
-    if (!slot) continue;
+    // The slot of this input; an entry of a repeating slot takes its slot's default.
+    const slot = slotOfInput(definition, input.name);
+    if (!slot?.name || (slot.kind ?? "value") !== "value") continue;
 
     const config = resolveDefaultConfig(slot, elementEntry);
     if (!config) continue;
