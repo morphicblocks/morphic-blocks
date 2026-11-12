@@ -1,4 +1,5 @@
 import type { Language } from "@morphicblocks/blocks";
+import { go } from "./go.js";
 import { java } from "./java.js";
 import { javascript } from "./javascript.js";
 import { python } from "./python.js";
@@ -9,7 +10,7 @@ import { python } from "./python.js";
  * names, empty slots, highlighting). Pass the ones you use to `define()`:
  * `define({ blocks: standard, languages: { python, java } }, own)`.
  */
-export { java, javascript, python };
+export { go, java, javascript, python };
 
 /** Every language by name, e.g. for a language picker. */
-export const languages: Record<string, Language> = { python, javascript, java };
+export const languages: Record<string, Language> = { python, javascript, java, go };
