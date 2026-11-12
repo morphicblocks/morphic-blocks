@@ -1,5 +1,6 @@
 import * as Blockly from "blockly";
 import { toCleanId } from "./block-namespace";
+import { findParentField } from "./parent-field";
 import { parseTemplate, type MorphicTemplateToken } from "./template";
 import type { MorphicElementTypeWithCode } from "./element-types";
 import { resolveBlockView } from "./view-resolver";
@@ -267,6 +268,19 @@ function renderBlock(
       continue;
     }
     if (token.kind === "image") {
+      continue;
+    }
+    if (token.kind === "parentField") {
+      // Written as the parent writes it in this language; the parent is where it is edited.
+      const field = findParentField(block, token.name);
+      const parent = field?.getSourceBlock();
+      const parentDefinition = parent ? ctx.definitions.get(toCleanId(parent.type)) : undefined;
+      if (field) {
+        appendText(
+          state,
+          parentDefinition ? resolveFieldDisplay(parentDefinition, elementName, token.name, field) : readFieldText(field),
+        );
+      }
       continue;
     }
     if (token.kind === "valueType") {

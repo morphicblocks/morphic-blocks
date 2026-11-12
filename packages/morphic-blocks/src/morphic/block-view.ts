@@ -12,6 +12,7 @@ import {
   ALIGN_RIGHT,
 } from "./constants";
 import { resolveDefaultConfig } from "./element-types";
+import { findParentField } from "./parent-field";
 import { markStrictSlot } from "./strict-slots";
 import { isValueTypeLabel, VALUE_TYPE_FIELD, valueTypeName } from "./value-type";
 import {
@@ -279,6 +280,11 @@ function renderTemplate(
       continue;
     }
 
+    if (token.kind === "parentField") {
+      pendingFields.push(new MorphicFieldCopy(token.name, true));
+      continue;
+    }
+
     if (token.kind === "field") {
       // Declared fields are built here at the token position. Undeclared tokens
       // are left for a behavior's onViewApplied to supply (custom/plugin fields).
@@ -341,7 +347,7 @@ function renderTemplate(
  * Fill the labels that follow something else on the block, and keep them in
  * step: a `%1:type` label names the type of the value in its slot (a value
  * connected, replaced or removed changes it), the copy of a field shows the
- * field's text.
+ * field's text (its own, or a parent's, which changes with every move).
  */
 function showFollowingLabels(
   block: Blockly.BlockSvg,
@@ -437,21 +443,26 @@ type PendingField =
   | { field: Blockly.Field; name: string };
 
 /**
- * What a template shows where it names a field a second time: a label with
- * the field's text. It has no name, so the block keeps one value per field.
+ * A label that repeats a field's text: where a template names one of the
+ * block's fields a second time, or a field of a block around it
+ * (`%parent.NAME`). It has no name, so the block keeps one value per field.
  */
 class MorphicFieldCopy extends Blockly.FieldLabel {
-  constructor(readonly fieldName: string) {
+  constructor(
+    readonly fieldName: string,
+    readonly fromParent = false,
+  ) {
     super("");
   }
 }
 
-/** Make the copies of a block's fields show what the fields show now. */
+/** Make the copies on a block show what their fields show now. */
 function updateFieldCopies(block: Blockly.Block): void {
   for (const input of block.inputList) {
     for (const copy of input.fieldRow) {
       if (!(copy instanceof MorphicFieldCopy)) continue;
-      const text = block.getField(copy.fieldName)?.getText() ?? "";
+      const field = copy.fromParent ? findParentField(block, copy.fieldName) : block.getField(copy.fieldName);
+      const text = field?.getText() ?? "";
       // No event: a copy only follows (and has no name an undo could find it by).
       if (copy.getValue() !== text) copy.setValue(text, false);
     }

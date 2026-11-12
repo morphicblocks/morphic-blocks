@@ -27,17 +27,31 @@ export interface MorphicFieldToken {
   name: string;
 }
 
+/** `%parent.NAME`: the `NAME` field of the nearest block around this one that has it. */
+export interface MorphicParentFieldToken {
+  kind: "parentField";
+  name: string;
+}
+
 export type MorphicTemplateToken =
   | MorphicImageToken
   | MorphicTextToken
   | MorphicPlaceholderToken
   | MorphicValueTypeToken
-  | MorphicFieldToken;
+  | MorphicFieldToken
+  | MorphicParentFieldToken;
 
 const DEFAULT_IMAGE_SIZE = 18;
 
 /** Written after a slot's number, `%1:type`, for the type of the slot's value. */
 const VALUE_TYPE_SUFFIX = ":type";
+
+/** Written before a field's name, `%parent.NAME`, for a field of a block around this one. */
+const PARENT_FIELD_PREFIX = "%parent.";
+
+function isParentFieldStart(template: string, index: number): boolean {
+  return template.startsWith(PARENT_FIELD_PREFIX, index) && /[A-Z_]/.test(template[index + PARENT_FIELD_PREFIX.length] ?? "");
+}
 
 export function parseTemplate(template: string): MorphicTemplateToken[] {
   const tokens: MorphicTemplateToken[] = [];
@@ -79,6 +93,16 @@ export function parseTemplate(template: string): MorphicTemplateToken[] {
       continue;
     }
 
+    if (isParentFieldStart(template, index)) {
+      let end = index + PARENT_FIELD_PREFIX.length;
+      while (end < template.length && /[A-Z0-9_]/.test(template[end] ?? "")) {
+        end += 1;
+      }
+      tokens.push({ kind: "parentField", name: template.slice(index + PARENT_FIELD_PREFIX.length, end) });
+      index = end;
+      continue;
+    }
+
     if (char === "%" && /[A-Z_]/.test(template[index + 1] ?? "")) {
       let end = index + 1;
       while (end < template.length && /[A-Z0-9_]/.test(template[end] ?? "")) {
@@ -96,7 +120,7 @@ export function parseTemplate(template: string): MorphicTemplateToken[] {
       const isPlaceholderStart = nextChar === "%" && /\d/.test(template[textEnd + 1] ?? "");
       const isFieldStart = nextChar === "%" && /[A-Z_]/.test(template[textEnd + 1] ?? "");
       const isImgTagStart = nextChar === "<" && /^<img\b/i.test(template.slice(textEnd));
-      if (isImgTagStart || isPlaceholderStart || isFieldStart) {
+      if (isImgTagStart || isPlaceholderStart || isFieldStart || isParentFieldStart(template, textEnd)) {
         break;
       }
       textEnd += 1;
@@ -140,6 +164,10 @@ export function renderTemplateAsHtml(tokens: MorphicTemplateToken[]): string {
     }
     if (token.kind === "valueType") {
       return `<span class="morphic-value-type" data-slot-index="${token.index}"></span>`;
+    }
+    if (token.kind === "parentField") {
+      // A tile stands alone: there is no block around it to read from.
+      return "";
     }
     // placeholder
     return `<span class="morphic-toolbox-slot" data-slot-index="${token.index}"></span>`;
