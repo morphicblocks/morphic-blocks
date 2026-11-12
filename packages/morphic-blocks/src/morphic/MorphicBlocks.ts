@@ -1285,6 +1285,19 @@ export class MorphicBlocks extends EventTarget {
     );
   }
 
+  /**
+   * The program as a code element writes it, the text a codespace showing
+   * that element has: `engine.generateText("python")`. Works without a view
+   * of that element.
+   */
+  public generateText(element: string): string {
+    if (!this.workspace || !this.mountConfig) {
+      throw new Error("MorphicBlocks must be mounted before generateText can be used.");
+    }
+    this.checkViewElement("generateText", element);
+    return this.generateElementText(element).code;
+  }
+
   public generateJavaScriptWithMetadata(): MorphicCodeGenerationResult {
     if (!this.workspace || !this.mountConfig) {
       throw new Error(
