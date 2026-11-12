@@ -107,4 +107,29 @@ export const behaviors: MorphicBehaviorMap = {
   var_get(proxy) {
     return proxy.fields.VAR || "x";
   },
+
+  // ── Classes ─────────────────────────────────────────────
+  // The names are linked: "create object" lists the classes, "call method"
+  // the objects and methods, and each follows a rename.
+
+  class_define(proxy) {
+    const fields = proxy.inputs.FIELDS || "";
+    const methods = proxy.inputs.METHODS || "";
+    return `class ${proxy.fields.NAME || "Thing"} {\n${fields}\n${methods}\n}\n`;
+  },
+  class_field(proxy) {
+    return `${proxy.fields.NAME || "field"} = ${proxy.inputs.VAL || "undefined"};\n`;
+  },
+  class_method(proxy) {
+    return `${proxy.fields.NAME || "method"}() {\n${proxy.inputs.DO || ""}\n}\n`;
+  },
+  class_this_field(proxy) {
+    return `this.${proxy.fields.NAME || "field"}`;
+  },
+  class_new(proxy) {
+    return `let ${proxy.fields.VAR || "object"} = new ${proxy.fields.CLASS || "Thing"}();\n`;
+  },
+  class_call(proxy) {
+    return `${proxy.fields.VAR || "object"}.${proxy.fields.METHOD || "method"}();\n`;
+  },
 };

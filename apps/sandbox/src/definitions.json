@@ -493,6 +493,10 @@
     {
       "name": "Query",
       "color": "#4a8fd4"
+    },
+    {
+      "name": "Classes",
+      "color": "#e08a3c"
     }
   ],
   "blocks": [
@@ -1168,6 +1172,173 @@
       },
       "shape": "statement",
       "inputsInline": true
+    },
+    {
+      "identifier": "class_define",
+      "category": "Classes",
+      "elements": {
+        "icon": "icons/var_declare.svg",
+        "title": "Class",
+        "description": "A class with fields and methods",
+        "concept": "Class %NAME\nfields %1\nmethods %2",
+        "python": "class %NAME:\n    def __init__(self):\n        %1\n\n    %2",
+        "javascript": "class %NAME {\n  %1\n\n  %2\n}",
+        "go": "type %NAME struct {\n    %1\n}\n\n%2"
+      },
+      "fields": {
+        "NAME": {
+          "type": "text",
+          "default": "Dog"
+        }
+      },
+      "inputSlots": {
+        "1": {
+          "kind": "statement",
+          "name": "FIELDS",
+          "check": "ClassField",
+          "strict": true
+        },
+        "2": {
+          "kind": "statement",
+          "name": "METHODS",
+          "check": "ClassMethod",
+          "strict": true
+        }
+      },
+      "shape": "statement"
+    },
+    {
+      "identifier": "class_field",
+      "category": "Classes",
+      "elements": {
+        "icon": "icons/var_declare.svg",
+        "title": "Field",
+        "description": "A field of a class, with its start value",
+        "concept": "Field %NAME = %1",
+        "python": "self.%NAME = %1",
+        "javascript": "%NAME = %1;",
+        "go": "%NAME %1:type // starts as %1"
+      },
+      "fields": {
+        "NAME": {
+          "type": "text",
+          "default": "name"
+        }
+      },
+      "inputSlots": {
+        "1": {
+          "kind": "value",
+          "name": "VAL",
+          "default": {
+            "shadow": "text_value",
+            "fieldValues": {
+              "TEXT": "Rex"
+            }
+          }
+        }
+      },
+      "previousStatement": "ClassField",
+      "nextStatement": "ClassField",
+      "inputsInline": true
+    },
+    {
+      "identifier": "class_method",
+      "category": "Classes",
+      "elements": {
+        "icon": "icons/var_declare.svg",
+        "title": "Method",
+        "description": "A method of a class",
+        "concept": "Method %NAME\ndo %1",
+        "python": "def %NAME(self):\n    %1",
+        "javascript": "%NAME() {\n  %1\n}",
+        "go": "func (self *%parent.NAME) %NAME() {\n    %1\n}"
+      },
+      "fields": {
+        "NAME": {
+          "type": "text",
+          "default": "bark"
+        }
+      },
+      "inputSlots": {
+        "1": {
+          "kind": "statement",
+          "name": "DO"
+        }
+      },
+      "previousStatement": "ClassMethod",
+      "nextStatement": "ClassMethod"
+    },
+    {
+      "identifier": "class_this_field",
+      "category": "Classes",
+      "elements": {
+        "icon": "icons/var_declare.svg",
+        "title": "My Field",
+        "description": "Reads a field of this object, inside a method",
+        "concept": "My %NAME",
+        "python": "self.%NAME",
+        "javascript": "this.%NAME",
+        "go": "self.%NAME"
+      },
+      "fields": {
+        "NAME": {
+          "type": "reference",
+          "to": "class_field.NAME",
+          "default": "name"
+        }
+      },
+      "output": true
+    },
+    {
+      "identifier": "class_new",
+      "category": "Classes",
+      "elements": {
+        "icon": "icons/var_declare.svg",
+        "title": "Create Object",
+        "description": "Creates an object of a class and names it",
+        "concept": "Create %VAR as new %CLASS",
+        "python": "%VAR = %CLASS()",
+        "javascript": "let %VAR = new %CLASS();",
+        "go": "%VAR := &%CLASS{}"
+      },
+      "fields": {
+        "VAR": {
+          "type": "text",
+          "default": "rex"
+        },
+        "CLASS": {
+          "type": "reference",
+          "to": "class_define.NAME",
+          "default": "Dog"
+        }
+      },
+      "shape": "statement"
+    },
+    {
+      "identifier": "class_call",
+      "category": "Classes",
+      "elements": {
+        "icon": "icons/var_declare.svg",
+        "title": "Call Method",
+        "description": "Calls a method of an object",
+        "concept": "Ask %VAR to %METHOD",
+        "python": "%VAR.%METHOD()",
+        "javascript": "%VAR.%METHOD();",
+        "go": "%VAR.%METHOD()"
+      },
+      "fields": {
+        "VAR": {
+          "type": "reference",
+          "to": "class_new.VAR",
+          "default": "rex"
+        },
+        "METHOD": {
+          "type": "reference",
+          "to": "class_method.NAME",
+          "default": "bark"
+        }
+      },
+      "shape": "statement"
     }
   ]
 }
