@@ -148,6 +148,54 @@ function composesValues(block: Blockly.Block): boolean {
 }
 
 /**
+ * Whether a value inside another expression is written in brackets: one that
+ * composes other values, unless its own template already closes it. A call
+ * or a list (`max(%1, %2)`, `[%1]`) holds its values between its own
+ * brackets, so `(max(a, b)) + 1` would only add noise.
+ */
+function needsBrackets(block: Blockly.Block, ctx: RenderContext): boolean {
+  if (!composesValues(block)) return false;
+  const definition = ctx.definitions.get(toCleanId(block.type));
+  if (!definition) return true;
+  let template: string | undefined;
+  if (ctx.elementOverride) {
+    template = definition.elements[ctx.elementOverride];
+  } else {
+    try {
+      template = resolveBlockView(definition, ctx.mode, ctx.elementTypes, ctx.modeDefs).template;
+    } catch {
+      return true;
+    }
+  }
+  return template === undefined || !closesItself(template);
+}
+
+/**
+ * Whether a template's values all sit inside brackets of its own, with only
+ * a name in front: `random(%1, %2)`, `%NAME(%1)`, `new List(%1)`, `[%1]`,
+ * and `!(%1)`, which binds before any operator. A slot or another operator
+ * outside the brackets (`%1.get(%2)`, `-(%1)`, `f(%1) + %2`) means it is an
+ * operand like any other.
+ */
+export function closesItself(template: string): boolean {
+  const written = parseTemplate(template)
+    // A field in front of the brackets is the name that is called; a slot there is an operand.
+    .map((token) => (token.kind === "text" ? token.value : token.kind === "image" ? "" : token.kind === "field" ? "name" : "\u0001"))
+    .join("")
+    .trim();
+  if (!/[)\]}]$/.test(written)) return false;
+  const pairs: Record<string, string> = { ")": "(", "]": "[", "}": "{" };
+  const open: string[] = [];
+  for (const char of written) {
+    if (char === "(" || char === "[" || char === "{") open.push(char);
+    else if (char in pairs) {
+      if (open.pop() !== pairs[char]) return false;
+    } else if (open.length === 0 && !/[\p{L}\p{N}_$.: "'!]/u.test(char)) return false;
+  }
+  return open.length === 0;
+}
+
+/**
  * How many *value* slots this template renders. Two or more means its slots are
  * operands of a composed expression (`%1 %OP %2`), where a composed child needs
  * bracketing to preserve grouping. A single value slot is a whole sub-expression
@@ -422,7 +470,7 @@ function renderValueSlot(
   if (!target && rawTarget && ctx.definitions.has(toCleanId(rawTarget.type))) {
     const slotOffsetStart = state.output.length;
     const placeholdersBefore = state.placeholders.length;
-    renderBlock(rawTarget, ctx, state, composesSeveralValues && composesValues(rawTarget));
+    renderBlock(rawTarget, ctx, state, composesSeveralValues && needsBrackets(rawTarget, ctx));
     for (const shadow of rawTarget.getDescendants(false)) state.metadata.delete(shadow.id);
     if (state.output.length > slotOffsetStart) {
       const inner = state.placeholders.splice(placeholdersBefore);
@@ -507,7 +555,7 @@ function renderValueSlot(
   // quoting here. Drag affordance is provided by the per-block drag layer
   // in code-editor.ts; the placeholder mark is visual-only.
   const slotOffsetStart = state.output.length;
-  renderBlock(target, ctx, state, composesSeveralValues && composesValues(target));
+  renderBlock(target, ctx, state, composesSeveralValues && needsBrackets(target, ctx));
   recordPlaceholder(state, slotOffsetStart, "set", withTextLabels(detectAtomicEdit(target), target, ctx) ?? undefined);
 }
 

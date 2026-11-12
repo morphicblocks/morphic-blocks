@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import type * as Blockly from "blockly";
 import { MorphicBlocks } from "../src";
 import { applyBlockShapes, createDefinitionMap, expandDefaultElements } from "../src/morphic/definitions";
-import { generateTextFromWorkspace } from "../src/morphic/template-codegen";
+import { closesItself, generateTextFromWorkspace } from "../src/morphic/template-codegen";
 import type { MorphicBehaviorMap, MorphicBlocksFormat } from "../src/morphic/types";
 
 /**
@@ -170,5 +170,19 @@ describe("operand brackets", () => {
 
     expect(error).toBeNull();
     expect(output).toEqual([{ level: "log", text: "14" }]);
+  });
+});
+
+describe("a value that closes itself gets no brackets", () => {
+  test("a call or a list holds its values between its own brackets", () => {
+    for (const template of ["max(%1, %2)", "%NAME(%1)", "new Random().nextInt(%1, %2 + 1)", "rand::thread_rng().gen_range(%1..=%2)", "!(%1)", "[%1]", "[]any{%1}", '"".join(map(str, [%1]))']) {
+      expect(closesItself(template), template).toBe(true);
+    }
+  });
+
+  test("a slot, a field or an operator outside the brackets makes it an operand", () => {
+    for (const template of ["%1 %OP %2", "%1[%2]", "%1.get(%2)", "-(%1)", "f(%1) + g(%2)", "not %1", "%NAME", "(%1"]) {
+      expect(closesItself(template), template).toBe(false);
+    }
   });
 });
