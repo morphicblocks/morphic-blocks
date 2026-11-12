@@ -107,7 +107,7 @@ export function applyBlockView(params: MorphicApplyBlockViewParams): void {
   if (elementTypes) {
     attachEmptyDefaults(block, definition, view, elementTypes, resolveBlocklyType);
   }
-  showValueTypes(block, definition, view, params.codeSettings ?? elementTypes);
+  showFollowingLabels(block, definition, view, params.codeSettings ?? elementTypes);
   decorateBlockRoot(block, mode, context);
 
   const managedBlock = block as MorphicManagedBlock;
@@ -255,6 +255,7 @@ function renderTemplate(
   const tokens = parseTemplate(view.template);
   const pendingFields: PendingField[] = [];
   const createdPlaceholders = new Set<number>();
+  const placedFields = new Set<string>();
 
   for (const token of tokens) {
     if (token.kind === "text") {
@@ -281,7 +282,12 @@ function renderTemplate(
       // Declared fields are built here at the token position. Undeclared tokens
       // are left for a behavior's onViewApplied to supply (custom/plugin fields).
       const fieldDef = definition.fields?.[token.name];
-      if (fieldDef) {
+      if (fieldDef && placedFields.has(token.name)) {
+        // A block has each field once. Where the template names it again, a
+        // label repeats what the field shows.
+        pendingFields.push(new MorphicFieldCopy(token.name));
+      } else if (fieldDef) {
+        placedFields.add(token.name);
         pendingFields.push({
           field: createFieldFromDefinition(fieldDef, view.elementName),
           name: token.name,
@@ -331,36 +337,40 @@ function renderTemplate(
 }
 
 /**
- * Fill the labels of `%1:type` tokens with the type names of the values in
- * their slots, and keep them in step: a value connected, replaced or removed
- * changes the name.
+ * Fill the labels that follow something else on the block, and keep them in
+ * step: a `%1:type` label names the type of the value in its slot (a value
+ * connected, replaced or removed changes it), the copy of a field shows the
+ * field's text.
  */
-function showValueTypes(
+function showFollowingLabels(
   block: Blockly.BlockSvg,
   definition: MorphicBlockDefinition,
   view: MorphicResolvedView,
   codeSettings: Record<string, MorphicElementTypeEntry> | undefined,
 ): void {
-  const labels = block.inputList.flatMap((input) =>
-    input.fieldRow.filter(isValueTypeLabel),
-  );
-  if (labels.length === 0) {
-    // A mode without the token stops the updates an earlier mode set up
+  const fields = block.inputList.flatMap((input) => input.fieldRow);
+  const typeLabels = fields.filter(isValueTypeLabel);
+  const hasCopies = fields.some((field) => field instanceof MorphicFieldCopy);
+  if (typeLabels.length === 0 && !hasCopies) {
+    // A mode without such labels stops the updates an earlier mode set up
     // (Blockly takes no `null` here).
     if (block.onchange) block.setOnChange(() => {});
     return;
   }
   const elementEntry = view.elementName ? codeSettings?.[view.elementName] : undefined;
-  const update = () => {
-    for (const label of labels) {
+  const updateTypes = () => {
+    for (const label of typeLabels) {
       const index = label.name!.slice(VALUE_TYPE_FIELD.length);
       const name = valueTypeName(block, resolveSlotDefinition(definition, view, Number(index)), elementEntry);
-      if (label.getValue() !== name) label.setValue(name);
+      // No event: a label only follows, so it is no step of its own to undo.
+      if (label.getValue() !== name) label.setValue(name, false);
     }
   };
-  update();
+  updateTypes();
+  updateFieldCopies(block);
   block.setOnChange((event) => {
-    if (event.type === Blockly.Events.BLOCK_MOVE || event.type === Blockly.Events.BLOCK_CREATE) update();
+    if (event.type === Blockly.Events.BLOCK_MOVE || event.type === Blockly.Events.BLOCK_CREATE) updateTypes();
+    if (hasCopies) updateFieldCopies(block);
   });
 }
 
@@ -419,7 +429,30 @@ function resolveAlign(align: MorphicInputSlotDefinition["align"]): number {
 type PendingField =
   | string
   | Blockly.FieldImage
+  | MorphicFieldCopy
   | { field: Blockly.Field; name: string };
+
+/**
+ * What a template shows where it names a field a second time: a label with
+ * the field's text. It has no name, so the block keeps one value per field.
+ */
+class MorphicFieldCopy extends Blockly.FieldLabel {
+  constructor(readonly fieldName: string) {
+    super("");
+  }
+}
+
+/** Make the copies of a block's fields show what the fields show now. */
+function updateFieldCopies(block: Blockly.Block): void {
+  for (const input of block.inputList) {
+    for (const copy of input.fieldRow) {
+      if (!(copy instanceof MorphicFieldCopy)) continue;
+      const text = block.getField(copy.fieldName)?.getText() ?? "";
+      // No event: a copy only follows (and has no name an undo could find it by).
+      if (copy.getValue() !== text) copy.setValue(text, false);
+    }
+  }
+}
 
 function flushPendingFields(input: Blockly.Input, fields: PendingField[]): void {
   for (const field of fields) {
@@ -742,6 +775,7 @@ export function restoreFieldValues(
       }
     }
   }
+  updateFieldCopies(block);
 }
 
 function removeInputs(block: Blockly.BlockSvg): void {
