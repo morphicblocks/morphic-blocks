@@ -57,7 +57,35 @@ export type MorphicManagedBlock = Blockly.BlockSvg & {
   __morphicFieldMemory?: Map<string, unknown>;
   /** The state of every default (shadow) the block has had, by input name. */
   __morphicShadowMemory?: Map<string, Blockly.serialization.blocks.State>;
+  /**
+   * Set while a block is being made. A state loaded then belongs to a saved
+   * block (a program, a paste, an undo), not to an edit of this one.
+   */
+  __morphicFresh?: boolean;
 };
+
+/** The slots whose placeholder default a block has dealt with, to save with it; `undefined` when it has none. */
+export function savedPlaceholderSlots(block: Blockly.Block): string[] | undefined {
+  const handled = (block as MorphicManagedBlock).__morphicPlaceholderSlots;
+  return handled?.size ? [...handled] : undefined;
+}
+
+/**
+ * Give a block that is being made from a saved one the placeholder slots it
+ * had dealt with. The placeholders it was just built with are not its own:
+ * the saved block had kept, replaced or deleted them, and what it held is
+ * loaded next. Returns whether the state was taken.
+ */
+export function loadPlaceholderSlots(block: Blockly.Block, saved: unknown): boolean {
+  const managed = block as MorphicManagedBlock;
+  if (!managed.__morphicFresh || !Array.isArray(saved)) return false;
+  for (const input of block.inputList) {
+    const held = input.connection?.targetBlock();
+    if (held && !held.isShadow()) held.dispose(false);
+  }
+  managed.__morphicPlaceholderSlots = new Set(saved.filter((name): name is string => typeof name === "string"));
+  return true;
+}
 
 /**
  * Make an input of a block new again: it gets its default like the input of

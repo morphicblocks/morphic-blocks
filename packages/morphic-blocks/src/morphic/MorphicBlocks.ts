@@ -13,6 +13,8 @@ import {
   decorateBlockRoot,
   forgetInputDefaults,
   getManagedBlockMode,
+  loadPlaceholderSlots,
+  savedPlaceholderSlots,
   isOnCanvas,
   restoreFieldValues,
   type MorphicManagedBlock,
@@ -3098,7 +3100,11 @@ export class MorphicBlocks extends EventTarget {
         saveExtraState(this: Blockly.BlockSvg) {
           const owner = workspaceOwners.get(this.workspace) ?? fallbackOwners.get(blocklyType);
           const definition = owner?.definitions.get(identifier);
-          return definition ? saveRepeatState(this, definition) : null;
+          const repeat = definition ? saveRepeatState(this, definition) : null;
+          // The slots whose placeholder default the block has dealt with, so
+          // a copy made from this state gets none again.
+          const defaults = savedPlaceholderSlots(this);
+          return repeat || defaults ? { ...repeat, ...(defaults ? { defaults } : {}) } : null;
         },
         loadExtraState(this: Blockly.BlockSvg, state: unknown) {
           const owner = workspaceOwners.get(this.workspace) ?? fallbackOwners.get(blocklyType);
@@ -3131,6 +3137,12 @@ export class MorphicBlocks extends EventTarget {
     }
     const context: MorphicRenderContext = block.workspace.isFlyout ? "toolbox" : "workspace";
     const mode = this.viewWorkspaceElements.get(block.workspace) ?? this.resolveMode(context);
+    // What is loaded into the block before this turn ends comes from a saved block.
+    const managed = block as MorphicManagedBlock;
+    managed.__morphicFresh = true;
+    queueMicrotask(() => {
+      managed.__morphicFresh = false;
+    });
     this.applyView(block, definition, mode, context);
     dropShadowsWhenMarker(block);
 
@@ -3142,9 +3154,16 @@ export class MorphicBlocks extends EventTarget {
     lifecycleBehavior?.init?.(block, this.createBehaviorContext(block, definition, element ?? mode, context, mode));
   }
 
-  /** Take the state saved with a block: how many entries its repeating slots have. */
+  /** Take the state saved with a block: the placeholder slots it had dealt with, and how many entries its repeating slots have. */
   private loadBlockState(block: Blockly.BlockSvg, definition: MorphicBlockDefinition, state: unknown): void {
     const slots = repeatingSlots(definition);
+    Blockly.Events.disable();
+    try {
+      loadPlaceholderSlots(block, (state as { defaults?: unknown } | null)?.defaults);
+    } finally {
+      Blockly.Events.enable();
+    }
+    (block as MorphicManagedBlock).__morphicFresh = false;
     const before = new Map([...slots].map(([name, slot]) => [name, repeatCount(block, name, slot)]));
     if (!loadRepeatState(block, definition, state)) return;
     // Entries that go take their default with them: it was made for the
