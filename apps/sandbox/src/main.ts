@@ -196,7 +196,7 @@ function infoButton(content: string): HTMLElement {
 // Declared before mount() because onPresetApplied fires during mount.
 let codespaceBasisPx: number | null = null;
 
-void engine.mount({
+const mounted = engine.mount({
   containers: viewContainers,
   toolboxContainer: toolboxPanel,
   codeEditorContainer,
@@ -352,19 +352,58 @@ if (RESIZABLE_PANES) {
   makeResizable(gutterOutput, { target: outputPanel, axis: "y", min: 80, invert: true });
 }
 
-// ── Code Editor Toggle ─────────────────────────────────
+// ── Side panel: the generated code, the program as text, or nothing ──
 
-codeBtn.addEventListener("click", () => {
-  if (engine.isCodeEditorVisible()) {
-    engine.hideCodeEditor();
-    codeEditorContainer.classList.remove("visible");
-    codeBtn.classList.remove("active");
-  } else {
-    engine.showCodeEditor();
-    codeEditorContainer.classList.add("visible");
-    codeBtn.classList.add("active");
+const textBtn = byId("text-btn");
+const textPanel = byId("text-panel");
+const textElement = byId("text-element") as HTMLSelectElement;
+const textInput = byId("text-input") as HTMLTextAreaElement;
+const textError = byId("text-error");
+const codeElements = Object.entries(format.elementTypes ?? {})
+  .filter(([, type]) => (typeof type === "string" ? type : type.type) === "code")
+  .map(([name]) => name);
+for (const name of codeElements) textElement.add(new Option(name, name));
+
+let sidePanel: "code" | "text" | null = null;
+// Text someone has typed stays until it is loaded or the panel is opened again.
+let textEdited = false;
+const writeProgramText = (): void => {
+  textInput.value = engine.generateText(textElement.value);
+  textError.textContent = "";
+  textEdited = false;
+};
+const showSidePanel = (panel: typeof sidePanel): void => {
+  sidePanel = panel;
+  if (panel === "code") engine.showCodeEditor();
+  else if (engine.isCodeEditorVisible()) engine.hideCodeEditor();
+  codeEditorContainer.classList.toggle("visible", panel === "code");
+  textPanel.classList.toggle("visible", panel === "text");
+  for (const [button, name] of [[codeBtn, "code"], [textBtn, "text"]] as const) {
+    button.classList.toggle("active", panel === name);
+    button.setAttribute("aria-pressed", String(panel === name));
   }
+  if (panel === "text") writeProgramText();
+};
+codeBtn.addEventListener("click", () => showSidePanel(sidePanel === "code" ? null : "code"));
+textBtn.addEventListener("click", () => showSidePanel(sidePanel === "text" ? null : "text"));
+
+// Text to blocks: change the text and load it back. A line that fits no block
+// is reported and nothing changes.
+textElement.addEventListener("change", writeProgramText);
+textInput.addEventListener("input", () => {
+  textEdited = true;
 });
+byId("text-load").addEventListener("click", () => {
+  const result = engine.loadText(textInput.value, { element: textElement.value });
+  if (result.ok) writeProgramText();
+  else textError.textContent = `Line ${result.line}: ${result.message}`;
+});
+// The open panel follows the blocks, as long as nobody has typed in it.
+void mounted.then(() =>
+  engine.getWorkspace()?.addChangeListener((event) => {
+    if (sidePanel === "text" && !textEdited && !event.isUiEvent) writeProgramText();
+  }),
+);
 
 // ── Code Execution ─────────────────────────────────────
 

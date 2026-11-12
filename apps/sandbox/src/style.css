@@ -92,19 +92,19 @@
   opacity: 0.8;
 }
 
-[data-theme="light"] #code-btn {
+[data-theme="light"] .panel-btn {
   background: #55bdcb;
   color: #ffffff;
   border-color: #55bdcb;
 }
 
-[data-theme="light"] #code-btn:hover {
+[data-theme="light"] .panel-btn:hover {
   background: #00509B;
   color: #ffffff;
   border-color: #00509B;
 }
 
-[data-theme="light"] #code-btn.active {
+[data-theme="light"] .panel-btn.active {
   background: #00509B;
   color: #ffffff;
   border-color: #00509B;
@@ -181,7 +181,7 @@ body {
   gap: 8px;
 }
 
-#code-btn {
+.panel-btn {
   padding: 8px 16px;
   border-radius: 6px;
   background: transparent;
@@ -193,12 +193,12 @@ body {
   transition: all 0.2s;
 }
 
-#code-btn:hover {
+.panel-btn:hover {
   color: var(--text);
   border-color: var(--text-muted);
 }
 
-#code-btn.active {
+.panel-btn.active {
   background: var(--border);
   color: var(--text);
   border-color: var(--border);
@@ -710,3 +710,45 @@ body {
 [data-groups="hover"] .cm-content .morphic-group-hover {
   box-shadow: inset 3px 0 0 var(--accent);
 }
+
+/* ── The program as text, where the code panel sits ───────── */
+#text-panel {
+  width: 40%;
+  min-width: 200px;
+  border-left: 1px solid var(--border);
+  background: var(--bg-deep);
+  display: none;
+  flex-direction: column;
+}
+#text-panel.visible { display: flex; }
+#text-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+#text-bar label { display: flex; align-items: center; gap: 8px; }
+#text-load {
+  padding: 4px 14px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: var(--accent);
+  color: var(--run-btn-text);
+  cursor: pointer;
+}
+#text-input {
+  flex: 1;
+  min-height: 0;
+  padding: 10px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  resize: none;
+}
+#text-error { margin: 0; padding: 0 10px; font-size: 13px; color: #e5484d; }
+#text-error:not(:empty) { padding: 6px 10px; border-top: 1px solid var(--border); }

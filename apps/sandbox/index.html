@@ -30,7 +30,8 @@
             <option value="light">Light</option>
             <option value="creme">Creme</option>
           </select>
-          <button id="code-btn">Code</button>
+          <button id="text-btn" class="panel-btn" aria-pressed="false">Text</button>
+          <button id="code-btn" class="panel-btn" aria-pressed="false">Code</button>
           <button id="run-btn">Run Code</button>
         </div>
       </header>
@@ -70,6 +71,17 @@
               <div id="mirror2-container"></div>
             </div>
             <div id="code-editor"></div>
+            <div id="text-panel">
+              <div id="text-bar">
+                <label>
+                  Written in
+                  <select id="text-element" aria-label="The code element the text is written in"></select>
+                </label>
+                <button id="text-load">Load</button>
+              </div>
+              <textarea id="text-input" spellcheck="false" aria-label="The program as text"></textarea>
+              <p id="text-error" role="alert"></p>
+            </div>
           </div>
           <div class="gutter gutter-row" id="gutter-output" aria-label="Resize the output" hidden></div>
           <div id="output-panel">
