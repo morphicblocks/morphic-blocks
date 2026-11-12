@@ -148,7 +148,9 @@ export function validateDefinitions(
         } else if (token.kind === "field") {
           fieldTokens.add(token.name);
         } else if (token.kind === "valueType") {
+          // `%1:type` uses slot 1 too, also where the template leaves `%1` itself out.
           valueTypes.add(token.index);
+          allPlaceholders.add(token.index);
         }
       }
       placeholderSets.set(name, indices);
@@ -159,13 +161,14 @@ export function validateDefinitions(
     // value slot of the same template.
     for (const [name, valueTypes] of valueTypeTokens) {
       for (const index of valueTypes) {
+        // The slot may be one this template leaves out: a declared slot stays on the block.
         const slot = def.inputSlots?.[String(index)];
         if (slot?.repeat) {
           errors.push(
             `Block "${id}": element "${name}" uses %${index}:type, but %${index} repeats. ` +
               `A slot with several values has no one type.`,
           );
-        } else if (!placeholderSets.get(name)?.has(index) || slot?.kind === "statement") {
+        } else if ((!placeholderSets.get(name)?.has(index) && !slot) || slot?.kind === "statement") {
           errors.push(
             `Block "${id}": element "${name}" uses %${index}:type, but %${index} is not a value slot in it — ` +
               `the type comes from the value in that slot.`,
@@ -174,17 +177,22 @@ export function validateDefinitions(
       }
     }
 
-    // (2) All code elements must share the same %N set. A mismatch means an
-    // input (and any block plugged into it) silently disappears on mode switch.
+    // (2) A code element may leave a slot out that another one writes: a
+    // slot declared in `inputSlots` stays on the block, undrawn. Without that
+    // entry the input (and any block in it) would disappear with the element
+    // shown, so the placeholders must then be the same everywhere.
     const setEntries = [...placeholderSets.entries()];
     if (setEntries.length > 1) {
       const [refName, refSet] = setEntries[0]!;
       for (const [name, set] of setEntries.slice(1)) {
-        if (!sameNumberSet(refSet, set)) {
+        const undeclared = [...refSet, ...set].filter(
+          (index) => refSet.has(index) !== set.has(index) && !def.inputSlots?.[String(index)],
+        );
+        if (undeclared.length > 0) {
           errors.push(
             `Block "${id}": code elements "${refName}" and "${name}" use different placeholders ` +
-              `(${fmtIndices(refSet)} vs ${fmtIndices(set)}). All code elements must share the same ` +
-              `%N set, or an input disappears when switching to the differing mode.`,
+              `(${fmtIndices(refSet)} vs ${fmtIndices(set)}). Declare inputSlots["${undeclared[0]}"], so the block ` +
+              `keeps the slot where a template leaves it out, or write %${undeclared[0]} in every code element.`,
           );
         }
       }
@@ -496,12 +504,6 @@ const FRAMEWORK_WORDS: readonly string[] = [
 ];
 const SLOT_KINDS: readonly string[] = ["value", "statement"];
 const FIELD_TYPES: readonly string[] = ["dropdown", "reference", "text", "number", "checkbox"];
-
-function sameNumberSet(a: Set<number>, b: Set<number>): boolean {
-  if (a.size !== b.size) return false;
-  for (const value of a) if (!b.has(value)) return false;
-  return true;
-}
 
 function fmtIndices(set: Set<number>): string {
   const list = [...set].sort((x, y) => x - y);

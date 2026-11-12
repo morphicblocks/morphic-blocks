@@ -113,6 +113,7 @@ export function applyBlockView(params: MorphicApplyBlockViewParams): void {
 
   removeInputs(block);
   renderTemplate(block, definition, view, params.onRepeat);
+  const omittedSlots = keepOmittedSlots(block, definition);
   applyConnections(block, definition);
 
   if (typeof definition.inputsInline === "boolean") {
@@ -133,6 +134,8 @@ export function applyBlockView(params: MorphicApplyBlockViewParams): void {
   if (elementTypes) {
     attachEmptyDefaults(block, definition, view, elementTypes, resolveBlocklyType);
   }
+  // Hidden last: hiding a slot hides the block in it, which must sit there first.
+  for (const input of omittedSlots) input.setVisible(false);
   showFollowingLabels(block, definition, view, params.codeSettings ?? elementTypes);
   decorateBlockRoot(block, mode, context);
 
@@ -386,6 +389,27 @@ function renderTemplate(
   if (block.inputList.length === 0) {
     block.appendDummyInput("LABEL").appendField(definition.identifier);
   }
+}
+
+/**
+ * Give a block the declared slots its template leaves out, to be hidden: the
+ * template decides what a block shows, `inputSlots` what it has. A value that
+ * only another language writes (a start value Go's struct field has no place
+ * for) stays in the program whatever the workspace shows.
+ */
+function keepOmittedSlots(block: Blockly.BlockSvg, definition: MorphicBlockDefinition): Blockly.Input[] {
+  const omitted: Blockly.Input[] = [];
+  for (const [index, slot] of Object.entries(definition.inputSlots ?? {})) {
+    if (!slot) continue;
+    const slotName = slotInputName(slot, index);
+    const names = isRepeating(slot)
+      ? Array.from({ length: repeatCount(block, slotName, slot) }, (_, entry) => repeatInputName(slotName, entry))
+      : [slotName];
+    for (const name of names) {
+      if (!block.getInput(name)) omitted.push(createInputFromSlot(block, slot, Number(index), name));
+    }
+  }
+  return omitted;
 }
 
 /**
