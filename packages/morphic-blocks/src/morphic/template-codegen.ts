@@ -1,5 +1,6 @@
 import * as Blockly from "blockly";
 import { toCleanId } from "./block-namespace";
+import { MorphicReference } from "./dropdown-fields";
 import { findParentField } from "./parent-field";
 import { isRepeating, repeatEntries, repeatSeparator, separatorComposes } from "./repeat-slots";
 import { parseTemplate, type MorphicTemplateToken } from "./template";
@@ -269,6 +270,10 @@ function renderBlock(
       const editTarget = withTextLabels(fieldEditTarget(block, field, token.name), block, ctx);
       if (editTarget) {
         recordPlaceholder(state, fieldStart, "set", editTarget);
+        const range = state.placeholders[state.placeholders.length - 1];
+        if (range && range.start === fieldStart && field instanceof MorphicReference && field.isMissing()) {
+          range.missing = true;
+        }
       }
       continue;
     }

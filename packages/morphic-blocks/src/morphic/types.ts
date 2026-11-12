@@ -219,8 +219,11 @@ export type MorphicFieldDefinition =
    * lists what that field holds on every such block. Renaming a declaration
    * renames the references to it. `default` is the name a new block starts
    * with; in a program that declares other names it takes the first of them.
+   * `scope` names a block (or several): the field then lists only what is
+   * declared inside the nearest such block around it, e.g. the fields of the
+   * class a method is in.
    */
-  | { type: "reference"; to: string | string[]; default?: string }
+  | { type: "reference"; to: string | string[]; default?: string; scope?: string | string[] }
   | { type: "text"; default?: string }
   | { type: "number"; default?: number; min?: number; max?: number; precision?: number }
   | { type: "checkbox"; default?: boolean };
@@ -870,6 +873,8 @@ export interface MorphicPlaceholderRange {
   /** Exclusive 0-based character offset in `code`. */
   end: number;
   kind: "default" | "set";
+  /** Set when the range is a reference whose name nothing declares; text views mark it. */
+  missing?: boolean;
   /** Editing target when the slot contains an atomic single-field block. */
   edit?: MorphicPlaceholderEditTarget;
   /**

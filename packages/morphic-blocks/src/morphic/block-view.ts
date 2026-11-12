@@ -598,7 +598,7 @@ function createFieldFromDefinition(
       return field;
     }
     case "reference":
-      return new MorphicReference(def.to, def.default);
+      return new MorphicReference(def.to, def.default, def.scope);
     case "number":
       return new Blockly.FieldNumber(def.default ?? 0, def.min, def.max, def.precision);
     case "checkbox":

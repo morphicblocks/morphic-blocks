@@ -145,6 +145,129 @@ describe("a reference field", () => {
   });
 });
 
+describe("a reference with a scope", () => {
+  const scoped: MorphicBlocksFormat = {
+    elementTypes: { python: "code" },
+    modes: [{ name: "in-python", elements: ["python"] }],
+    blocks: [
+      {
+        identifier: "class_define",
+        elements: { python: "class %NAME:\n    %1" },
+        fields: { NAME: { type: "text", default: "Dog" } },
+        inputSlots: { "1": { kind: "statement", name: "BODY" } },
+        shape: "statement",
+      },
+      {
+        identifier: "class_field",
+        elements: { python: "%NAME = 0" },
+        fields: { NAME: { type: "text", default: "name" } },
+        shape: "statement",
+      },
+      {
+        identifier: "my_field",
+        elements: { python: "print(self.%NAME)" },
+        fields: { NAME: { type: "reference", to: "class_field.NAME", scope: "class_define", default: "name" } },
+        shape: "statement",
+      },
+    ],
+  };
+
+  async function setUpScoped() {
+    const engine = new MorphicBlocks(scoped, {});
+    engines.push(engine);
+    await engine.mount({ workspaceContainer: div(), codespaceContainer: div() });
+    const workspace = engine.getWorkspace()!;
+    const make = (type: string, name?: string) => {
+      const block = workspace.newBlock(`morphic:${type}`) as Blockly.BlockSvg;
+      block.initSvg();
+      block.render();
+      if (name) block.setFieldValue(name, "NAME");
+      return block;
+    };
+    const classWith = (name: string, ...fields: string[]) => {
+      const cls = make("class_define", name);
+      let below = cls.getInput("BODY")!.connection!;
+      for (const field of fields) {
+        const block = make("class_field", field);
+        below.connect(block.previousConnection);
+        below = block.nextConnection;
+      }
+      return cls;
+    };
+    const last = (block: Blockly.Block) => {
+      let tail = block.getInputTargetBlock("BODY")!;
+      while (tail.getNextBlock()) tail = tail.getNextBlock()!;
+      return tail;
+    };
+    const names = (block: Blockly.Block) => (block.getField("NAME") as Blockly.FieldDropdown).getOptions().map(([, value]) => value);
+    return { make, classWith, last, names };
+  }
+
+  test("lists only what is declared in the block around it", async () => {
+    const { make, classWith, last, names } = await setUpScoped();
+    const dog = classWith("Dog", "age", "owner");
+    classWith("Car", "wheels");
+    const reference = make("my_field");
+
+    // On its own it sees no class, and keeps its name.
+    expect(names(reference)).toEqual(["name"]);
+    last(dog).nextConnection!.connect(reference.previousConnection);
+    // Its own name, which the class does not declare, comes last.
+    expect(names(reference)).toEqual(["age", "owner", "name"]);
+    await vi.waitFor(() => expect(reference.getFieldValue("NAME")).toBe("age"), { timeout: 3000 });
+    expect(names(reference)).toEqual(["age", "owner"]);
+  });
+
+  test("follows a rename in its own class only", async () => {
+    const { make, classWith, last } = await setUpScoped();
+    const dog = classWith("Dog", "size");
+    const car = classWith("Car", "size");
+    const inDog = make("my_field");
+    const inCar = make("my_field");
+    last(dog).nextConnection!.connect(inDog.previousConnection);
+    last(car).nextConnection!.connect(inCar.previousConnection);
+    await vi.waitFor(() => expect([inDog.getFieldValue("NAME"), inCar.getFieldValue("NAME")]).toEqual(["size", "size"]), { timeout: 3000 });
+
+    dog.getInputTargetBlock("BODY")!.setFieldValue("height", "NAME");
+    await vi.waitFor(() => expect(inDog.getFieldValue("NAME")).toBe("height"), { timeout: 3000 });
+    expect(inCar.getFieldValue("NAME")).toBe("size");
+  });
+});
+
+describe("a name nothing declares", () => {
+  const marked = (block: Blockly.Block) =>
+    (block.getField("CLASS") as unknown as { fieldGroup_: SVGGElement }).fieldGroup_.classList.contains("morphic-reference-missing");
+
+  test("is marked on the block and in the text, until it is declared again", async () => {
+    const { make } = await setUp();
+    const declaration = make("class_define");
+    const reference = make("class_new");
+    await vi.waitFor(() => expect(marked(reference)).toBe(false), { timeout: 3000 });
+
+    declaration.dispose(false);
+    await vi.waitFor(() => expect(marked(reference)).toBe(true), { timeout: 3000 });
+    await vi.waitFor(() => expect(document.querySelector(".cm-content .morphic-reference-missing")?.textContent).toBe("Dog"), { timeout: 3000 });
+
+    make("class_define");
+    await vi.waitFor(() => expect(marked(reference)).toBe(false), { timeout: 3000 });
+    await vi.waitFor(() => expect(document.querySelector(".cm-content .morphic-reference-missing")).toBeNull(), { timeout: 3000 });
+  });
+
+  test("a loaded program keeps it as it was saved", async () => {
+    const { workspace, make } = await setUp();
+    make("class_new");
+    make("class_define", { NAME: "Cat" });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const saved = Blockly.serialization.workspaces.save(workspace);
+    (saved.blocks.blocks[0].fields as Record<string, string>).CLASS = "Dog";
+
+    workspace.clear();
+    Blockly.serialization.workspaces.load(saved, workspace);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(workspace.getBlocksByType("morphic:class_new", false)[0]!.getFieldValue("CLASS")).toBe("Dog");
+  });
+});
+
 describe("a reference to something that does not exist stops the mount", () => {
   const withTarget = (to: string): MorphicBlocksFormat => ({
     ...format,
@@ -165,6 +288,12 @@ describe("a reference to something that does not exist stops the mount", () => {
 
   test("a field the block does not have", () => {
     expect(mount(withTarget("class_define.TITLE"))).toThrow(/block "class_define" has no field "TITLE"/);
+  });
+
+  test("an unknown scope", () => {
+    const definitions = withTarget("class_define.NAME");
+    (definitions.blocks[2]!.fields!.CLASS as { scope?: string }).scope = "klass";
+    expect(mount(definitions)).toThrow(/has the scope "klass", but there is no block "klass"/);
   });
 
   test("a target that is not a block and a field", () => {

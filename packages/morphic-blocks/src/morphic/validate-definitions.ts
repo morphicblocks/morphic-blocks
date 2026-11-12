@@ -316,6 +316,11 @@ export function validateDefinitions(
     // that does not exist would leave the list empty for good.
     for (const [name, fieldDef] of Object.entries(def.fields ?? {})) {
       if (fieldDef?.type !== "reference") continue;
+      for (const scope of fieldDef.scope === undefined ? [] : [fieldDef.scope].flat()) {
+        if (!definitions.has(scope)) {
+          errors.push(`Block "${id}": fields["${name}"] has the scope "${scope}", but there is no block "${scope}".`);
+        }
+      }
       const targets = Array.isArray(fieldDef.to) ? fieldDef.to : [fieldDef.to];
       if (targets.length === 0) {
         errors.push(`Block "${id}": fields["${name}"] is a reference without "to". Name the field it lists, e.g. "class_define.NAME".`);

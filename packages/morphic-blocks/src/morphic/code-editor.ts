@@ -648,8 +648,10 @@ export class MorphicCodeEditor {
             // metadata regardless of whether it's inline-editable.
             const defaultMark = cmView.Decoration.mark({ class: "morphic-placeholder-default" });
             const setMark = cmView.Decoration.mark({ class: "morphic-placeholder-set" });
+            // A reference whose name nothing declares.
+            const missingMark = cmView.Decoration.mark({ class: "morphic-placeholder-set morphic-reference-missing" });
             for (const r of sorted) {
-              builder.add(r.start, r.end, r.kind === "default" ? defaultMark : setMark);
+              builder.add(r.start, r.end, r.missing ? missingMark : r.kind === "default" ? defaultMark : setMark);
             }
             return builder.finish();
           }
