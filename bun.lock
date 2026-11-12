@@ -24,6 +24,20 @@
         "vite": "^6.2.0",
       },
     },
+    "packages/blocks": {
+      "name": "@morphicblocks/blocks",
+      "version": "0.1.0",
+      "devDependencies": {
+        "blockly": "^11.2.2",
+        "jsdom": "25.0.1",
+        "morphic-blocks": "workspace:*",
+        "typescript": "^5.8.2",
+        "vitest": "^5.0.1",
+      },
+      "peerDependencies": {
+        "morphic-blocks": ">=0.4.0",
+      },
+    },
     "packages/morphic-blocks": {
       "name": "morphic-blocks",
       "version": "0.4.0",
@@ -166,6 +180,8 @@
     "@lezer/lr": ["@lezer/lr@1.4.11", "", { "dependencies": { "@lezer/common": "^1.0.0" } }, "sha512-UwgZcl1R66H2hDzBrA7kWyYmX6s8p5TQ+e/t7CuvgCtBEPxbEPaHYHu+pJBvTvDotEJpuQkJjbXuHiw5Cixxgw=="],
 
     "@marijn/find-cluster-break": ["@marijn/find-cluster-break@1.0.4", "", {}, "sha512-Wy0V7+SGUjnF9/TkiM1hKVDPj7jKXduPNboMVtHTA8dySMURWqfg/JZ9E2Sq8JgSJmkl7k7Qe9FLeMSrSraWmQ=="],
+
+    "@morphicblocks/blocks": ["@morphicblocks/blocks@workspace:packages/blocks"],
 
     "@morphicblocks/themes": ["@morphicblocks/themes@workspace:packages/themes"],
 

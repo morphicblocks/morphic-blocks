@@ -1,0 +1,44 @@
+{
+  "name": "@morphicblocks/blocks",
+  "version": "0.1.0",
+  "description": "Standard blocks for Morphic Blocks: common programming blocks with their behaviors, written by any language",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/morphicblocks/morphic-blocks.git",
+    "directory": "packages/blocks"
+  },
+  "homepage": "https://morphicblocks.com",
+  "bugs": "https://github.com/morphicblocks/morphic-blocks/issues",
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "test": "vitest run"
+  },
+  "keywords": [
+    "morphic-blocks",
+    "blocks",
+    "block-based-programming"
+  ],
+  "license": "Apache-2.0",
+  "peerDependencies": {
+    "morphic-blocks": ">=0.4.0"
+  },
+  "devDependencies": {
+    "blockly": "^11.2.2",
+    "jsdom": "25.0.1",
+    "morphic-blocks": "workspace:*",
+    "typescript": "^5.8.2",
+    "vitest": "^5.0.1"
+  }
+}
