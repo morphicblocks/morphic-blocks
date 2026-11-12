@@ -23,9 +23,9 @@ test("the sample programs use every standard block", () => {
 /**
  * Programs whose text in a language leaves a value out, so reading the text
  * back gives the same text but not the same values: a Go struct field has a
- * type and no start value (`sound string`).
+ * type and no start value (`sound string`), and so has a Rust one.
  */
-const notInText: Record<string, string[]> = { go: ["classes"] };
+const notInText: Record<string, string[]> = { go: ["classes"], rust: ["classes"] };
 
 describe.each(Object.entries(languages))("%s", (name, language) => {
   test("writes every standard block, and no other", () => {

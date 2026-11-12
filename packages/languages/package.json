@@ -1,7 +1,7 @@
 {
   "name": "@morphicblocks/languages",
   "version": "0.1.0",
-  "description": "Languages for Morphic Blocks: how Python, JavaScript, Java and Go write the standard blocks, with their settings",
+  "description": "Languages for Morphic Blocks: how Python, JavaScript, Java, Go and Rust write the standard blocks, with their settings",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/morphicblocks/morphic-blocks.git",
@@ -31,7 +31,8 @@
     "python",
     "javascript",
     "java",
-    "go"
+    "go",
+    "rust"
   ],
   "license": "Apache-2.0",
   "peerDependencies": {
