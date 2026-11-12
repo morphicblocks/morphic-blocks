@@ -258,6 +258,11 @@ export function validateDefinitions(
           `Block "${id}": inputSlots["${key}"] has unknown kind "${slot.kind}". Use one of: ${SLOT_KINDS.join(", ")}.`,
         );
       }
+      if (slot?.strict && (slot.check === undefined || slot.check.length === 0)) {
+        errors.push(
+          `Block "${id}": inputSlots["${key}"] is strict but has no check. A strict slot takes only blocks whose check matches its own, so nothing would fit.`,
+        );
+      }
     }
     for (const [name, fieldDef] of Object.entries(def.fields ?? {})) {
       if (!FIELD_TYPES.includes(fieldDef?.type)) {

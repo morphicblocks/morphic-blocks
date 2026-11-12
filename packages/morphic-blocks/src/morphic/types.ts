@@ -221,6 +221,12 @@ export interface MorphicInputSlotDefinition {
   kind?: MorphicInputKind;
   name?: string;
   check?: string | string[];
+  /**
+   * Take only blocks whose check matches `check`. Without it, a block that has
+   * no check fits every slot (Blockly's rule); with it, such a block is
+   * refused, here and below the blocks already in the slot. Needs a `check`.
+   */
+  strict?: boolean;
   align?: MorphicInputAlign;
   label?: string;
   /**

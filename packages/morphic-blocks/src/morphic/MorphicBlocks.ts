@@ -26,6 +26,7 @@ import { validateDefinitions } from "./validate-definitions";
 import { checkPresets, checkViewDeclarations, movedDefinitionErrors, normalizeViews } from "./check-definitions";
 import { resolveElementType, withCodeSettings } from "./element-types";
 import { formatValue } from "./value-format";
+import { enforceStrictSlots } from "./strict-slots";
 import { MorphicStyleManager, type MorphicModeStyle } from "./styles";
 import { toModeClassToken } from "./template";
 import { DRAG_DATA_KEY, MorphicToolboxCanvas, type TileDropTarget } from "./toolbox-canvas";
@@ -466,6 +467,7 @@ export class MorphicBlocks extends EventTarget {
       media: blocklyOptions.media ?? DEFAULT_BLOCKLY_MEDIA,
       ...(resolvedConfig.canvasToolbox ? {} : { toolbox: this.toolboxDefinition }),
     });
+    enforceStrictSlots(this.workspace);
     this.workspace.addChangeListener(this.onWorkspaceChange);
     workspaceOwners.set(this.workspace, this);
     this.baseTheme = this.workspace.getTheme();
@@ -2499,6 +2501,7 @@ export class MorphicBlocks extends EventTarget {
       rtl: options.rtl ?? host.RTL,
       move: { scrollbars: true, drag: true, wheel: true },
     });
+    enforceStrictSlots(mirror);
     workspaceOwners.set(mirror, this);
     this.viewWorkspaceElements.set(mirror, options.element);
     const view: AddedView = {

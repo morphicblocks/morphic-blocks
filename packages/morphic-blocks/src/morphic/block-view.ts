@@ -12,6 +12,7 @@ import {
   ALIGN_RIGHT,
 } from "./constants";
 import { resolveDefaultConfig } from "./element-types";
+import { markStrictSlot } from "./strict-slots";
 import { isValueTypeLabel, VALUE_TYPE_FIELD, valueTypeName } from "./value-type";
 import {
   normalizeTemplateText,
@@ -406,6 +407,9 @@ function createInputFromSlot(
 
   if (slot?.align) {
     input.setAlign(resolveAlign(slot.align));
+  }
+  if (slot?.strict && input.connection) {
+    markStrictSlot(input.connection);
   }
 
   return input;

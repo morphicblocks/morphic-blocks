@@ -263,6 +263,7 @@
           "type": ["string", "array"],
           "items": { "type": "string" }
         },
+        "strict": { "type": "boolean" },
         "align": { "enum": ["left", "centre", "right"] },
         "label": { "type": "string" },
         "default": { "$ref": "#/$defs/emptyDefault" }
