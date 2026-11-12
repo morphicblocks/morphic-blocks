@@ -132,4 +132,22 @@ export const behaviors: MorphicBehaviorMap = {
   class_call(proxy) {
     return `${proxy.fields.VAR || "object"}.${proxy.fields.METHOD || "method"}();\n`;
   },
+
+  // ── Functions and lists (repeating slots) ───────────────
+
+  func_define(proxy) {
+    return `function ${proxy.fields.NAME || "f"}(${proxy.inputs.PARAMS || ""}) {\n${proxy.inputs.BODY || ""}\n}\n`;
+  },
+  func_param(proxy) {
+    return proxy.fields.NAME || "value";
+  },
+  param_get(proxy) {
+    return proxy.fields.NAME || "value";
+  },
+  func_call(proxy) {
+    return `${proxy.fields.NAME || "f"}(${proxy.inputs.ARGS || ""});\n`;
+  },
+  list_create(proxy) {
+    return `[${proxy.inputs.ITEMS || ""}]`;
+  },
 };

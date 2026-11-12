@@ -497,6 +497,10 @@
     {
       "name": "Classes",
       "color": "#e08a3c"
+    },
+    {
+      "name": "Functions",
+      "color": "#7a6ee0"
     }
   ],
   "blocks": [
@@ -1027,7 +1031,11 @@
       },
       "fields": {
         "VAR": {
-          "type": "text",
+          "type": "reference",
+          "to": [
+            "var_declare.VAR",
+            "typed_var.VAR"
+          ],
           "default": "x"
         }
       },
@@ -1217,7 +1225,7 @@
         "concept": "Field %NAME = %1",
         "python": "self.%NAME = %1",
         "javascript": "%NAME = %1;",
-        "go": "%NAME %1:type // starts as %1"
+        "go": "%NAME %1:type"
       },
       "fields": {
         "NAME": {
@@ -1239,7 +1247,8 @@
       },
       "previousStatement": "ClassField",
       "nextStatement": "ClassField",
-      "inputsInline": true
+      "inputsInline": true,
+      "strict": true
     },
     {
       "identifier": "class_method",
@@ -1266,7 +1275,8 @@
         }
       },
       "previousStatement": "ClassMethod",
-      "nextStatement": "ClassMethod"
+      "nextStatement": "ClassMethod",
+      "strict": true
     },
     {
       "identifier": "class_this_field",
@@ -1284,6 +1294,7 @@
         "NAME": {
           "type": "reference",
           "to": "class_field.NAME",
+          "scope": "class_define",
           "default": "name"
         }
       },
@@ -1339,6 +1350,143 @@
         }
       },
       "shape": "statement"
+    },
+    {
+      "identifier": "func_define",
+      "category": "Functions",
+      "elements": {
+        "icon": "icons/var_declare.svg",
+        "title": "Function",
+        "description": "A function with any number of parameters",
+        "concept": "Function %NAME with %1\ndo %2",
+        "python": "def %NAME(%1):\n    %2",
+        "javascript": "function %NAME(%1) {\n  %2\n}",
+        "go": "func %NAME(%1) {\n    %2\n}"
+      },
+      "fields": {
+        "NAME": {
+          "type": "text",
+          "default": "greet"
+        }
+      },
+      "inputSlots": {
+        "1": {
+          "kind": "value",
+          "name": "PARAMS",
+          "check": "Param",
+          "strict": true,
+          "repeat": {
+            "separator": {
+              "concept": " and "
+            }
+          }
+        },
+        "2": {
+          "kind": "statement",
+          "name": "BODY"
+        }
+      },
+      "shape": "statement"
+    },
+    {
+      "identifier": "func_param",
+      "category": "Functions",
+      "elements": {
+        "icon": "icons/var_declare.svg",
+        "title": "Parameter",
+        "description": "A parameter of a function; it goes only into a function's parameter list",
+        "concept": "%NAME",
+        "python": "%NAME",
+        "javascript": "%NAME",
+        "go": "%NAME any"
+      },
+      "fields": {
+        "NAME": {
+          "type": "text",
+          "default": "name"
+        }
+      },
+      "output": "Param",
+      "strict": true
+    },
+    {
+      "identifier": "param_get",
+      "category": "Functions",
+      "elements": {
+        "icon": "icons/var_declare.svg",
+        "title": "Use Parameter",
+        "description": "The value of a parameter of the function around it",
+        "concept": "Parameter %NAME",
+        "python": "%NAME",
+        "javascript": "%NAME",
+        "go": "%NAME"
+      },
+      "fields": {
+        "NAME": {
+          "type": "reference",
+          "to": "func_param.NAME",
+          "scope": "func_define",
+          "default": "name"
+        }
+      },
+      "output": true
+    },
+    {
+      "identifier": "func_call",
+      "category": "Functions",
+      "elements": {
+        "icon": "icons/var_declare.svg",
+        "title": "Call Function",
+        "description": "Calls a function with any number of values",
+        "concept": "Call %NAME with %1",
+        "python": "%NAME(%1)",
+        "javascript": "%NAME(%1);",
+        "go": "%NAME(%1)"
+      },
+      "fields": {
+        "NAME": {
+          "type": "reference",
+          "to": "func_define.NAME",
+          "default": "greet"
+        }
+      },
+      "inputSlots": {
+        "1": {
+          "kind": "value",
+          "name": "ARGS",
+          "repeat": {
+            "separator": {
+              "concept": " and "
+            }
+          }
+        }
+      },
+      "shape": "statement",
+      "inputsInline": true
+    },
+    {
+      "identifier": "list_create",
+      "category": "Values",
+      "elements": {
+        "icon": "icons/var_declare.svg",
+        "title": "List",
+        "description": "A list of any number of values",
+        "concept": "List of %1",
+        "python": "[%1]",
+        "javascript": "[%1]",
+        "go": "[]any{%1}"
+      },
+      "inputSlots": {
+        "1": {
+          "kind": "value",
+          "name": "ITEMS",
+          "repeat": {
+            "count": 2
+          }
+        }
+      },
+      "output": true,
+      "inputsInline": true
     }
   ]
 }
