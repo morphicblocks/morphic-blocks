@@ -481,8 +481,9 @@ export function validateDefinitions(
       );
     }
     // (12) A framework word as a name reads like the framework's own thing.
+    // A category is a label people read, where "Text" or "Blocks" is plain language.
     const word = name.toLowerCase();
-    if (FRAMEWORK_WORDS.includes(word)) {
+    if (FRAMEWORK_WORDS.includes(word) && !(namespaces.size === 1 && namespaces.has("category"))) {
       warnings.push(
         `Name "${name}" (${[...namespaces].sort().join(", ")}) is a Morphic Blocks word — name it after what it is ` +
           `in your app (e.g. "python", "icon-tiles", "editor-pane").`,

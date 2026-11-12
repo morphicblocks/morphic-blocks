@@ -44,6 +44,12 @@ describe("names", () => {
     expect(words).toContain('Name "workspace" (view) is a Morphic Blocks word');
   });
 
+  test("a category may be a plain word the framework uses too: it is a label", () => {
+    const labels = warningsFor({ ...format, categories: [{ name: "Text" }, { name: "Blocks" }] }).join("\n");
+
+    expect(labels).not.toContain("is a Morphic Blocks word");
+  });
+
   test("warn when a view shares a name with an element", () => {
     const shared = warningsFor({
       ...format,
