@@ -38,7 +38,7 @@
   "license": "Apache-2.0",
   "peerDependencies": {
     "@morphicblocks/blocks": ">=0.1.0",
-    "morphic-blocks": ">=0.4.0"
+    "morphic-blocks": ">=0.5.0"
   },
   "devDependencies": {
     "@morphicblocks/blocks": "workspace:*",

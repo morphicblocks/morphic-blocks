@@ -37,7 +37,7 @@
         "vitest": "^5.0.1",
       },
       "peerDependencies": {
-        "morphic-blocks": ">=0.4.0",
+        "morphic-blocks": ">=0.5.0",
       },
     },
     "packages/languages": {
@@ -53,7 +53,7 @@
       },
       "peerDependencies": {
         "@morphicblocks/blocks": ">=0.1.0",
-        "morphic-blocks": ">=0.4.0",
+        "morphic-blocks": ">=0.5.0",
       },
     },
     "packages/morphic-blocks": {
