@@ -89,14 +89,14 @@
     },
     "packages/themes": {
       "name": "@morphicblocks/themes",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "devDependencies": {
         "morphic-blocks": "workspace:*",
         "typescript": "^5.8.2",
         "vitest": "^5.0.1",
       },
       "peerDependencies": {
-        "morphic-blocks": "^0.4.0",
+        "morphic-blocks": ">=0.4.0",
       },
     },
   },

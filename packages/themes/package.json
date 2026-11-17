@@ -1,6 +1,6 @@
 {
   "name": "@morphicblocks/themes",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Ready-made themes for Morphic Blocks code views",
   "repository": {
     "type": "git",
@@ -32,7 +32,7 @@
   ],
   "license": "Apache-2.0",
   "peerDependencies": {
-    "morphic-blocks": "^0.4.0"
+    "morphic-blocks": ">=0.4.0"
   },
   "devDependencies": {
     "morphic-blocks": "workspace:*",
