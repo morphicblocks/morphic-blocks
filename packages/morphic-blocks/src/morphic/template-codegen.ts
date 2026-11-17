@@ -3,7 +3,8 @@ import { toCleanId } from "./block-namespace";
 import { MorphicReference } from "./dropdown-fields";
 import { findParentField } from "./parent-field";
 import { isRepeating, repeatEntries, repeatSeparator, separatorComposes } from "./repeat-slots";
-import { parseTemplate, slotIsExposed, type MorphicTemplateToken } from "./template";
+import { ATOM, WHOLE, allows, operatorForm, rankOperator, slotBound, type OperandBound, type RankedOperator } from "./operators";
+import { parseTemplate, type MorphicTemplateToken } from "./template";
 import type { MorphicElementTypeWithCode } from "./element-types";
 import { resolveBlockView } from "./view-resolver";
 import { isValueTypeLabel, valueTypeName } from "./value-type";
@@ -147,27 +148,64 @@ function composesValues(block: Blockly.Block): boolean {
   );
 }
 
+/** The template a block is written with in this rendering, and the element it comes from. */
+function templateOf(
+  definition: MorphicBlockDefinition,
+  ctx: RenderContext,
+): { template: string; elementName: string | undefined } | null {
+  if (ctx.elementOverride) {
+    const template = definition.elements[ctx.elementOverride];
+    return template === undefined ? null : { template, elementName: ctx.elementOverride };
+  }
+  try {
+    const view = resolveBlockView(definition, ctx.mode, ctx.elementTypes, ctx.modeDefs);
+    return { template: view.template, elementName: view.elementName };
+  } catch {
+    return null;
+  }
+}
+
+/** The block as an operator of its language, when its template is one and its sign has a rank. */
+function operatorOf(
+  block: Blockly.Block,
+  definition: MorphicBlockDefinition,
+  tokens: MorphicTemplateToken[],
+  elementName: string | undefined,
+  ctx: RenderContext,
+): RankedOperator | null {
+  const form = operatorForm(tokens, definition, elementName);
+  if (!form) return null;
+  const settings = operatorSettings(elementName ? ctx.elementTypes[elementName] : undefined);
+  const shown = (name: string): string | undefined => {
+    const field = block.getField(name);
+    return field ? resolveFieldDisplay(definition, elementName, name, field) : undefined;
+  };
+  return rankOperator(form, shown, settings);
+}
+
+/** The order of operators an element's code settings give. */
+function operatorSettings(elementEntry: MorphicElementTypeEntry | undefined): MorphicElementTypeWithCode["operators"] {
+  return typeof elementEntry === "object" ? (elementEntry as MorphicElementTypeWithCode).operators : undefined;
+}
+
 /**
- * Whether a value inside another expression is written in brackets: one that
- * composes other values, unless its own template already closes it. A call
- * or a list (`max(%1, %2)`, `[%1]`) holds its values between its own
- * brackets, so `(max(a, b)) + 1` would only add noise.
+ * Whether a value is written in brackets in a slot that takes `bound`: one
+ * that composes other values, unless the slot takes any value, its own
+ * template already makes it one piece, or its operator binds tightly enough
+ * for the place. A call or a list (`max(%1, %2)`, `[%1]`) holds its values
+ * between its own brackets, so `(max(a, b)) + 1` would only add noise;
+ * `a * b` in `%1 + %2` needs none either, where the language's order of
+ * operators says so.
  */
-function needsBrackets(block: Blockly.Block, ctx: RenderContext): boolean {
-  if (!composesValues(block)) return false;
+function needsBrackets(block: Blockly.Block, ctx: RenderContext, bound: OperandBound): boolean {
+  if (allows(bound, -Infinity) || !composesValues(block)) return false;
   const definition = ctx.definitions.get(toCleanId(block.type));
   if (!definition) return true;
-  let template: string | undefined;
-  if (ctx.elementOverride) {
-    template = definition.elements[ctx.elementOverride];
-  } else {
-    try {
-      template = resolveBlockView(definition, ctx.mode, ctx.elementTypes, ctx.modeDefs).template;
-    } catch {
-      return true;
-    }
-  }
-  return template === undefined || !closesItself(template);
+  const written = templateOf(definition, ctx);
+  if (!written) return true;
+  if (closesItself(written.template) || goesOnFromValue(written.template)) return false;
+  const operator = operatorOf(block, definition, parseTemplate(written.template), written.elementName, ctx);
+  return !operator || !allows(bound, operator.rank, operator.sign);
 }
 
 /**
@@ -196,30 +234,29 @@ export function closesItself(template: string): boolean {
 }
 
 /**
- * How many *value* slots this template renders. Two or more means its slots are
- * operands of a composed expression (`%1 %OP %2`), where a composed child needs
- * bracketing to preserve grouping. A single value slot is a whole sub-expression
- * in its own right — `if %1:`, `print(%1)` — and bracketing it only adds noise
- * (`if (10 == 20):` is valid Python, but nobody writes it that way).
- *
- * A unary operator is the one case this misses: `-%1` has a single slot yet
- * `-(3 + 4)` does need brackets. Such templates spell the brackets out
- * themselves — `-(%1)` — which keeps the author in control where the framework
- * cannot infer intent.
+ * Whether a template only goes on from the value in front: `%1[%2]`,
+ * `%1.size()`, `%1.%NAME`. What goes on from a value binds before every
+ * operator, so the whole is one piece like a name (`items[1] + 1`). Anything
+ * else behind the first slot (`%1 + %2`, `%1.length as x`) makes it an
+ * operand like any other.
  */
-function countValueSlots(
-  tokens: MorphicTemplateToken[],
-  definition: MorphicBlockDefinition,
-): number {
-  let count = 0;
-  for (const token of tokens) {
-    if (token.kind !== "placeholder") continue;
-    const slot = definition.inputSlots?.[String(token.index)];
-    // A repeating slot is one value among others; whether its own entries
-    // need brackets is its separator's matter (see `separatorComposes`).
-    if ((slot?.kind ?? "value") === "value") count++;
+export function goesOnFromValue(template: string): boolean {
+  const tokens = parseTemplate(template).filter((token) => token.kind !== "image");
+  if (tokens[0]?.kind !== "placeholder") return false;
+  const written = tokens
+    .slice(1)
+    .map((token) => (token.kind === "text" ? token.value : token.kind === "field" ? "name" : "\u0001"))
+    .join("");
+  if (!/^[.[(]/.test(written)) return false;
+  const pairs: Record<string, string> = { ")": "(", "]": "[", "}": "{" };
+  const open: string[] = [];
+  for (const char of written) {
+    if (char === "(" || char === "[" || char === "{") open.push(char);
+    else if (char in pairs) {
+      if (open.pop() !== pairs[char]) return false;
+    } else if (open.length === 0 && !/[\p{L}\p{N}_$.]/u.test(char)) return false;
   }
-  return count;
+  return open.length === 0;
 }
 
 /**
@@ -275,22 +312,9 @@ function renderBlock(
     return;
   }
 
-  let template: string;
-  let elementName: string | undefined;
-  if (ctx.elementOverride) {
-    const explicit = definition.elements[ctx.elementOverride];
-    if (explicit === undefined) return;
-    template = explicit;
-    elementName = ctx.elementOverride;
-  } else {
-    try {
-      const view = resolveBlockView(definition, ctx.mode, ctx.elementTypes, ctx.modeDefs);
-      template = view.template;
-      elementName = view.elementName;
-    } catch {
-      return;
-    }
-  }
+  const written = templateOf(definition, ctx);
+  if (!written) return;
+  const { template, elementName } = written;
   const elementEntry = elementName ? ctx.elementTypes[elementName] : undefined;
 
   const before = state.output.length;
@@ -302,10 +326,11 @@ function renderBlock(
   const statementSlots: Record<string, { startLine: number; endLine: number }> = {};
 
   const tokens = parseTemplate(template);
-  // Composed operands are bracketed only when this template composes several
-  // values, so a lone slot (`if %1:`) stays clean in every language.
-  const composesSeveralValues = countValueSlots(tokens, definition) >= 2;
-  for (const token of tokens) {
+  // An operator whose sign has a rank says itself what each slot takes without
+  // brackets; in any other template the text around a slot does.
+  const operator = operatorOf(block, definition, tokens, elementName, ctx);
+  const isStatement = definition.output === undefined || definition.output === false;
+  for (const [tokenIndex, token] of tokens.entries()) {
     if (token.kind === "text") {
       appendText(state, token.value);
       continue;
@@ -386,20 +411,18 @@ function renderBlock(
       // operator (` + `) makes them operands. Where the list ends is kept,
       // for the buttons a text view shows there.
       const separator = repeatSeparator(slot, elementName);
-      const composes = separatorComposes(separator);
+      const bound = operator ? operator.bound(token.index) : separatorComposes(separator) ? ATOM : WHOLE;
       const entries = repeatEntries(block, inputName, slot);
       entries.forEach((entry, index) => {
         if (index > 0) appendText(state, separator);
-        renderValueSlot(block, definition, slot, entry, ctx, state, elementName, elementEntry, composes);
+        renderValueSlot(block, definition, slot, entry, ctx, state, elementName, elementEntry, bound);
       });
       state.repeats.push({ blockId: block.id, slotName: inputName, count: entries.length, at: state.output.length });
       continue;
     }
 
-    // A lone slot needs brackets too where the template binds to its value (`not %1`, `%1.length`).
-    const isStatement = definition.output === undefined || definition.output === false;
-    const exposed = !composesSeveralValues && slotIsExposed(tokens, tokens.indexOf(token), isStatement);
-    renderValueSlot(block, definition, slot, inputName, ctx, state, elementName, elementEntry, composesSeveralValues || exposed);
+    const bound = operator ? operator.bound(token.index) : slotBound(tokens, tokenIndex, isStatement, operatorSettings(elementEntry));
+    renderValueSlot(block, definition, slot, inputName, ctx, state, elementName, elementEntry, bound);
   }
 
   if (state.output.length === contentStart) {
@@ -440,7 +463,7 @@ function renderBlock(
 /**
  * Write what a value slot holds: the block in it, its default, or the marker
  * of an empty slot. `inputName` is the slot's input, or one entry of a
- * repeating slot.
+ * repeating slot. `bound` is what the slot takes without brackets.
  */
 function renderValueSlot(
   block: Blockly.Block,
@@ -451,7 +474,7 @@ function renderValueSlot(
   state: RenderState,
   elementName: string | undefined,
   elementEntry: MorphicElementTypeEntry | undefined,
-  composesSeveralValues: boolean,
+  bound: OperandBound,
 ): void {
   const input = block.getInput(inputName);
   const rawTarget = input?.connection?.targetBlock() ?? null;
@@ -473,7 +496,7 @@ function renderValueSlot(
   if (!target && rawTarget && ctx.definitions.has(toCleanId(rawTarget.type))) {
     const slotOffsetStart = state.output.length;
     const placeholdersBefore = state.placeholders.length;
-    renderBlock(rawTarget, ctx, state, composesSeveralValues && needsBrackets(rawTarget, ctx));
+    renderBlock(rawTarget, ctx, state, needsBrackets(rawTarget, ctx, bound));
     for (const shadow of rawTarget.getDescendants(false)) state.metadata.delete(shadow.id);
     if (state.output.length > slotOffsetStart) {
       const inner = state.placeholders.splice(placeholdersBefore);
@@ -558,7 +581,7 @@ function renderValueSlot(
   // quoting here. Drag affordance is provided by the per-block drag layer
   // in code-editor.ts; the placeholder mark is visual-only.
   const slotOffsetStart = state.output.length;
-  renderBlock(target, ctx, state, composesSeveralValues && needsBrackets(target, ctx));
+  renderBlock(target, ctx, state, needsBrackets(target, ctx, bound));
   recordPlaceholder(state, slotOffsetStart, "set", withTextLabels(detectAtomicEdit(target), target, ctx) ?? undefined);
 }
 

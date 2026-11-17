@@ -30,7 +30,7 @@ test("control", async () => {
       "for count < 9 {",
       "    count += 1",
       "}",
-      "if (count == 9) && !(false) {",
+      "if count == 9 && !(false) {",
       '    fmt.Println("nine")',
       "}",
       "if count >= 10 {",

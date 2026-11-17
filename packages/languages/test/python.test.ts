@@ -28,7 +28,7 @@ test("control", async () => {
       "    count += 2",
       "while count < 9:",
       "    count += 1",
-      "if (count == 9) and (not False):",
+      "if count == 9 and not False:",
       '    print("nine")',
       "if count >= 10:",
       '    print("big")',

@@ -133,14 +133,13 @@ export function parseTemplate(template: string): MorphicTemplateToken[] {
 }
 
 /**
- * Whether the text around a slot binds to the value in it, so a value built
- * from others needs brackets there: an operator or a word in front of it
- * (`not %1`, `-%1`), or something that goes on from it (`%1.length`). A slot
- * between brackets or commas stands free (`len(%1)`), and so does the slot of
- * a statement after its keyword or sign (`return %1`, `if %1:`, `x = %1`).
- * Used for a template with one value slot; with several, each is an operand.
+ * Whether the text on each side of a slot leaves the value in it alone. A
+ * slot between brackets or commas stands free (`len(%1)`, `max(%1, %2)`), and
+ * so does the slot of a statement after its keyword or sign (`return %1`,
+ * `if %1:`, `x = %1`). An operator or a word in front of it (`not %1`, `-%1`)
+ * or something that goes on from it (`%1.length`) binds to the value.
  */
-export function slotIsExposed(tokens: MorphicTemplateToken[], index: number, statement: boolean): boolean {
+export function slotSides(tokens: MorphicTemplateToken[], index: number, statement: boolean): { before: boolean; after: boolean } {
   const written: MorphicTemplateToken[] = tokens.filter((token) => token.kind !== "image");
   const at = written.indexOf(tokens[index]!);
   // The nearest character that is no space, on one side; "" at the template's edge, null at a field or slot.
@@ -157,9 +156,16 @@ export function slotIsExposed(tokens: MorphicTemplateToken[], index: number, sta
   const word = /[\p{L}\p{N}_$]/u;
   const before = nearest(-1);
   const after = nearest(1);
-  const freeBefore = before === "" || (before !== null && ("([{,\n".includes(before) || (statement && ("=:;".includes(before) || word.test(before)))));
-  const freeAfter = after === "" || (after !== null && (")]},;:{\n".includes(after) || (statement && word.test(after))));
-  return !freeBefore || !freeAfter;
+  return {
+    before: before === "" || (before !== null && ("([{,\n".includes(before) || (statement && ("=:;".includes(before) || word.test(before))))),
+    after: after === "" || (after !== null && (")]},;:{\n".includes(after) || (statement && word.test(after)))),
+  };
+}
+
+/** Whether the text around a slot binds to the value in it, so a value built from others needs brackets there. */
+export function slotIsExposed(tokens: MorphicTemplateToken[], index: number, statement: boolean): boolean {
+  const free = slotSides(tokens, index, statement);
+  return !free.before || !free.after;
 }
 
 export function normalizeTemplateText(text: string): string {

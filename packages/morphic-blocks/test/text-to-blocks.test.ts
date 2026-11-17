@@ -322,19 +322,18 @@ describe("what a person types differently", () => {
     expect(types()).toEqual(["set", "number"]);
   });
 
-  test("brackets group; the same operator again reads on, another one needs brackets", async () => {
+  test("brackets group, and operators read in their order", async () => {
     const { engine, run } = await setUp();
-    engine.loadText("print(2 * (3 + 4));\nprint(10 - 3 - 2);", { element: "script" });
+    engine.loadText("print(2 * (3 + 4));\nprint((10 - 3) - 2);\nprint(2 + 3 * 4);", { element: "script" });
 
-    expect(engine.generateText("script")).toBe("print(2 * (3 + 4));\nprint((10 - 3) - 2);");
-    expect(run()).toEqual(["14", "5"]);
-    // There is no order of operators yet, so this is not guessed at.
-    expect(engine.loadText("print(2 + 3 * 4);", { element: "script" })).toEqual({
+    expect(engine.generateText("script")).toBe("print(2 * (3 + 4));\nprint(10 - 3 - 2);\nprint(2 + 3 * 4);");
+    expect(run()).toEqual(["14", "5", "14"]);
+    // A comparison of a comparison means something else in every language, so it is not guessed at.
+    expect(engine.loadText("print(n > 1 == true);", { element: "script" })).toEqual({
       ok: false,
       line: 1,
-      message: "Put brackets around the parts of this line: operators have no order yet.",
+      message: "Put brackets around the parts of this line: these operators have no order.",
     });
-    expect(engine.loadText("print(n > 1 == true);", { element: "script" })).toMatchObject({ ok: false });
   });
 
   test("a comment after a statement, and numbers as people write them", async () => {

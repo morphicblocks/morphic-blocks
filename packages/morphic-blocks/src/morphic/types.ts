@@ -120,6 +120,16 @@ export interface MorphicCodeElementConfig {
    * `default` is used when no key fits; without it nothing is written.
    */
   types?: Record<string, string>;
+  /**
+   * The order of this language's operators, by the sign as it is written:
+   * `{ "**": { "rank": 80, "direction": "right" }, "//": 60 }`. Text views
+   * write brackets only where the order needs them, and `loadText()` reads
+   * `2 + 3 * 4` as the language means it. The common signs have an order
+   * without this setting (see the docs); an entry here changes one sign,
+   * `null` takes a sign's order away, and `false` turns the order off, so
+   * every value built from others is written in brackets.
+   */
+  operators?: false | Record<string, MorphicOperatorOrder | null>;
   /** Token highlighting for the codespace and preview showing this element. */
   highlighting?: MorphicHighlightDefinition;
   /**
@@ -128,6 +138,20 @@ export interface MorphicCodeElementConfig {
    */
   values?: MorphicValueFormat;
 }
+
+/**
+ * Where an operator stands among the others: a rank (the higher, the tighter
+ * it binds), or the rank with more about it. `direction` says how the same
+ * rank reads without brackets: from the `"left"` (`10 - 4 - 3`, the default),
+ * from the `"right"` (`2 ** 3 ** 2`), or not at all (`"none"`: `1 < x < 5`
+ * needs brackets). `"any"` is for a sign whose grouping does not matter
+ * (`out << a << b`): no brackets are written between two of it, and text
+ * reads from the left. `prefix` is the rank of the sign in front of one
+ * value (`-x`, `not x`).
+ */
+export type MorphicOperatorOrder =
+  | number
+  | { rank?: number; direction?: "left" | "right" | "none" | "any"; prefix?: number };
 
 /**
  * Printed values in a language's own spelling, e.g. Python:

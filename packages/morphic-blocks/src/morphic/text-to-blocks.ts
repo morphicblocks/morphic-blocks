@@ -1,7 +1,8 @@
 import type * as Blockly from "blockly";
 import { toBlocklyType } from "./block-namespace";
+import { ATOM, WHOLE, allows, operatorForm, rankOperator, slotBound, type OperandBound, type OperatorForm, type RankedOperator } from "./operators";
 import { isRepeating, repeatInputName, repeatSeparator, separatorComposes, slotInputName } from "./repeat-slots";
-import { parseTemplate, slotIsExposed } from "./template";
+import { parseTemplate } from "./template";
 import type {
   MorphicBlockDefinition,
   MorphicCodeElementConfig,
@@ -21,8 +22,9 @@ import type {
  * This first version reads valid text only. Where two blocks write the same
  * text (`x = 1` creates a variable or sets one), the names declared so far
  * decide: a reference prefers a name that exists, a declaration one that does
- * not. Operators are read left to right, with brackets as the writer sets
- * them; there is no precedence yet.
+ * not. Operators are read in the order the language gives their signs (see
+ * operators.ts), and brackets group whatever is in them; a sign without a
+ * rank needs brackets around its parts.
  */
 
 type BlockState = Blockly.serialization.blocks.State;
@@ -32,14 +34,12 @@ export type MorphicTextParseResult =
   | { ok: true; stacks: BlockState[]; blocks: number }
   | { ok: false; line: number; message: string };
 
-type Level = "expression" | "operand";
-
 type Token =
   | { kind: "text"; value: string }
   | { kind: "field"; name: string; field: MorphicFieldDefinition | undefined }
   | { kind: "skip"; types: boolean; slotName?: string; field?: string }
-  | { kind: "value"; name: string; slot: MorphicInputSlotDefinition; level: Level }
-  | { kind: "repeat"; name: string; slot: MorphicInputSlotDefinition; separator: string; level: Level }
+  | { kind: "value"; name: string; number: number; slot: MorphicInputSlotDefinition; bound: OperandBound }
+  | { kind: "repeat"; name: string; number: number; slot: MorphicInputSlotDefinition; separator: string; bound: OperandBound }
   | { kind: "body"; name: string; slot: MorphicInputSlotDefinition; indent: string };
 
 interface Template {
@@ -50,6 +50,8 @@ interface Template {
   continues: boolean;
   /** Such a template that binds tightly (`%1[%2]`, `%1.length`), not through an operator. */
   tight: boolean;
+  /** The template as an operator (`%1 + %2`, `not %1`), when it has the shape of one. */
+  form: OperatorForm | null;
   /** How much fixed text it has; the more, the more specific. */
   weight: number;
 }
@@ -66,9 +68,14 @@ interface Read {
 interface Candidate extends Read {
   end: number;
   /**
-   * Set on a value that ends in an operator's operand without brackets
-   * around it (`a + b`): the operator, as template and fields. Nothing but
-   * the same operator again may go on from it.
+   * How tightly the value holds together without brackets around it: the
+   * rank of its operator (`a + b`), `Infinity` for one piece (a name, a
+   * call, anything in brackets), `-Infinity` for an operator without a rank.
+   */
+  rank: number;
+  /**
+   * Set on a value of an operator without a rank: the operator, as template
+   * and fields. Nothing but the same operator again may go on from it.
    */
   open?: string;
 }
@@ -91,6 +98,8 @@ interface Env {
   key: string;
 }
 
+/** Told about a line whose operators do not say what belongs together. */
+const NO_ORDER = "Put brackets around the parts of this line: these operators have no order.";
 const WORD = /[\p{L}\p{M}\p{N}_$]/u;
 const IDENTIFIER = /[\p{L}_$][\p{L}\p{M}\p{N}_$]*/uy;
 // A dot belongs to the number only with a digit after it: `1..=6` is `1`, then a range sign.
@@ -283,6 +292,22 @@ export function parseTextToBlocks(
     return name && !keywords.has(name) ? [{ value: name, shown: name, end: pos + name.length }] : [];
   }
 
+  // ── Operators ───────────────────────────────────────────
+
+  /** The template as an operator with a rank, with the sign its fields show so far. */
+  const operatorIn = (template: Template, taken: Partial): RankedOperator | null =>
+    template.form ? rankOperator(template.form, (name) => taken.shown[name], settings.operators) : null;
+  /**
+   * What a slot takes without brackets: what its operator says, else what the
+   * text around it does. Text without brackets reads from the left, so an
+   * operator takes no value of its own sign where the writer leaves the
+   * brackets out because the grouping does not matter.
+   */
+  const boundOf = (template: Template, token: Extract<Token, { kind: "value" | "repeat" }>, taken: Partial): OperandBound => {
+    const own = operatorIn(template, taken)?.bound(token.number);
+    return own ? { rank: own.rank, above: own.above } : token.bound;
+  };
+
   // ── Templates ───────────────────────────────────────────
 
   /** Every way a template fits the text from a position, from its token `from` on. */
@@ -358,7 +383,7 @@ export function parseTextToBlocks(
         const next: Partial = { ...taken, written: { ...taken.written, [token.name]: marker } };
         yield* matchTemplate(template, from + 1, start + marker.length, false, indent, env, next);
       }
-      for (const candidate of valuesAt(start, token.level, inner(), token.slot)) {
+      for (const candidate of valuesAt(start, boundOf(template, token, taken), inner(), token.slot)) {
         const next: Partial = {
           ...taken,
           inputs: { ...taken.inputs, [token.name]: candidate },
@@ -401,7 +426,7 @@ export function parseTextToBlocks(
         repeat: { ...taken.repeat, [token.name]: count + 1 },
       });
       const known = extend(env, [...Object.values(taken.inputs).flatMap((read) => read.declares), ...declaresOf(template.def, taken.fields)]);
-      for (const candidate of valuesAt(start, token.level, known, token.slot)) {
+      for (const candidate of valuesAt(start, boundOf(template, token, taken), known, token.slot)) {
         yield* matchEntries(template, from, token, candidate.end, count + 1, indent, env, withEntry(candidate));
       }
       if (text.startsWith(marker, start)) {
@@ -522,33 +547,34 @@ export function parseTextToBlocks(
    * The values that can be read at a position and fit `slot` (any, without
    * one): one per place they end at, the longest first.
    */
-  function valuesAt(pos: number, level: Level, env: Env, slot?: MorphicInputSlotDefinition): Candidate[] {
+  function valuesAt(pos: number, bound: OperandBound, env: Env, slot?: MorphicInputSlotDefinition): Candidate[] {
     const start = skipSpaces(pos);
-    const memo = `${start}|${level}|${slotKey(slot)}|${parents.length}:${JSON.stringify(parents.at(-1) ?? {})}|${env.key}`;
+    const memo = `${start}|${bound.rank}${bound.above ? ">" : ""}${bound.sign ?? ""}|${slotKey(slot)}|${parents.length}:${JSON.stringify(parents.at(-1) ?? {})}|${env.key}`;
     const known = values.get(memo);
     if (known) return known;
 
     const found: Candidate[] = [];
     // Brackets group a value; they are no block.
     if (text[start] === "(") {
-      for (const inside of valuesAt(start + 1, "expression", env)) {
+      for (const inside of valuesAt(start + 1, WHOLE, env)) {
         const close = skipSpaces(inside.end);
-        if (text[close] === ")") found.push({ ...inside, end: close + 1, open: undefined });
+        if (text[close] === ")") found.push({ ...inside, end: close + 1, rank: Infinity, open: undefined });
       }
     }
     for (const template of primaries) {
       for (const match of matchTemplate(template, 0, start, false, "", env, empty)) {
-        if (!match.lineStart) found.push({ ...finish(template, match.taken, env), end: match.pos });
+        if (match.lineStart) continue;
+        // A sign in front of a value (`not a`) holds as tightly as its rank says; anything else is one piece.
+        const rank = operatorIn(template, match.taken)?.rank ?? Infinity;
+        if (allows(bound, rank)) found.push({ ...finish(template, match.taken, env), end: match.pos, rank });
       }
     }
     // What a value goes on as: `a` as `a + b`, `items` as `items[0]`.
     for (let index = 0; index < found.length; index++) {
       const left = found[index]!;
       for (const template of continuations) {
-        if (level === "operand" && !template.tight) continue;
-        // There is no order of operators yet: after `a + b`, only `+` again
-        // reads on. Anything else needs brackets to say what belongs together.
-        if (left.open !== undefined && template.tight) continue;
+        // Only one piece goes on tightly (`items[0]`), and a slot for one piece takes no operator.
+        if (template.tight ? left.rank !== Infinity : bound.rank === Infinity) continue;
         const first = template.tokens[0] as Extract<Token, { kind: "value" | "repeat" }>;
         if (!fitsValue(first.slot, left.def)) continue;
         const taken: Partial =
@@ -562,12 +588,29 @@ export function parseTextToBlocks(
         for (const match of rest) {
           // A list of one entry is the entry itself; it must take in more text to be a new value.
           if (match.lineStart || match.pos === left.end) continue;
-          const operator = `${template.def.identifier}|${JSON.stringify(match.taken.fields)}`;
-          if (left.open !== undefined && left.open !== operator) {
-            fail(left.end, "Put brackets around the parts of this line: operators have no order yet.");
-            continue;
+          let next: Candidate;
+          const operator = template.tight ? null : operatorIn(template, match.taken);
+          if (template.tight) {
+            next = { ...finish(template, match.taken, env), end: match.pos, rank: Infinity };
+          } else if (operator) {
+            // Too weak for this place: it is read where the value around it goes on (`a * b` + c).
+            if (!allows(bound, operator.rank, operator.sign)) continue;
+            if (!allows(operator.bound(first.number), left.rank)) {
+              // `1 < x < 5`, or a sign without a rank beside one with a rank: nothing says what belongs together.
+              if (left.rank === operator.rank || left.rank === -Infinity) fail(left.end, NO_ORDER);
+              continue;
+            }
+            next = { ...finish(template, match.taken, env), end: match.pos, rank: operator.rank };
+          } else {
+            // A sign without a rank: only where any value fits, and after `a + b` only `+` again reads on.
+            if (!allows(bound, -Infinity)) continue;
+            const sign = `${template.def.identifier}|${JSON.stringify(match.taken.fields)}`;
+            if (left.rank !== Infinity && left.open !== sign) {
+              fail(left.end, NO_ORDER);
+              continue;
+            }
+            next = { ...finish(template, match.taken, env), end: match.pos, rank: -Infinity, open: sign };
           }
-          const next: Candidate = { ...finish(template, match.taken, env), end: match.pos, open: template.tight ? undefined : operator };
           const same = found.some((other) => other.end === next.end && other.def === next.def && other.penalty <= next.penalty);
           if (!same) found.push(next);
         }
@@ -639,7 +682,7 @@ export function parseTextToBlocks(
         }
       }
       // A value on a line of its own, at the top level only.
-      if (!best && !slot) for (const value of valuesAt(start, "expression", known)) offer(value, value.end, false);
+      if (!best && !slot) for (const value of valuesAt(start, WHOLE, known)) offer(value, value.end, false);
       if (!best) {
         fail(start, `No block writes "${text.slice(start, lineEnd(start)).trim()}".`);
         break;
@@ -687,9 +730,6 @@ export function parseTextToBlocks(
     const written = def.elements[name];
     if (written === undefined) return null;
     const parsed = parseTemplate(written).filter((token) => token.kind !== "image");
-    const valueSlots = parsed.filter(
-      (token) => token.kind === "placeholder" && (def.inputSlots?.[String(token.index)]?.kind ?? "value") === "value",
-    ).length;
     const isValue = def.output !== undefined && def.output !== false;
     const tokens: Token[] = [];
     for (let index = 0; index < parsed.length; index++) {
@@ -712,18 +752,12 @@ export function parseTextToBlocks(
           tokens.push({ kind: "body", name: slotName, slot, indent: lead[1]! });
           continue;
         }
-        // As the writer brackets: a value among several is an operand, unless
-        // fixed text closes it or it ends a statement; a value alone is whole,
-        // unless the template binds to it (`not %1`).
-        const next = parsed[index + 1];
-        const closed = next?.kind === "text" && next.value[0] !== " " && next.value[0] !== "\t";
-        const exposed = valueSlots <= 1 && slotIsExposed(parsed, index, !isValue);
-        const whole = (valueSlots <= 1 && !exposed) || closed || (!isValue && !next);
+        // As the writer brackets: the text around a slot says what it takes.
         if (isRepeating(slot)) {
           const separator = repeatSeparator(slot, name);
-          tokens.push({ kind: "repeat", name: slotName, slot, separator, level: separatorComposes(separator) ? "operand" : "expression" });
+          tokens.push({ kind: "repeat", name: slotName, number: token.index, slot, separator, bound: separatorComposes(separator) ? ATOM : WHOLE });
         } else {
-          tokens.push({ kind: "value", name: slotName, slot, level: whole ? "expression" : "operand" });
+          tokens.push({ kind: "value", name: slotName, number: token.index, slot, bound: slotBound(parsed, index, !isValue, settings.operators) });
         }
       }
     }
@@ -731,12 +765,16 @@ export function parseTextToBlocks(
     const first = tokens[0]!;
     const second = tokens[1];
     const continues = isValue && (first.kind === "value" || first.kind === "repeat");
+    const form = operatorForm(parsed, def, name);
+    // `%1+%2` is an operator all the same, where its sign has a rank.
+    const ranked = form?.kind === "infix" && form.sign.every((part) => "text" in part) && rankOperator(form, () => undefined, settings.operators);
     return {
       def,
       tokens,
       isValue,
       continues,
-      tight: continues && second?.kind === "text" && second.value[0] !== " " && second.value[0] !== "\t",
+      form,
+      tight: continues && !ranked && second?.kind === "text" && second.value[0] !== " " && second.value[0] !== "\t",
       weight: tokens.reduce((sum, token) => sum + (token.kind === "text" ? token.value.replace(/\s/g, "").length : 0), 0),
     };
   }

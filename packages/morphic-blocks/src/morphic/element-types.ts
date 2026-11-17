@@ -21,7 +21,7 @@ export function resolveElementType(
  * they already hold for the element.
  */
 export type MorphicElementTypeWithCode = MorphicElementTypeConfig &
-  Pick<MorphicCodeElementConfig, "empty" | "stringQuote" | "emptyStatement" | "types">;
+  Pick<MorphicCodeElementConfig, "empty" | "stringQuote" | "emptyStatement" | "types" | "operators">;
 
 /** `elementTypes` with each code element's `code` settings folded in. */
 export function withCodeSettings(
@@ -32,12 +32,18 @@ export function withCodeSettings(
   for (const [name, settings] of Object.entries(code ?? {})) {
     const entry = elementTypes[name];
     if (resolveElementType(entry) !== "code") continue;
-    const { empty, stringQuote, emptyStatement, types } = settings;
-    if (empty === undefined && stringQuote === undefined && emptyStatement === undefined && types === undefined) {
+    const { empty, stringQuote, emptyStatement, types, operators } = settings;
+    if (
+      empty === undefined &&
+      stringQuote === undefined &&
+      emptyStatement === undefined &&
+      types === undefined &&
+      operators === undefined
+    ) {
       continue;
     }
     const base = typeof entry === "string" ? { type: entry } : entry!;
-    const withCode: MorphicElementTypeWithCode = { ...base, empty, stringQuote, emptyStatement, types };
+    const withCode: MorphicElementTypeWithCode = { ...base, empty, stringQuote, emptyStatement, types, operators };
     merged[name] = withCode;
   }
   return merged;

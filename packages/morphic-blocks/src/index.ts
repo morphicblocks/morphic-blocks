@@ -39,6 +39,7 @@ export type {
   MorphicBlocksFormat,
   MorphicBlocksFormatJson,
   MorphicCodeElementConfig,
+  MorphicOperatorOrder,
   MorphicValueFormat,
   MorphicViewHandle,
   MorphicViewDeclaration,

@@ -2,16 +2,16 @@ import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import type * as Blockly from "blockly";
 import { MorphicBlocks } from "../src";
 import { applyBlockShapes, createDefinitionMap, expandDefaultElements } from "../src/morphic/definitions";
-import { closesItself, generateTextFromWorkspace } from "../src/morphic/template-codegen";
+import { closesItself, generateTextFromWorkspace, goesOnFromValue } from "../src/morphic/template-codegen";
 import { parseTemplate, slotIsExposed } from "../src/morphic/template";
 import type { MorphicBehaviorMap, MorphicBlocksFormat } from "../src/morphic/types";
 
 /**
  * Operand brackets, checked on both paths that turn blocks into text: the
  * rendered text the codespace and preview show (templates), and the executable
- * JavaScript (behaviors). A composed operand is bracketed only when its parent
- * composes several values, so `%1 %OP %2` keeps its grouping while single slot
- * templates such as `print(%1)` and `if %1:` stay clean.
+ * JavaScript (behaviors). A composed operand is bracketed only where the text
+ * around its slot binds to it, so `%1 %OP %2` keeps its grouping while slots
+ * that stand free, as in `print(%1)`, `if %1:` and `max(%1, %2)`, stay clean.
  */
 
 const format: MorphicBlocksFormat = {
@@ -184,6 +184,20 @@ describe("a value that closes itself gets no brackets", () => {
   test("a slot, a field or an operator outside the brackets makes it an operand", () => {
     for (const template of ["%1 %OP %2", "%1[%2]", "%1.get(%2)", "-(%1)", "f(%1) + g(%2)", "not %1", "%NAME", "(%1"]) {
       expect(closesItself(template), template).toBe(false);
+    }
+  });
+});
+
+describe("a value that only goes on from the value in front gets no brackets", () => {
+  test("an entry, a call or a name behind the first slot is one piece with it", () => {
+    for (const template of ["%1[%2]", "%1.size()", "%1.get(%2)", "%1.length", "%1.%NAME", "%1.%NAME(%2)", "%1(%2)"]) {
+      expect(goesOnFromValue(template), template).toBe(true);
+    }
+  });
+
+  test("anything else behind it, or nothing in front, makes it an operand", () => {
+    for (const template of ["%1 %OP %2", "%1 + %2", "%1.length + %2", "%1.length as x", "%1 [%2]", "%1!", "%1", "f(%1)[%2]", "%1[%2"]) {
+      expect(goesOnFromValue(template), template).toBe(false);
     }
   });
 });

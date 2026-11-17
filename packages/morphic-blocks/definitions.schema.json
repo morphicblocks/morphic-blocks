@@ -92,6 +92,33 @@
           "type": "object",
           "additionalProperties": { "type": "string" }
         },
+        "operators": {
+          "description": "The order of this language's operators, by the sign as it is written. The common signs have an order without it; an entry changes one sign, null takes a sign's order away, false turns the order off (every value built from others is written in brackets).",
+          "oneOf": [
+            { "const": false },
+            {
+              "type": "object",
+              "additionalProperties": {
+                "oneOf": [
+                  { "type": "null" },
+                  { "type": "number", "description": "The rank between two values: the higher, the tighter the sign binds." },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "rank": { "type": "number", "description": "The rank between two values: the higher, the tighter the sign binds." },
+                      "direction": {
+                        "enum": ["left", "right", "none", "any"],
+                        "description": "How the same rank reads without brackets: from the left (default), from the right, or not at all. \"any\": the grouping of this sign does not matter, so no brackets are written between two of it."
+                      },
+                      "prefix": { "type": "number", "description": "The rank of the sign in front of one value (-x, not x)." }
+                    },
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            }
+          ]
+        },
         "highlighting": { "$ref": "#/$defs/highlight" },
         "values": {
           "description": "How printed values are written while this element is shown, e.g. Python's True, None and ['a', 'b'].",

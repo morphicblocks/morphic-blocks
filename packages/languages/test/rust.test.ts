@@ -30,7 +30,7 @@ test("control", async () => {
       "while count < 9 {",
       "    count += 1;",
       "}",
-      "if (count == 9) && !(false) {",
+      "if count == 9 && !(false) {",
       '    println!("{}", "nine");',
       "}",
       "if count >= 10 {",
