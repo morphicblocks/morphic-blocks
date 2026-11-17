@@ -168,6 +168,38 @@ export function slotIsExposed(tokens: MorphicTemplateToken[], index: number, sta
   return !free.before || !free.after;
 }
 
+const QUOTE_MARKS = "\"'`";
+
+/** The mark a field stands between where a template writes it as a text (`"%TEXT"`), else `null`. */
+export function quoteAround(before: string | undefined, after: string | undefined): string | null {
+  const mark = before?.at(-1);
+  return mark && QUOTE_MARKS.includes(mark) && after?.[0] === mark ? mark : null;
+}
+
+/** A text as it is written between two marks: the mark and the backslash each get a backslash in front. */
+export function escapeQuoted(text: string, mark: string): string {
+  return text.replaceAll("\\", "\\\\").replaceAll(mark, `\\${mark}`);
+}
+
+/**
+ * Read a text written between two marks from `pos` on: where the closing
+ * mark is, and the text without its backslashes. `null` when the line ends
+ * before the mark comes.
+ */
+export function readQuoted(source: string, pos: number, mark: string): { value: string; end: number } | null {
+  let value = "";
+  for (let at = pos; at < source.length && source[at] !== "\n"; at++) {
+    const char = source[at]!;
+    if (char === mark) return { value, end: at };
+    const next = source[at + 1];
+    if (char === "\\" && (next === "\\" || next === mark)) {
+      value += next;
+      at++;
+    } else value += char;
+  }
+  return null;
+}
+
 export function normalizeTemplateText(text: string): string {
   return text.replace(/\s+/g, " ").trim();
 }

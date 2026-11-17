@@ -2,7 +2,7 @@ import type * as Blockly from "blockly";
 import { toBlocklyType } from "./block-namespace";
 import { ATOM, WHOLE, allows, operatorForm, rankOperator, slotBound, type OperandBound, type OperatorForm, type RankedOperator } from "./operators";
 import { isRepeating, repeatInputName, repeatSeparator, separatorComposes, slotInputName } from "./repeat-slots";
-import { parseTemplate } from "./template";
+import { parseTemplate, quoteAround, readQuoted } from "./template";
 import type {
   MorphicBlockDefinition,
   MorphicCodeElementConfig,
@@ -275,6 +275,12 @@ export function parseTextToBlocks(
       // A text between quotes (or other marks) runs to the mark that closes it.
       const closing = next?.kind === "text" ? next.value[0] : undefined;
       const opened = previous?.kind === "text" ? previous.value.at(-1) : undefined;
+      // Between quote marks, a mark with a backslash in front belongs to the text.
+      const quote = quoteAround(previous?.kind === "text" ? previous.value : undefined, next?.kind === "text" ? next.value : undefined);
+      if (quote) {
+        const read = readQuoted(text, pos, quote);
+        return read ? [{ value: read.value, shown: text.slice(pos, read.end), end: read.end }] : [];
+      }
       if (closing && !WORD.test(closing) && closing !== " " && closing !== "\n" && opened && !WORD.test(opened) && opened !== " " && closing !== "(") {
         const end = text.indexOf(closing, pos);
         if (end === -1 || end > lineEnd(pos)) return [];

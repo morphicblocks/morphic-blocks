@@ -345,6 +345,20 @@ describe("what a person types differently", () => {
     expect(engine.loadText("print([1, 2][1.]);", { element: "script" })).toMatchObject({ ok: false });
   });
 
+  test("a quote mark in a text has a backslash in front, and so has a backslash", async () => {
+    const { engine, read, run } = await setUp();
+
+    read("script", ['print("say \\"hi\\"");', 'print("C:\\\\new" + "it\'s");']);
+    expect(run()).toEqual(['say "hi"', "C:\\newit's"]);
+    // The block holds the text itself, and writes the backslashes again.
+    const texts = engine.getWorkspace()!.getAllBlocks(true).filter((block) => block.type === "morphic:text");
+    expect(texts.map((block) => block.getFieldValue("TEXT"))).toEqual(['say "hi"', "C:\\new", "it's"]);
+    texts[2]!.setFieldValue('a "b" \\', "TEXT");
+    expect(engine.generateText("script").split("\n")[1]).toBe('print("C:\\\\new" + "a \\"b\\" \\\\");');
+    // A text that is not closed on its line fits no block.
+    expect(engine.loadText('print("open\\");', { element: "script" })).toMatchObject({ ok: false, line: 1 });
+  });
+
   test("blank lines are skipped", async () => {
     const { engine } = await setUp();
     engine.loadText("\nprint(1);\n\n\nprint(2);\n", { element: "script" });

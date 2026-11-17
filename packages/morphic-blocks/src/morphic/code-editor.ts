@@ -383,7 +383,9 @@ export class MorphicCodeEditor {
     } else {
       const input = document.createElement("input");
       input.type = edit.fieldType === "number" ? "number" : "text";
-      input.value = currentText;
+      // A text is edited as the field holds it: between quote marks the view shows it with backslashes.
+      const held = this.workspace.getBlockById(edit.blockId)?.getField(edit.fieldName)?.getValue();
+      input.value = edit.fieldType === "text" && typeof held === "string" ? held : currentText;
       inputEl = input;
     }
 

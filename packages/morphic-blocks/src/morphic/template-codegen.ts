@@ -4,7 +4,7 @@ import { MorphicReference } from "./dropdown-fields";
 import { findParentField } from "./parent-field";
 import { isRepeating, repeatEntries, repeatSeparator, separatorComposes } from "./repeat-slots";
 import { ATOM, WHOLE, allows, operatorForm, rankOperator, slotBound, type OperandBound, type RankedOperator } from "./operators";
-import { parseTemplate, type MorphicTemplateToken } from "./template";
+import { escapeQuoted, parseTemplate, quoteAround, type MorphicTemplateToken } from "./template";
 import type { MorphicElementTypeWithCode } from "./element-types";
 import { resolveBlockView } from "./view-resolver";
 import { isValueTypeLabel, valueTypeName } from "./value-type";
@@ -339,7 +339,10 @@ function renderBlock(
       const field = block.getField(token.name);
       if (!field) continue;
       const fieldStart = state.output.length;
-      appendText(state, resolveFieldDisplay(definition, elementName, token.name, field));
+      const shown = resolveFieldDisplay(definition, elementName, token.name, field);
+      // A text between quote marks keeps them apart from its own: `"say \"hi\""`.
+      const quote = isTypedText(field) ? quoteAround(textOf(tokens[tokenIndex - 1]), textOf(tokens[tokenIndex + 1])) : null;
+      appendText(state, quote ? escapeQuoted(shown, quote) : shown);
       const editTarget = withTextLabels(fieldEditTarget(block, field, token.name), block, ctx);
       if (editTarget) {
         recordPlaceholder(state, fieldStart, "set", editTarget);
@@ -534,12 +537,8 @@ function renderValueSlot(
         ? ctx.definitions.get(toCleanId(rawTarget.type))
         : undefined;
       for (const field of shadowFields) {
-        appendText(
-          state,
-          shadowDef && field.name
-            ? resolveFieldDisplay(shadowDef, elementName, field.name, field)
-            : readFieldText(field),
-        );
+        const shown = shadowDef && field.name ? resolveFieldDisplay(shadowDef, elementName, field.name, field) : readFieldText(field);
+        appendText(state, stringQuote ? escapeQuoted(shown, stringQuote) : shown);
       }
     } else if (inputFields.length > 0) {
       // Fields directly on the parent's input (custom onViewApplied fields).
@@ -784,6 +783,15 @@ function resolveFieldDisplay(
     }
   }
   return readFieldText(field);
+}
+
+/** A field a text is typed into (a number is typed too, but holds no quote mark). */
+function isTypedText(field: Blockly.Field): boolean {
+  return field instanceof Blockly.FieldTextInput && !(field instanceof Blockly.FieldNumber);
+}
+
+function textOf(token: MorphicTemplateToken | undefined): string | undefined {
+  return token?.kind === "text" ? token.value : undefined;
 }
 
 function readFieldText(field: Blockly.Field | null | undefined): string {
