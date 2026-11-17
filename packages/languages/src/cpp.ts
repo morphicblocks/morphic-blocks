@@ -1,0 +1,75 @@
+import type { Language } from "@morphicblocks/blocks";
+
+/**
+ * C++ as a beginner course shows it: `std::` written out (no `using namespace`,
+ * since the text has no header to put it in), `std::cout`, `std::string`,
+ * `std::vector`, and a class with `public:` fields and methods.
+ */
+export const cpp: Language = {
+  code: {
+    stringQuote: '"',
+    types: { Number: "int", String: "std::string", Boolean: "bool", List: "std::vector<int>", default: "auto" },
+    // A stream takes its parts one after the other, however they are grouped: `std::cout << a << b`.
+    operators: { "<<": { rank: 45, direction: "any" } },
+    empty: {
+      Number: { shadow: "number", fieldValues: { NUM: "0" } },
+      String: { shadow: "text", fieldValues: { TEXT: "" } },
+      Boolean: { shadow: "boolean", fieldValues: { BOOL: "true" } },
+    },
+    highlighting: {
+      keywords: [
+        "if", "else", "for", "while", "do", "break", "continue", "return", "class", "public", "private", "void",
+        "this", "auto", "int", "double", "bool", "true", "false", "nullptr", "const", "switch", "case", "try",
+        "catch", "new", "static", "std",
+      ],
+      strings: ['"'],
+      comment: "//",
+    },
+    values: { list: { open: "[", close: "]", separator: ", ", quote: "" } },
+  },
+  blocks: {
+    print: "std::cout << %1 << std::endl;",
+    comment: "// %TEXT",
+    number: "%NUM",
+    text: '"%TEXT"',
+    boolean: "%BOOL",
+    variable_create: "%1:type %NAME = %1;",
+    variable_set: "%NAME = %1;",
+    variable_change: "%NAME += %1;",
+    variable_get: "%NAME",
+    math_operation: "%1 %OP %2",
+    math_remainder: "%1 % %2",
+    math_random: "std::rand() % (%2 - %1 + 1) + %1",
+    text_join: "%1",
+    text_length: "std::string(%1).length()",
+    compare: "%1 %OP %2",
+    logic_operation: "%1 %OP %2",
+    logic_not: "!(%1)",
+    if: "if (%1) {\n    %2\n}",
+    if_else: "if (%1) {\n    %2\n} else {\n    %3\n}",
+    repeat: "for (int i = 0; i < %1; i++) {\n    %2\n}",
+    while: "while (%1) {\n    %2\n}",
+    for_each: "for (auto %NAME : %1) {\n    %2\n}",
+    break: "break;",
+    continue: "continue;",
+    function_define: "auto %NAME(%1) {\n    %2\n}",
+    parameter: "int %NAME",
+    parameter_get: "%NAME",
+    return: "return %1;",
+    function_call: "%NAME(%1);",
+    function_result: "%NAME(%1)",
+    list_create: "{%1}",
+    list_get: "%1[%2]",
+    list_set: "%1[%2] = %3;",
+    list_add: "%1.push_back(%2);",
+    list_length: "%1.size()",
+    class_define: "class %NAME {\npublic:\n    %1\n\n    %2\n};",
+    class_field: "%1:type %NAME = %1;",
+    class_method: "void %NAME() {\n    %1\n}",
+    field_get: "this->%NAME",
+    object_create: "%CLASS %VAR;",
+    method_call: "%VAR.%METHOD();",
+  },
+  // A text and a number join as the parts of a stream, which is where a beginner joins them: in a print.
+  separators: { "text_join.PARTS": " << " },
+};

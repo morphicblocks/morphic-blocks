@@ -1,6 +1,6 @@
 # @morphicblocks/languages
 
-Languages for [Morphic Blocks](https://morphicblocks.com): how Python, JavaScript, Java, Go and Rust write the standard blocks of `@morphicblocks/blocks`, each with the settings of its code element (quotes, type names, empty slots, highlighting).
+Languages for [Morphic Blocks](https://morphicblocks.com): how Python, JavaScript, Java, Go, Rust and C++ write the standard blocks of `@morphicblocks/blocks`, each with the settings of its code element (quotes, type names, empty slots, highlighting).
 
 ```bash
 npm install @morphicblocks/blocks @morphicblocks/languages
